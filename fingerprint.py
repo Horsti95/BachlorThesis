@@ -62,23 +62,36 @@ class ModelConfig:
 class FeatureConfig:
     """
     Feature configuration for fingerprint generation.
-    
+
     Attributes:
         base_features: Number of base features (149 for 6-channel, 195 for 8-channel)
         correlation_threshold: Correlation filter threshold (e.g., 0.85, 0.90, None)
         top_k: Number of top features to select (e.g., 30, 50, 149)
+        n_selected: Actual number of features after selection (for cache validation)
+        selected_features: List of actual selected feature names (for cache validation)
     """
     base_features: int = 195
     correlation_threshold: Optional[float] = None
     top_k: Optional[int] = None
-    
+    n_selected: Optional[int] = None
+    selected_features: Optional[List[str]] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             'base': self.base_features,
             'corr': self.correlation_threshold,
             'top_k': self.top_k
         }
+        # Include actual selected features for cache validation
+        # Hash the feature list to keep fingerprint compact
+        if self.selected_features is not None:
+            features_str = ','.join(sorted(self.selected_features))
+            features_hash = hashlib.sha256(features_str.encode()).hexdigest()[:16]
+            result['features_hash'] = features_hash
+        elif self.n_selected is not None:
+            result['n_selected'] = self.n_selected
+        return result
 
 
 @dataclass
@@ -199,7 +212,9 @@ class LOSOFingerprint:
             feat_cfg = FeatureConfig(
                 base_features=feature_config.get('base', 195),
                 correlation_threshold=feature_config.get('corr'),
-                top_k=feature_config.get('top_k')
+                top_k=feature_config.get('top_k'),
+                n_selected=feature_config.get('n_selected'),
+                selected_features=feature_config.get('selected_features')
             )
         else:
             feat_cfg = feature_config

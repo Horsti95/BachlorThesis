@@ -226,8 +226,7 @@ class FNNModel(BaseModel):
         try:
             import torch
             import torch.nn as nn
-            self.torch = torch
-            self.nn = nn
+            # Don't store module references - they can't be pickled
             self._torch_available = True
         except ImportError:
             self._torch_available = False
