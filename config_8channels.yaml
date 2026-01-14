@@ -1,0 +1,62 @@
+# Example Configuration: 8 Channels (EEG + EOG + EMG)
+# =======================================================
+#
+# This configuration uses all 8 physiological channels:
+# - 6 EEG channels (F3, F4, C3, C4, O1, O2)
+# - 1 EOG channel (eye movements - helps with REM detection)
+# - 1 EMG channel (muscle tone - helps with Wake vs Sleep)
+#
+# Expected features: 8 × 23 + 11 = 195 features
+
+experiment_name: "pilot_xgboost_8channels"
+
+data:
+  base_path: "C:/Users/DerHo/Desktop/Data"
+  use_human_labels: true
+  subjects: null
+  
+  # Use 8 channels (EEG + physiological)
+  channel_preset: "eeg_plus_physiological"
+
+preprocessing:
+  bandpass_low: 0.5
+  bandpass_high: 40.0
+  notch_frequency: 50.0
+  original_sfreq: 256.0
+  target_sfreq: 128.0
+  epoch_duration: 30.0
+  min_epochs_per_subject: 100
+  filter_disconnections: true
+  filter_artifacts: true
+
+features:
+  compute_time_domain: true
+  compute_frequency_domain: true
+  compute_complexity: true
+  compute_global_features: true
+  freq_bands:
+    delta: [0.5, 4.0]
+    theta: [4.0, 8.0]
+    alpha: [8.0, 13.0]
+    sigma: [12.0, 16.0]
+    beta: [16.0, 30.0]
+    gamma: [30.0, 40.0]
+  correlation_threshold: null
+
+model:
+  model_type: "xgboost"
+  random_seed: 42
+  params:
+    max_depth: 6
+    n_estimators: 200
+    learning_rate: 0.1
+    objective: "multi:softmax"
+    num_class: 5
+
+cross_validation:
+  method: "loso"
+  n_folds: null
+  fixed_hyperparams: true
+
+output_dir: "./results"
+log_level: "INFO"

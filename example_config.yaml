@@ -1,0 +1,99 @@
+# Example Configuration for ML Caching Experiments
+# =================================================
+#
+# This configuration defines all parameters for the ML pipeline.
+# Copy and modify this file for your experiments.
+
+# Experiment identification
+experiment_name: "pilot_xgboost_baseline"
+
+# Data configuration
+data:
+  base_path: "C:/Users/DerHo/Desktop/Data"  # Path to BOAS dataset
+  use_human_labels: true  # Use stage_hum (human consensus) vs stage_ai
+  
+  # Subject selection (null = use all 128 subjects)
+  subjects: null  # Or specify list: ['1', '2', '3', ...]
+  
+  # Channel configuration
+  # Options:
+  #   "eeg_only" - 6 channels (F3,F4,C3,C4,O1,O2) → 149 features
+  #   "eeg_plus_physiological" - 8 channels (EEG + EOG + EMG) → 195 features
+  #   "custom" - specify channels manually below
+  channel_preset: "eeg_only"
+  
+  # Custom channels (only used if channel_preset = "custom")
+  # Uncomment and modify if needed:
+  # channels:
+  #   - PSG_F3
+  #   - PSG_F4
+  #   - PSG_C3
+  #   - PSG_C4
+  #   - PSG_O1
+  #   - PSG_O2
+  #   # Optionally add:
+  #   # - PSG_EOG
+  #   # - PSG_EMG
+
+# Preprocessing parameters
+preprocessing:
+  # Filtering
+  bandpass_low: 0.5      # Hz - High-pass cutoff
+  bandpass_high: 40.0    # Hz - Low-pass cutoff
+  notch_frequency: 50.0  # Hz - Power line (50=Europe, 60=US)
+  
+  # Resampling
+  original_sfreq: 256.0   # Hz - BOAS original rate
+  target_sfreq: 128.0     # Hz - Downsample target
+  
+  # Epoching
+  epoch_duration: 30.0    # seconds
+  
+  # Quality control
+  min_epochs_per_subject: 100
+  filter_disconnections: true  # Filter stage=8
+  filter_artifacts: true       # Filter stage=-2
+
+# Feature extraction configuration
+features:
+  # Feature groups to compute
+  compute_time_domain: true
+  compute_frequency_domain: true
+  compute_complexity: true
+  compute_global_features: true
+  
+  # Frequency bands (Hz)
+  freq_bands:
+    delta: [0.5, 4.0]    # Deep sleep
+    theta: [4.0, 8.0]    # Drowsiness
+    alpha: [8.0, 13.0]   # Relaxed wakefulness
+    sigma: [12.0, 16.0]  # Sleep spindles
+    beta: [16.0, 30.0]   # Active thinking
+    gamma: [30.0, 40.0]  # Cognitive processing
+  
+  # Correlation-based feature filtering (null = no filtering)
+  # Options: 0.85, 0.90, or null
+  correlation_threshold: null
+
+# Model configuration
+model:
+  model_type: "xgboost"  # Options: xgboost, random_forest, fnn
+  random_seed: 42
+  
+  # Model-specific parameters
+  params:
+    max_depth: 6
+    n_estimators: 200
+    learning_rate: 0.1
+    objective: "multi:softmax"
+    num_class: 5
+
+# Cross-validation configuration
+cross_validation:
+  method: "loso"  # Leave-One-Subject-Out
+  n_folds: null   # Auto-detect (128 for LOSO)
+  fixed_hyperparams: true
+
+# Output configuration
+output_dir: "./results"
+log_level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR

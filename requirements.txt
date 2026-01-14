@@ -1,0 +1,36 @@
+# Core dependencies for Sleep-EDF ML Caching Project
+# Python 3.8+ required, 3.10+ recommended
+
+# EEG/Signal Processing
+mne>=1.5.0                    # EEG data handling, EDF reading
+numpy>=1.23.0                 # Numerical computing
+scipy>=1.9.0                  # Signal processing (filtering, etc.)
+antropy>=0.1.6                # Optimized entropy/complexity measures (Numba JIT)
+
+# Data Handling
+pandas>=1.5.0                 # Annotation parsing, data manipulation
+
+# Machine Learning
+scikit-learn>=1.2.0           # Random Forest, metrics, preprocessing
+xgboost>=1.7.0                # Gradient boosting
+torch>=2.0.0                  # Neural networks (PyTorch)
+
+# Caching & Storage
+joblib>=1.2.0                 # Efficient serialization
+pickle5>=0.0.12               # Backward-compatible pickle (Python <3.8)
+
+# Utilities
+pyyaml>=6.0                   # Configuration files
+tqdm>=4.65.0                  # Progress bars
+python-dateutil>=2.8.0        # Date handling
+questionary>=2.0.0            # Interactive CLI menus
+
+# Optional but Recommended
+matplotlib>=3.7.0             # Visualization
+seaborn>=0.12.0               # Statistical plotting
+jupyter>=1.0.0                # Interactive notebooks
+
+# Development Tools (optional)
+pytest>=7.3.0                 # Unit testing
+black>=23.0.0                 # Code formatting
+pylint>=2.17.0                # Linting
