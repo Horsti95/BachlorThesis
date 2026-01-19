@@ -278,41 +278,16 @@ def main():
     
     if use_interactive:
         # Import here to avoid circular imports
-        from cli_menu import interactive_menu, PipelineConfig
-        
+        from interactive_menu import run_interactive_menu
+
         logger.info("Starting interactive menu...")
-        menu_config = interactive_menu()
-        
-        if menu_config is None:
+        config = run_interactive_menu(args.data_path or r"C:\Users\DerHo\Desktop\Data")
+
+        if config is None:
             logger.info("Menu cancelled. Exiting.")
             return
-        
-        # Convert menu config to ExperimentConfig
-        data_path = args.data_path or r"C:\Users\DerHo\Desktop\Data"
-        experiment_name = f"experiment_{get_timestamp()}_{menu_config.experiment_mode}"
-        
-        config = ConfigManager.create_default_config(
-            experiment_name=experiment_name,
-            data_path=data_path,
-            model_type=menu_config.classifier
-        )
-        
-        # Apply menu selections
-        if menu_config.experiment_mode == "quick":
-            config.data.subjects = ['1', '2', '3']
-        elif menu_config.experiment_mode == "full":
-            config.data.subjects = None  # All subjects
-        else:
-            config.data.subjects = [str(i) for i in range(1, menu_config.num_subjects + 1)]
-        
-        # Channel config
-        if menu_config.channels == 8:
-            config.data.channel_preset = "full"
-        else:
-            config.data.channel_preset = "thesis"
-        
-        # Store menu config for future model training (NOT IMPLEMENTED YET)
-        config._menu_config = menu_config
+
+        # Config is already fully configured by the interactive menu
         
     else:
         logger.info("="*60)
