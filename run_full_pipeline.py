@@ -296,7 +296,16 @@ def run_stage2_training(
         output_dir=exp_dir,
         experiment_name=experiment_name,
         formatter=formatter,
-        n_jobs=1,  # Fixed at 1 for deterministic benchmarking
+        # n_jobs=1: INTENTIONALLY single-threaded for reproducible benchmarking.
+        # Why not 50% of cores or auto-detect?
+        # - We measure "how much does caching save?" (cold vs warm time)
+        # - With n_jobs>1, old laptop (4 cores -> 2 parallel) vs new laptop
+        #   (16 cores -> 8 parallel) mixes parallelism gains into the caching
+        #   measurement — parallelism becomes a confounding variable
+        # - n_jobs=1 isolates the ONLY variable we care about: cache hit vs miss
+        # - This makes cross-system comparisons fair and thesis numbers clean
+        # For exploratory/fast runs, use run_training.py --n-jobs N instead
+        n_jobs=1,
         enable_model_cache=enable_model_cache,
     )
 
@@ -443,7 +452,6 @@ def run_benchmark(
     cold_results = run_stage2_training(
         subjects, output_dir, f"cold_run_{timestamp}",
         enable_model_cache=True,  # ON so it populates cache for warm run
-        n_jobs=1,  # Fixed at 1 for deterministic benchmarking
     )
     cold_time = time.time() - cold_start
 
@@ -460,7 +468,6 @@ def run_benchmark(
     warm_results = run_stage2_training(
         subjects, output_dir, f"warm_run_{timestamp}",
         enable_model_cache=True,
-        n_jobs=1,  # Fixed at 1 for deterministic benchmarking
     )
     warm_time = time.time() - warm_start
 
