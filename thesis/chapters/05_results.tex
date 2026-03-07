@@ -1,0 +1,247 @@
+\chapter{Results}
+\label{ch:results}
+
+% ============================================================================
+% This chapter presents experimental results
+% NOTE: Fill in after running experiments!
+% ============================================================================
+
+\section{Overview}
+\label{sec:results_overview}
+
+This chapter presents the experimental results for sleep stage classification using the BOAS dataset with 128 subjects. We evaluate XGBoost and Random Forest models across different feature selection configurations using LOSO cross-validation.
+
+% ============================================================================
+% TODO: RUN EXPERIMENTS FIRST!
+% After running experiments, fill in:
+% - Overall performance table
+% - Per-model results
+% - Feature selection analysis
+% - Confusion matrices
+% - Cache efficiency metrics
+% ============================================================================
+
+\section{Overall Performance}
+\label{sec:overall_performance}
+
+Table~\ref{tab:overall_results} summarizes the performance of all configurations.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Overall LOSO Cross-Validation Results (128 Subjects)}
+    \label{tab:overall_results}
+    \begin{tabular}{llcccc}
+        \toprule
+        \textbf{Model} & \textbf{Top-K} & \textbf{Accuracy} & \textbf{Kappa} & \textbf{F1 (macro)} & \textbf{Time (h)} \\
+        \midrule
+        % TODO: Fill in results after experiments
+        XGBoost & 30 & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XX \\
+        XGBoost & 50 & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XX \\
+        XGBoost & 75 & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XX \\
+        \midrule
+        Random Forest & 30 & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XX \\
+        Random Forest & 50 & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XX \\
+        Random Forest & 75 & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XXX $\pm$ X.XXX & X.XX \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% TODO: Add figure comparing models
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{figures/model_comparison.pdf}
+%     \caption{Comparison of model performance across feature selection configurations}
+%     \label{fig:model_comparison}
+% \end{figure}
+
+\section{XGBoost Results}
+\label{sec:xgboost_results}
+
+\subsection{Performance Metrics}
+\label{subsec:xgboost_metrics}
+
+% TODO: Fill in XGBoost results
+% - Accuracy, kappa, F1 for each top-K configuration
+% - Statistical analysis (mean ± std across 128 folds)
+% - Best configuration
+
+XGBoost achieved the following results:
+
+\begin{itemize}
+    \item \textbf{Best configuration:} Top-K = [VALUE]
+    \item \textbf{Best accuracy:} [X.XXX\%] ($\pm$ [X.XXX\%])
+    \item \textbf{Best kappa:} [X.XXX] ($\pm$ [X.XXX])
+    \item \textbf{Best F1 (macro):} [X.XXX] ($\pm$ [X.XXX])
+\end{itemize}
+
+\subsection{Per-Class Performance}
+\label{subsec:xgboost_perclass}
+
+Table~\ref{tab:xgboost_perclass} shows per-class metrics for the best XGBoost configuration.
+
+\begin{table}[htbp]
+    \centering
+    \caption{XGBoost Per-Class Performance (Best Configuration)}
+    \label{tab:xgboost_perclass}
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{Sleep Stage} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} \\
+        \midrule
+        Wake (W) & X.XXX & X.XXX & X.XXX \\
+        N1 & X.XXX & X.XXX & X.XXX \\
+        N2 & X.XXX & X.XXX & X.XXX \\
+        N3 & X.XXX & X.XXX & X.XXX \\
+        REM & X.XXX & X.XXX & X.XXX \\
+        \midrule
+        \textbf{Macro Avg} & X.XXX & X.XXX & X.XXX \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% TODO: Add confusion matrix figure
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.7\textwidth]{figures/xgboost_confusion_matrix.pdf}
+%     \caption{XGBoost confusion matrix (best configuration)}
+%     \label{fig:xgboost_cm}
+% \end{figure}
+
+\section{Random Forest Results}
+\label{sec:rf_results}
+
+\subsection{Performance Metrics}
+\label{subsec:rf_metrics}
+
+% TODO: Fill in Random Forest results
+
+Random Forest achieved the following results:
+
+\begin{itemize}
+    \item \textbf{Best configuration:} Top-K = [VALUE]
+    \item \textbf{Best accuracy:} [X.XXX\%] ($\pm$ [X.XXX\%])
+    \item \textbf{Best kappa:} [X.XXX] ($\pm$ [X.XXX])
+    \item \textbf{Best F1 (macro):} [X.XXX] ($\pm$ [X.XXX])
+\end{itemize}
+
+\subsection{Per-Class Performance}
+\label{subsec:rf_perclass}
+
+Table~\ref{tab:rf_perclass} shows per-class metrics for the best Random Forest configuration.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Random Forest Per-Class Performance (Best Configuration)}
+    \label{tab:rf_perclass}
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{Sleep Stage} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} \\
+        \midrule
+        Wake (W) & X.XXX & X.XXX & X.XXX \\
+        N1 & X.XXX & X.XXX & X.XXX \\
+        N2 & X.XXX & X.XXX & X.XXX \\
+        N3 & X.XXX & X.XXX & X.XXX \\
+        REM & X.XXX & X.XXX & X.XXX \\
+        \midrule
+        \textbf{Macro Avg} & X.XXX & X.XXX & X.XXX \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Model Comparison}
+\label{sec:model_comparison}
+
+% TODO: Statistical comparison between XGBoost and Random Forest
+% - Paired t-test or Wilcoxon signed-rank test
+% - Effect sizes
+% - Discussion of differences
+
+\section{Feature Selection Analysis}
+\label{sec:feature_analysis}
+
+\subsection{Impact of Top-K on Performance}
+\label{subsec:topk_impact}
+
+% TODO: Analyze how performance changes with top-K = 30, 50, 75
+% - Does more features always help?
+% - Diminishing returns?
+% - Optimal K value?
+
+\subsection{Most Important Features}
+\label{subsec:important_features}
+
+% TODO: List top-N most frequently selected features across folds
+% - Which features appear most often?
+% - Which EEG channels are most informative?
+% - Which feature types (time-domain vs frequency-domain)?
+
+Table~\ref{tab:top_features} shows the most frequently selected features across all LOSO folds.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Top 10 Most Frequently Selected Features}
+    \label{tab:top_features}
+    \begin{tabular}{clc}
+        \toprule
+        \textbf{Rank} & \textbf{Feature Name} & \textbf{Selection Rate (\%)} \\
+        \midrule
+        1 & [Feature 1] & XX.X \\
+        2 & [Feature 2] & XX.X \\
+        3 & [Feature 3] & XX.X \\
+        4 & [Feature 4] & XX.X \\
+        5 & [Feature 5] & XX.X \\
+        6 & [Feature 6] & XX.X \\
+        7 & [Feature 7] & XX.X \\
+        8 & [Feature 8] & XX.X \\
+        9 & [Feature 9] & XX.X \\
+        10 & [Feature 10] & XX.X \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Computational Efficiency}
+\label{sec:efficiency}
+
+\subsection{Cache Performance}
+\label{subsec:cache_performance}
+
+The two-tier caching system provides significant computational savings.
+
+% TODO: Fill in cache statistics
+% - Feature cache hit rate
+% - LOSO model cache hit rate
+% - Total time saved
+
+\begin{table}[htbp]
+    \centering
+    \caption{Caching System Performance}
+    \label{tab:cache_stats}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Cache Type} & \textbf{Hit Rate (\%)} & \textbf{Time Saved (h)} \\
+        \midrule
+        Feature Cache & XX.X & XX.XX \\
+        LOSO Model Cache & XX.X & XX.XX \\
+        \midrule
+        \textbf{Total} & -- & XX.XX \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Execution Time Analysis}
+\label{subsec:execution_time}
+
+% TODO: Break down time per stage
+% - Feature extraction time (per subject)
+% - Feature selection time (per fold)
+% - Model training time (per fold)
+% - Total experiment time
+
+\section{Summary}
+\label{sec:results_summary}
+
+% TODO: Summarize key findings
+% - Which model performed best?
+% - How much did caching help?
+% - What are the most important features?
+
+This chapter presented experimental results for sleep stage classification on the BOAS dataset with 128 subjects using LOSO cross-validation. [FILL IN KEY FINDINGS AFTER EXPERIMENTS]

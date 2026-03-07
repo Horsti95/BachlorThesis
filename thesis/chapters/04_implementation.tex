@@ -1,0 +1,332 @@
+\chapter{Implementation}
+\label{ch:implementation}
+
+% ============================================================================
+% This chapter describes the implementation: architecture, caching, pipeline
+% ============================================================================
+
+\section{Overview}
+\label{sec:impl_overview}
+
+This chapter describes the implementation of the sleep stage classification pipeline. The system is implemented in Python with a modular architecture consisting of 25 modules totaling approximately 16,571 lines of code.
+
+\section{System Architecture}
+\label{sec:architecture}
+
+The pipeline is organized into the following modules:
+
+\begin{itemize}
+    \item \textbf{Data Loading:} \texttt{data\_loader\_boas.py} (703 lines)
+    \item \textbf{Preprocessing:} \texttt{preprocessing.py} (431 lines)
+    \item \textbf{Feature Extraction:} \texttt{feature\_extractor.py} (753 lines)
+    \item \textbf{Feature Selection:} \texttt{feature\_selection.py} (942 lines)
+    \item \textbf{Models:} \texttt{models.py} (535 lines)
+    \item \textbf{Training:} \texttt{training.py} (1,226 lines)
+    \item \textbf{Cross-Validation:} \texttt{cross\_validation.py} (506 lines)
+    \item \textbf{Evaluation:} \texttt{evaluation.py} (601 lines)
+    \item \textbf{Caching:} \texttt{feature\_cache.py} (304 lines), \texttt{loso\_cache.py} (598 lines)
+    \item \textbf{Fingerprinting:} \texttt{fingerprint.py} (423 lines)
+    \item \textbf{Utilities:} \texttt{utils.py} (432 lines), \texttt{config.py} (348 lines)
+    \item \textbf{Visualization:} \texttt{visualization.py} (843 lines), \texttt{output\_formatter.py} (656 lines)
+\end{itemize}
+
+The entry points are:
+\begin{itemize}
+    \item \texttt{run\_experiment.py} (368 lines): Data loading and feature extraction (Stages 1--2)
+    \item \texttt{run\_training.py} (752 lines): Model training and evaluation (Stage 3)
+    \item \texttt{interactive\_menu.py} (571 lines): Interactive configuration interface
+\end{itemize}
+
+\section{Two-Tier Caching System}
+\label{sec:caching}
+
+A key contribution of this implementation is the two-tier caching system that dramatically reduces computational overhead for iterative experimentation.
+
+\subsection{Motivation}
+\label{subsec:cache_motivation}
+
+Sleep stage classification experiments involve computationally expensive operations:
+
+\begin{itemize}
+    \item \textbf{Feature extraction:} Processing 128 subjects $\times$ $\sim$936 epochs $\times$ 6 channels $\times$ 30 seconds
+    \item \textbf{LOSO training:} Training 128 models per configuration
+\end{itemize}
+
+Without caching, each parameter change requires recomputing all features and retraining all models. The two-tier cache addresses this inefficiency.
+
+\subsection{Tier 1: Feature Cache}
+\label{subsec:feature_cache}
+
+The feature cache stores extracted features for each subject with a fingerprint based on:
+
+\begin{itemize}
+    \item EEG channel configuration (which channels to use)
+    \item Preprocessing parameters (filter cutoffs, epoch duration)
+    \item Feature extraction parameters (Welch window size, frequency bands)
+    \item Code version (fingerprint of \texttt{feature\_extractor.py})
+\end{itemize}
+
+\textbf{Cache Hit Criteria:} If all parameters match and the subject's raw data has not changed, cached features are loaded instead of recomputed.
+
+\textbf{Granularity:} Subject-level (128 independent cache entries)
+
+\textbf{Storage:} \texttt{results/features\_cache\_global/subject\_XXX/}
+
+\subsection{Tier 2: LOSO Model Cache}
+\label{subsec:loso_cache}
+
+The LOSO model cache stores trained models for each fold (held-out subject) with a fingerprint based on:
+
+\begin{itemize}
+    \item Random seed
+    \item Code version
+    \item Model type (XGBoost, Random Forest)
+    \item Model hyperparameters
+    \item Feature selection configuration (correlation threshold, top-K)
+    \item Held-out subject ID
+\end{itemize}
+
+\textbf{Cache Hit Criteria:} If all parameters match and the training data (from feature cache) has not changed, the cached model is loaded instead of retrained.
+
+\textbf{Granularity:} Per-fold (128 folds per configuration)
+
+\textbf{Storage:} \texttt{results/loso\_cache/}
+
+\subsection{Fingerprint Generation}
+\label{subsec:fingerprints}
+
+Fingerprints use SHA-256 cryptographic hashing to uniquely identify configurations:
+
+\begin{lstlisting}[language=Python]
+import hashlib
+
+def generate_fingerprint(config_dict):
+    """Generate SHA-256 fingerprint from configuration."""
+    config_str = str(sorted(config_dict.items()))
+    return hashlib.sha256(config_str.encode()).hexdigest()[:16]
+\end{lstlisting}
+
+This ensures:
+\begin{itemize}
+    \item \textbf{Collision resistance:} Different configs $\Rightarrow$ different fingerprints
+    \item \textbf{Determinism:} Same config $\Rightarrow$ same fingerprint
+    \item \textbf{Cache invalidation:} Any parameter change invalidates the cache
+\end{itemize}
+
+\subsection{Cache Efficiency}
+\label{subsec:cache_efficiency}
+
+% TODO: Add table showing cache hit rates during development
+% Example: After initial run, 100% feature cache hits, 0% model cache hits
+% After parameter change, 100% feature cache hits, variable model cache hits
+
+The two-tier design allows:
+\begin{itemize}
+    \item Changing feature selection $\Rightarrow$ reuse features, retrain models
+    \item Changing model hyperparameters $\Rightarrow$ reuse features, retrain models
+    \item Unchanged configuration $\Rightarrow$ reuse everything (near-instant results)
+\end{itemize}
+
+\section{Pipeline Implementation}
+\label{sec:pipeline_impl}
+
+\subsection{Stage 1: Data Loading}
+\label{subsec:data_loading}
+
+The \texttt{data\_loader\_boas.py} module loads raw EEG data from the BOAS dataset. It handles:
+
+\begin{itemize}
+    \item Reading EDF/HDF5/SNIRF files
+    \item Extracting specified EEG channels
+    \item Loading sleep stage annotations
+    \item Validating data integrity
+\end{itemize}
+
+\subsection{Stage 2: Feature Extraction}
+\label{subsec:feature_extraction_impl}
+
+The \texttt{feature\_extractor.py} module extracts features with parallel processing:
+
+\begin{lstlisting}[language=Python]
+from joblib import Parallel, delayed
+
+features = Parallel(n_jobs=n_workers, backend='multiprocessing')(
+    delayed(extract_epoch_features)(epoch_data, channels)
+    for epoch_data in epochs
+)
+\end{lstlisting}
+
+\textbf{Parallelization:} Epoch-level parallelization using \texttt{joblib.Parallel} with multiprocessing backend.
+
+\textbf{Batch Size:} Configurable (default: 100 epochs/batch) to balance memory and CPU efficiency.
+
+% TODO: Add feature extraction performance metrics
+% Time per epoch, speedup from parallelization
+
+\subsection{Stage 3: Training Pipeline}
+\label{subsec:training_impl}
+
+The \texttt{training.py} module orchestrates LOSO cross-validation:
+
+\begin{algorithm}[htbp]
+\caption{LOSO Cross-Validation with Model Cache}
+\label{alg:loso}
+\begin{algorithmic}[1]
+\FOR{each subject $s$ in $1 \ldots 128$}
+    \STATE $\text{fingerprint} \leftarrow \text{generate\_fingerprint}(\text{config}, s)$
+    \IF{cache contains fingerprint}
+        \STATE Load cached model and predictions
+    \ELSE
+        \STATE $X_{\text{train}}, y_{\text{train}} \leftarrow$ data from all subjects except $s$
+        \STATE $X_{\text{test}}, y_{\text{test}} \leftarrow$ data from subject $s$
+        \STATE Apply feature selection on $X_{\text{train}}$
+        \STATE Train model on $X_{\text{train}}, y_{\text{train}}$
+        \STATE Predict on $X_{\text{test}}$
+        \STATE Cache model and predictions
+    \ENDIF
+    \STATE Evaluate predictions
+\ENDFOR
+\STATE Aggregate results across all 128 folds
+\end{algorithmic}
+\end{algorithm}
+
+\section{Feature Selection Implementation}
+\label{sec:feature_selection_impl}
+
+The \texttt{feature\_selection.py} module implements the two-stage selection pipeline:
+
+\begin{enumerate}
+    \item \textbf{Correlation filtering:} Remove features with $r > \rho$
+    \item \textbf{ANOVA selection:} Rank by F-score, select top-$k$
+\end{enumerate}
+
+\textbf{Benchmark:} ANOVA is 200$\times$ faster than mutual information with <1\% accuracy loss (see \texttt{benchmarks\_and\_tests/benchmark\_anova\_vs\_mi.py}).
+
+\section{Model Implementation}
+\label{sec:model_impl}
+
+\subsection{XGBoost}
+\label{subsec:xgboost_impl}
+
+XGBoost is implemented using the \texttt{xgboost} Python library:
+
+\begin{lstlisting}[language=Python]
+import xgboost as xgb
+
+model = xgb.XGBClassifier(
+    max_depth=6,
+    learning_rate=0.1,
+    n_estimators=100,
+    random_state=42
+)
+model.fit(X_train, y_train)
+\end{lstlisting}
+
+\subsection{Random Forest}
+\label{subsec:rf_impl}
+
+Random Forest is implemented using \texttt{scikit-learn}:
+
+\begin{lstlisting}[language=Python]
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier(
+    n_estimators=100,
+    max_depth=20,
+    random_state=42,
+    n_jobs=-1
+)
+model.fit(X_train, y_train)
+\end{lstlisting}
+
+\section{Evaluation Implementation}
+\label{sec:eval_impl}
+
+The \texttt{evaluation.py} module computes metrics using \texttt{scikit-learn}:
+
+\begin{itemize}
+    \item Accuracy: \texttt{sklearn.metrics.accuracy\_score}
+    \item Cohen's Kappa: \texttt{sklearn.metrics.cohen\_kappa\_score}
+    \item F1-Score: \texttt{sklearn.metrics.f1\_score} (macro-averaged)
+    \item Confusion Matrix: \texttt{sklearn.metrics.confusion\_matrix}
+\end{itemize}
+
+Results are aggregated across all 128 LOSO folds using mean and standard deviation.
+
+\section{Visualization and Reporting}
+\label{sec:visualization_impl}
+
+The \texttt{visualization.py} module generates:
+
+\begin{itemize}
+    \item Confusion matrices (per-configuration and aggregated)
+    \item Feature importance plots
+    \item Performance comparison bar charts
+    \item Cache hit rate visualizations
+\end{itemize}
+
+The \texttt{output\_formatter.py} module provides a formatted terminal UI with:
+
+\begin{itemize}
+    \item Configuration summary boxes
+    \item Real-time fold progress with cache status icons (💾 = cache hit, ⏳ = cache miss)
+    \item Color-coded performance metrics
+\end{itemize}
+
+\section{Configuration Management}
+\label{sec:config_impl}
+
+The \texttt{config.py} module provides a dataclass-based configuration system:
+
+\begin{lstlisting}[language=Python]
+from dataclasses import dataclass
+
+@dataclass
+class ExperimentConfig:
+    model_type: str
+    random_state: int
+    feature_selection: FeatureSelectionConfig
+    model_params: dict
+\end{lstlisting}
+
+Configurations are serialized to JSON for reproducibility.
+
+\section{Dependencies}
+\label{sec:dependencies}
+
+Key Python libraries:
+
+\begin{itemize}
+    \item \textbf{Data processing:} numpy, pandas, scipy
+    \item \textbf{Machine learning:} scikit-learn, xgboost
+    \item \textbf{Signal processing:} scipy.signal
+    \item \textbf{Parallelization:} joblib
+    \item \textbf{Visualization:} matplotlib, seaborn
+    \item \textbf{Utilities:} tqdm, logging
+\end{itemize}
+
+% TODO: Add requirements.txt content or version table
+
+\section{Testing}
+\label{sec:testing}
+
+The implementation includes comprehensive tests:
+
+\begin{itemize}
+    \item \texttt{test\_loso\_cache.py} (1,055 lines): LOSO cache validation
+    \item \texttt{test\_cache\_comprehensive.py} (292 lines): Feature cache tests
+    \item \texttt{test\_loso\_cache\_fixes.py} (341 lines): Cache invalidation tests
+    \item \texttt{test\_validation.py} (27 lines): Cross-validation tests
+\end{itemize}
+
+Benchmarks:
+
+\begin{itemize}
+    \item \texttt{benchmark\_anova\_vs\_mi.py} (245 lines): ANOVA vs mutual information
+    \item \texttt{benchmark\_feature\_selection.py} (624 lines): Feature selection performance
+\end{itemize}
+
+\section{Summary}
+\label{sec:impl_summary}
+
+This chapter described the implementation of the sleep stage classification pipeline, with emphasis on the two-tier caching system using SHA-256 fingerprints for cache invalidation. The modular architecture with 25 Python modules totaling 16,571 lines provides a complete, reproducible system for sleep stage classification with computational efficiency optimizations.
