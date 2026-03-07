@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 GLOBAL_CACHE_DIR = Path("./results/features_cache_global")
 LOSO_CACHE_DIR = Path("./results/loso_model_cache")
 RESULTS_DIR = Path("./results")
+RUN_HISTORY_FILE = RESULTS_DIR / "run_history.json"
 
 # Thesis-locked grid: 2 models x 3 correlation x 3 top-k = 18 configs
 THESIS_MODELS = ['xgboost', 'random_forest']
@@ -74,6 +75,85 @@ def collect_system_info() -> Dict:
         info['ram_total_gb'] = 'unknown (install psutil)'
 
     return info
+
+
+# =============================================================================
+# Cross-Run History
+# =============================================================================
+
+def append_to_history(report: Dict, run_type: str = "normal"):
+    """Append a run report to the persistent history file for cross-run comparison."""
+    history = []
+    if RUN_HISTORY_FILE.exists():
+        try:
+            with open(RUN_HISTORY_FILE, 'r') as f:
+                history = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            history = []
+
+    entry = {
+        'run_type': run_type,
+        'timestamp': report.get('system_info', {}).get('timestamp', datetime.now().isoformat()),
+        'hostname': report.get('system_info', {}).get('hostname', 'unknown'),
+        'mode': report.get('mode', 'unknown'),
+        'n_subjects': report.get('n_subjects', 0),
+    }
+
+    if run_type == 'benchmark':
+        entry['cold_seconds'] = report.get('cold_run', {}).get('total_seconds', 0)
+        entry['warm_seconds'] = report.get('warm_run', {}).get('total_seconds', 0)
+        entry['speedup'] = report.get('comparison', {}).get('speedup_factor', 0)
+        entry['best_accuracy'] = report.get('model_results', {}).get('cold_best', {}).get('accuracy_mean', 0) if report.get('model_results', {}).get('cold_best') else 0
+    else:
+        entry['total_seconds'] = report.get('timing', {}).get('total_s', 0)
+        entry['stage1_seconds'] = report.get('timing', {}).get('stage1_feature_extraction_s', 0)
+        entry['stage2_seconds'] = report.get('timing', {}).get('stage2_training_s', 0)
+        entry['cache_hits'] = report.get('stage2_model_cache', {}).get('hits', 0)
+        entry['cache_misses'] = report.get('stage2_model_cache', {}).get('misses', 0)
+        best = report.get('best_result')
+        entry['best_accuracy'] = best.get('accuracy_mean', 0) if best else 0
+
+    history.append(entry)
+
+    RUN_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(RUN_HISTORY_FILE, 'w') as f:
+        json.dump(history, f, indent=2, default=str)
+
+    return history
+
+
+def print_run_history():
+    """Print comparison of all previous runs."""
+    if not RUN_HISTORY_FILE.exists():
+        return
+
+    with open(RUN_HISTORY_FILE, 'r') as f:
+        history = json.load(f)
+
+    if len(history) < 2:
+        return
+
+    print("\n" + "-" * 70)
+    print("RUN HISTORY (cross-run comparison)")
+    print("-" * 70)
+    print(f"  {'#':<4} {'Type':<11} {'Machine':<15} {'Subjects':<10} {'Time':<10} {'Best Acc':<10}")
+    print(f"  {'─'*4} {'─'*11} {'─'*15} {'─'*10} {'─'*10} {'─'*10}")
+
+    for i, entry in enumerate(history[-10:], 1):  # Show last 10
+        run_type = entry.get('run_type', '?')
+        hostname = entry.get('hostname', '?')[:14]
+        n_subj = entry.get('n_subjects', '?')
+        acc = entry.get('best_accuracy', 0)
+
+        if run_type == 'benchmark':
+            time_str = f"{entry.get('cold_seconds', 0):.0f}s/{entry.get('warm_seconds', 0):.0f}s"
+        else:
+            time_str = f"{entry.get('total_seconds', 0):.0f}s"
+
+        print(f"  {i:<4} {run_type:<11} {hostname:<15} {n_subj:<10} {time_str:<10} {acc:.4f}" if acc else
+              f"  {i:<4} {run_type:<11} {hostname:<15} {n_subj:<10} {time_str:<10} {'N/A':<10}")
+
+    print("-" * 70)
 
 
 # =============================================================================
@@ -174,7 +254,6 @@ def run_stage2_training(
     output_dir: Path,
     experiment_name: str,
     enable_model_cache: bool = True,
-    n_jobs: int = 1,
 ) -> Dict:
     """
     Stage 2: Training with LOSO CV and Layer 2 model caching.
@@ -217,7 +296,7 @@ def run_stage2_training(
         output_dir=exp_dir,
         experiment_name=experiment_name,
         formatter=formatter,
-        n_jobs=n_jobs,
+        n_jobs=1,  # Fixed at 1 for deterministic benchmarking
         enable_model_cache=enable_model_cache,
     )
 
@@ -310,7 +389,6 @@ def run_stage3_evaluation(
 def run_benchmark(
     data_path: str,
     subjects: List[str],
-    n_jobs: int = 1,
 ) -> Dict:
     """
     Benchmark mode: Run cold -> warm to measure REAL caching speedup.
@@ -365,7 +443,7 @@ def run_benchmark(
     cold_results = run_stage2_training(
         subjects, output_dir, f"cold_run_{timestamp}",
         enable_model_cache=True,  # ON so it populates cache for warm run
-        n_jobs=n_jobs,
+        n_jobs=1,  # Fixed at 1 for deterministic benchmarking
     )
     cold_time = time.time() - cold_start
 
@@ -382,7 +460,7 @@ def run_benchmark(
     warm_results = run_stage2_training(
         subjects, output_dir, f"warm_run_{timestamp}",
         enable_model_cache=True,
-        n_jobs=n_jobs,
+        n_jobs=1,  # Fixed at 1 for deterministic benchmarking
     )
     warm_time = time.time() - warm_start
 
@@ -481,6 +559,10 @@ def run_benchmark(
     print(f"  Report saved to:       {report_path}")
     print("=" * 70)
 
+    # Track in history
+    append_to_history(benchmark_report, run_type='benchmark')
+    print_run_history()
+
     return benchmark_report
 
 
@@ -518,9 +600,6 @@ Examples:
         '--benchmark', action='store_true',
         help='Run cold+warm to measure real LOSO cache speedup'
     )
-
-    # Optional
-    parser.add_argument('--n-jobs', type=int, default=1, help='Parallel jobs for training')
 
     return parser.parse_args()
 
@@ -572,7 +651,7 @@ def main():
 
     # Benchmark mode
     if args.benchmark:
-        report = run_benchmark(args.data_path, subjects, n_jobs=args.n_jobs)
+        report = run_benchmark(args.data_path, subjects)
         total_time = time.time() - total_start
         print(f"\nTotal benchmark time: {total_time:.1f}s ({total_time/60:.1f} min)")
         return
@@ -599,7 +678,6 @@ def main():
     stage2 = run_stage2_training(
         subjects, output_dir, f"training_{mode}_{timestamp}",
         enable_model_cache=True,
-        n_jobs=args.n_jobs,
     )
     stage2_time = time.time() - stage2_start
     print(f"  Done: {stage2['n_configs']} configs x {stage2['n_folds']} folds "
@@ -658,6 +736,10 @@ def main():
     print(f"\n  Results: {output_dir}")
     print(f"  Report:  {report_path}")
     print("=" * 70)
+
+    # Track in history
+    append_to_history(run_report, run_type='normal')
+    print_run_history()
 
 
 if __name__ == "__main__":
