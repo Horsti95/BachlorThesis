@@ -73,13 +73,14 @@ class CacheMetrics:
         """Cache miss rate (0.0 to 1.0)."""
         return 1.0 - self.hit_rate
     
-    def record_hit(self, estimated_training_time: float = 120.0):
+    def record_hit(self, estimated_training_time: float = 0.0):
         """
         Record a cache hit.
-        
+
         Args:
-            estimated_training_time: Estimated time that would have been spent
-                                    training (default: 120 seconds = 2 minutes)
+            estimated_training_time: Actual or estimated time that would have been
+                                    spent training. Use real time from cache registry
+                                    when available (default: 0 = not tracked).
         """
         self.hits += 1
         self.time_saved_seconds += estimated_training_time
@@ -295,11 +296,15 @@ class LOSOModelCache:
         """
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
         if not cache_path.exists():
-            if record_metrics:
-                pass
             logger.debug(f"Cache MISS: {fingerprint[:16]}..._{held_out_subject}")
             return None
         try:
+            # Look up actual training time from registry (real data, not estimate)
+            cache_key = f"{fingerprint}_{held_out_subject}"
+            actual_time = self.estimated_training_time
+            if cache_key in self._registry:
+                actual_time = self._registry[cache_key].training_time_seconds
+
             if model_type == "fnn":
                 import torch
                 # For FNN, load state_dict and scaler
@@ -313,13 +318,13 @@ class LOSOModelCache:
                 model.scaler = joblib.load(scaler_path)
                 model.is_fitted = True
                 if record_metrics:
-                    self.metrics.record_hit(self.estimated_training_time)
+                    self.metrics.record_hit(actual_time)
                 logger.debug(f"Cache HIT (FNN): {fingerprint[:16]}..._{held_out_subject}")
                 return model
             else:
                 model = joblib.load(cache_path)
                 if record_metrics:
-                    self.metrics.record_hit(self.estimated_training_time)
+                    self.metrics.record_hit(actual_time)
                 logger.debug(f"Cache HIT: {fingerprint[:16]}..._{held_out_subject}")
                 return model
         except Exception as e:
