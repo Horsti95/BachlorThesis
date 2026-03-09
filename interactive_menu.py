@@ -419,6 +419,12 @@ class InteractiveMenu:
         else:
             corr_threshold, top_k = 0.95, None
         
+        # Get all feature configs from the strategy
+        if feature_strategy in FEATURE_STRATEGIES:
+            feature_configs = FEATURE_STRATEGIES[feature_strategy]['configs']
+        else:
+            feature_configs = [(corr_threshold, top_k)]
+
         config = ExperimentConfig(
             experiment_name=experiment_name,
             data=DataConfig(
@@ -428,9 +434,11 @@ class InteractiveMenu:
             preprocessing=PreprocessingConfig(),
             features=FeatureConfig(correlation_threshold=corr_threshold),
             model=ModelConfig(model_type=primary_model),
-            cross_validation=CrossValidationConfig(method='loso')
+            cross_validation=CrossValidationConfig(method='loso'),
+            training_models=models,
+            training_feature_configs=feature_configs,
         )
-        
+
         return config
     
     def confirm_configuration(

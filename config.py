@@ -142,6 +142,10 @@ class ExperimentConfig:
     cross_validation: CrossValidationConfig = field(default_factory=CrossValidationConfig)
     output_dir: str = "./results"
     log_level: str = "INFO"
+
+    # Training grid (set by interactive menu for multi-config experiments)
+    training_models: Optional[List[str]] = None
+    training_feature_configs: Optional[List[tuple]] = None
     
     def get_output_dir(self) -> Path:
         """Get the output directory as a Path object, creating timestamp-based subdir."""
