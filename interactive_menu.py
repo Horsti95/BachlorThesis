@@ -216,7 +216,9 @@ class InteractiveMenu:
             choice = input("\nEnter choice (1-7): ").strip()
             
             if choice == '1':
-                self.configure_experiment()
+                config = self.configure_experiment()
+                if config is not None:
+                    return config
             elif choice == '2':
                 return self.quick_test_config()
             elif choice == '3':
