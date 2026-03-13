@@ -254,6 +254,9 @@ def run_stage2_training(
     output_dir: Path,
     experiment_name: str,
     enable_model_cache: bool = True,
+    models: Optional[List[str]] = None,
+    correlation_thresholds: Optional[List] = None,
+    top_k_features: Optional[List] = None,
 ) -> Dict:
     """
     Stage 2: Training with LOSO CV and Layer 2 model caching.
@@ -273,11 +276,11 @@ def run_stage2_training(
     features_df, labels, subject_ids = load_cached_features(subjects)
     load_time = time.time() - load_start
 
-    # Create thesis grid
+    # Create training grid (custom or thesis default)
     configs = create_training_grid(
-        models=THESIS_MODELS,
-        correlation_thresholds=THESIS_CORRELATION,
-        top_k_features=THESIS_TOP_K,
+        models=models or THESIS_MODELS,
+        correlation_thresholds=correlation_thresholds or THESIS_CORRELATION,
+        top_k_features=top_k_features or THESIS_TOP_K,
         random_state=42,
     )
 
