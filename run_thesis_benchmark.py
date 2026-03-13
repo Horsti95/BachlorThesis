@@ -278,7 +278,8 @@ def experiment_c_reproducibility(data_path: str, output_dir: Path) -> Dict:
 # Summary Output
 # =============================================================================
 
-def print_summary(system_info: Dict, exp_a: Dict, exp_b: Dict, exp_c: Dict):
+def print_summary(system_info: Dict, exp_a: Dict, exp_b: Dict, exp_c: Dict,
+                  total_time: float = 0):
     """Print clean thesis-ready summary."""
 
     machine = system_info.get('hostname', 'unknown')
@@ -298,11 +299,13 @@ def print_summary(system_info: Dict, exp_a: Dict, exp_b: Dict, exp_c: Dict):
     print(f"  {'Subjects':<10} {'Folds':<8} {'Cold (s)':<10} {'Warm (s)':<10} "
           f"{'Speedup':<10} {'Saved':<10} {'Best Acc':<10}")
     print("  " + "-" * 70)
-    for key in sorted(exp_a.keys()):
+    for key in sorted(exp_a.keys(), key=lambda k: exp_a[k]['n_subjects']):
         r = exp_a[key]
+        speedup_str = f"{r['speedup']:.1f}x"
+        saved_str = f"{r['time_saved_pct']:.1f}%"
         print(f"  {r['n_subjects']:<10} {r['total_runs']:<8} "
               f"{r['cold_time']:<10.1f} {r['warm_time']:<10.1f} "
-              f"{r['speedup']:<10.1f}x {r['time_saved_pct']:<9.1f}% "
+              f"{speedup_str:<10} {saved_str:<10} "
               f"{r['best_acc']:<10.4f}")
 
     # --- Experiment B ---
@@ -331,6 +334,29 @@ def print_summary(system_info: Dict, exp_a: Dict, exp_b: Dict, exp_c: Dict):
     print(f"  {'F1 Macro':<12} {r1['f1_macro']:<12.4f} {r2['f1_macro']:<12.4f} "
           f"{'YES' if m['f1_identical'] else 'NO':<12}")
     print(f"\n  All metrics identical: {'YES' if m['all_identical'] else 'NO'}")
+
+    # --- Full Run Projection ---
+    # Use 10-subject data to project 128-subject timing
+    if '10subj' in exp_a:
+        r10 = exp_a['10subj']
+        cold_per_fold = r10['cold_time'] / r10['total_runs'] if r10['total_runs'] > 0 else 0
+        warm_per_fold = r10['warm_time'] / r10['total_runs'] if r10['total_runs'] > 0 else 0
+        full_folds = 18 * 128  # 18 configs × 128 LOSO folds
+        proj_cold = cold_per_fold * full_folds
+        proj_warm = warm_per_fold * full_folds
+        proj_speedup = proj_cold / proj_warm if proj_warm > 0 else 0
+
+        print(f"\n  FULL RUN PROJECTION (128 subjects, {full_folds} folds)")
+        print("  " + "-" * 70)
+        print(f"  Per-fold (cold):  {cold_per_fold:.2f}s")
+        print(f"  Per-fold (warm):  {warm_per_fold:.2f}s")
+        print(f"  Projected cold:   {proj_cold/60:.0f} min ({proj_cold/3600:.1f} h)")
+        print(f"  Projected warm:   {proj_warm/60:.0f} min ({proj_warm/3600:.1f} h)")
+        print(f"  Projected speedup: {proj_speedup:.1f}x")
+        print(f"  Projected saved:  {(proj_cold - proj_warm)/60:.0f} min")
+
+    if total_time > 0:
+        print(f"\n  Benchmark completed in {total_time:.0f}s ({total_time/60:.1f} min)")
 
     print("\n" + "=" * 74)
     print("  END OF BENCHMARK")
@@ -396,7 +422,7 @@ def main():
     total_time = time.time() - total_start
 
     # Print clean summary
-    print_summary(system_info, exp_a, exp_b, exp_c)
+    print_summary(system_info, exp_a, exp_b, exp_c, total_time)
 
     # Save full report
     report = {
