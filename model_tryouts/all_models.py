@@ -87,7 +87,8 @@ CLASS_NAMES = ['Wake', 'N1', 'N2', 'N3', 'REM']
 def load_features_from_thesis_cache(
     cache_dir: str = None,
     data_path: str = None,
-    channel_preset: str = "eeg_only"
+    channel_preset: str = "eeg_only",
+    max_subjects: int = None
 ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
     """
     Load pre-computed features from the thesis feature cache.
@@ -133,6 +134,9 @@ def load_features_from_thesis_cache(
 
     if not cache_files:
         raise FileNotFoundError(f"No cached feature files found in {cache_dir}")
+
+    if max_subjects is not None:
+        cache_files = cache_files[:max_subjects]
 
     logger.info(f"Loading features from {len(cache_files)} cached subjects...")
 
@@ -1186,7 +1190,8 @@ def run_all_experiments(
     run_fnn: bool = True,
     run_deep_learning: bool = False,
     output_dir: str = None,
-    max_subjects_dl: int = None
+    max_subjects_dl: int = None,
+    max_subjects: int = None
 ) -> pd.DataFrame:
     """
     Run ALL models and return comparison results.
@@ -1217,7 +1222,7 @@ def run_all_experiments(
         logger.info("=" * 60)
         logger.info("Loading tabular features (149) from thesis cache...")
         logger.info("=" * 60)
-        X_features, y_features, subject_ids = load_features_from_thesis_cache(cache_dir)
+        X_features, y_features, subject_ids = load_features_from_thesis_cache(cache_dir, max_subjects=max_subjects)
 
     # ── Classical ML Models ──
     if run_classical and X_features is not None:
@@ -1477,6 +1482,8 @@ Examples:
                         help='Force LOSO for deep learning (very slow)')
     parser.add_argument('--max-subjects-dl', type=int, default=None,
                         help='Limit subjects for deep learning (memory)')
+    parser.add_argument('--subjects', type=int, default=None,
+                        help='Limit number of subjects to load (e.g. 3, 5, 30)')
     parser.add_argument('--output-dir', type=str, default=None,
                         help='Output directory for results')
 
@@ -1491,4 +1498,5 @@ Examples:
         run_deep_learning=args.dl,
         output_dir=args.output_dir,
         max_subjects_dl=args.max_subjects_dl,
+        max_subjects=args.subjects,
     )
