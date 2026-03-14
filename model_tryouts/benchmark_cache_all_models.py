@@ -319,6 +319,7 @@ def run_cache_benchmark(
     max_folds: int = 3,
     model_filter: str = None,
     output_dir: str = None,
+    top_k: int = None,
 ) -> pd.DataFrame:
     """
     Run the full cache viability benchmark across all models.
@@ -329,6 +330,7 @@ def run_cache_benchmark(
         max_folds: Max LOSO folds per model (default 3 for speed)
         model_filter: Only run models matching this category filter
         output_dir: Where to save results
+        top_k: Select top K features by ANOVA F-score (None = all features)
     """
     # Import model definitions from all_models
     from all_models import load_features_from_thesis_cache, get_classical_models
@@ -341,6 +343,18 @@ def run_cache_benchmark(
     )
     n_subjects = len(np.unique(subject_ids))
     logger.info(f"Loaded {len(y)} epochs from {n_subjects} subjects")
+
+    # Apply top-k feature selection if requested
+    if top_k is not None and top_k > 0:
+        n_features_orig = X.shape[1] if hasattr(X, 'shape') else len(X.columns)
+        if top_k < n_features_orig:
+            from sklearn.feature_selection import SelectKBest, f_classif
+            X_arr = X.values if hasattr(X, 'values') else X
+            selector = SelectKBest(f_classif, k=top_k)
+            X = selector.fit_transform(X_arr, y)
+            logger.info(f"Feature selection: {n_features_orig} -> {top_k} features (ANOVA F-score)")
+        else:
+            logger.info(f"top_k={top_k} >= n_features={n_features_orig}, using all features")
 
     # Get all models
     models = get_classical_models()
@@ -564,6 +578,8 @@ Examples:
                         help='Path to thesis feature cache directory')
     parser.add_argument('--output-dir', type=str, default=None,
                         help='Output directory for results')
+    parser.add_argument('--top-k', type=int, default=None,
+                        help='Select top K features by ANOVA F-score (default: all)')
 
     args = parser.parse_args()
 
@@ -573,4 +589,5 @@ Examples:
         max_folds=args.max_folds,
         model_filter=args.filter,
         output_dir=args.output_dir,
+        top_k=args.top_k,
     )
