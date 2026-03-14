@@ -324,7 +324,21 @@ def parse_arguments():
         action='store_true',
         help='Skip confirmation prompt'
     )
-    
+
+    # Cache space management
+    parser.add_argument(
+        '--cache-min-free-gb',
+        type=float,
+        default=5.0,
+        help='Minimum free disk space (GB) to allow model caching. Caching is skipped below this.'
+    )
+    parser.add_argument(
+        '--cache-max-size-gb',
+        type=float,
+        default=None,
+        help='Maximum model cache size (GB). Oldest models evicted when exceeded. Default: unlimited.'
+    )
+
     return parser.parse_args()
 
 
@@ -341,7 +355,9 @@ def run_training_experiment(
     experiment_name: str,
     generate_viz: bool = True,
     use_hybrid: bool = True,
-    n_jobs: int = 1
+    n_jobs: int = 1,
+    cache_min_free_gb: float = 5.0,
+    cache_max_size_gb: Optional[float] = None
 ) -> Dict:
     """
     Run the complete training experiment.
@@ -428,7 +444,9 @@ def run_training_experiment(
         output_dir=exp_dir,
         experiment_name=experiment_name,
         formatter=formatter,
-        n_jobs=n_jobs
+        n_jobs=n_jobs,
+        cache_min_free_space_gb=cache_min_free_gb,
+        cache_max_size_gb=cache_max_size_gb
     )
     
     # Print cache status using formatter
@@ -684,7 +702,9 @@ def main():
             experiment_name=exp_name,
             generate_viz=not args.no_viz,
             use_hybrid=not args.pure_mi,
-            n_jobs=args.n_jobs
+            n_jobs=args.n_jobs,
+            cache_min_free_gb=args.cache_min_free_gb,
+            cache_max_size_gb=args.cache_max_size_gb
         )
         
         # Generate cache-focused outputs (THESIS FOCUS)
