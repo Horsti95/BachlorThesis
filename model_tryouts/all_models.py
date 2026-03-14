@@ -319,15 +319,8 @@ def get_classical_models() -> Dict[str, Any]:
         'category': 'svm'
     }
 
-    models['svm_rbf'] = {
-        'model': SVC(
-            kernel='rbf', probability=True, random_state=42,
-            class_weight='balanced', C=10.0, gamma='scale',
-            max_iter=5000, cache_size=1000
-        ),
-        'needs_scaling': True,
-        'category': 'svm'
-    }
+    # RBF SVM omitted: O(n²) scaling makes it impractical for >10K samples.
+    # XGBoost/LightGBM achieve better results with much faster training.
 
     # ── Naive Bayes ──
     models['naive_bayes'] = {
@@ -373,8 +366,8 @@ def get_classical_models() -> Dict[str, Any]:
 
     models['gradient_boosting'] = {
         'model': GradientBoostingClassifier(
-            n_estimators=200, max_depth=6, learning_rate=0.1,
-            random_state=42
+            n_estimators=100, max_depth=4, learning_rate=0.1,
+            subsample=0.5, random_state=42
         ),
         'needs_scaling': False,
         'category': 'boosting'
