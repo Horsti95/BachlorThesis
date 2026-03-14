@@ -94,13 +94,13 @@ class XGBoostModel(BaseModel):
         try:
             import xgboost as xgb
             self.model = xgb.XGBClassifier(**self.params)
-            logger.info("XGBoost model initialized")
+            logger.debug("XGBoost model initialized")
         except ImportError:
             raise ImportError("XGBoost not installed. Run: pip install xgboost")
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'XGBoostModel':
         """Fit XGBoost model."""
-        logger.info(f"Training XGBoost on {X.shape[0]} samples, {X.shape[1]} features")
+        logger.debug(f"Training XGBoost on {X.shape[0]} samples, {X.shape[1]} features")
         self.model.fit(X, y)
         self.is_fitted = True
         return self
@@ -157,13 +157,13 @@ class RandomForestModel(BaseModel):
         try:
             from sklearn.ensemble import RandomForestClassifier
             self.model = RandomForestClassifier(**self.params)
-            logger.info("Random Forest model initialized")
+            logger.debug("Random Forest model initialized")
         except ImportError:
             raise ImportError("scikit-learn not installed. Run: pip install scikit-learn")
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'RandomForestModel':
         """Fit Random Forest model."""
-        logger.info(f"Training Random Forest on {X.shape[0]} samples, {X.shape[1]} features")
+        logger.debug(f"Training Random Forest on {X.shape[0]} samples, {X.shape[1]} features")
         self.model.fit(X, y)
         self.is_fitted = True
         return self
@@ -239,7 +239,7 @@ class FNNModel(BaseModel):
         
         # Detect device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        logger.info(f"FNN model initialized (device: {self.device})")
+        logger.debug(f"FNN model initialized (device: {self.device})")
         
         self.model = None
         self.scaler = None
@@ -279,7 +279,7 @@ class FNNModel(BaseModel):
         from torch.utils.data import DataLoader, TensorDataset
         from sklearn.preprocessing import StandardScaler
         
-        logger.info(f"Training FNN on {X.shape[0]} samples, {X.shape[1]} features")
+        logger.debug(f"Training FNN on {X.shape[0]} samples, {X.shape[1]} features")
         
         # Store feature count for later
         self._n_features = X.shape[1]
