@@ -115,7 +115,7 @@ _TIMING_BENCHMARKS = {
 # Models that are too slow for LOSO at 30+ subjects
 _SLOW_MODELS_LOSO = {'svm_linear', 'svm_rbf', 'gradient_boosting'}
 # Models that are too slow for any CV at 30+ subjects
-_SLOW_MODELS_ANY = {'svm_rbf'}
+_SLOW_MODELS_ANY = {'svm_rbf', 'svm_linear'}
 
 
 def estimate_time(model_name: str, n_subjects: int, cv_method: str) -> float:
