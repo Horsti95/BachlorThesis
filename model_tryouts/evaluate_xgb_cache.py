@@ -34,6 +34,7 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fingerprint import LOSOFingerprint
 from loso_cache import LOSOModelCache
@@ -110,7 +111,7 @@ def run_warm_evaluation(
     Run warm evaluation: load all cached XGB models and evaluate accuracy.
     Compares cold training times (from registry) vs warm load times.
     """
-    from model_tryouts.all_models import load_features_from_thesis_cache
+    from all_models import load_features_from_thesis_cache
 
     # ── Analyze registry for cold stats ──
     print("=" * 70)

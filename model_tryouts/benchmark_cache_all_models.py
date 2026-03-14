@@ -45,6 +45,8 @@ from tqdm import tqdm
 
 # Add parent directory so we can import thesis modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Add model_tryouts directory so we can import all_models
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fingerprint import generate_cache_key, LOSOFingerprint
 from loso_cache import LOSOModelCache
