@@ -33,8 +33,10 @@ from sklearn.model_selection import LeaveOneGroupOut
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_DIR = os.path.dirname(_SCRIPT_DIR)
+sys.path.insert(0, _PROJECT_DIR)
+sys.path.insert(0, _SCRIPT_DIR)
 
 from fingerprint import LOSOFingerprint
 from loso_cache import LOSOModelCache

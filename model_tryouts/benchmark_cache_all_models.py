@@ -43,10 +43,10 @@ from sklearn.model_selection import LeaveOneGroupOut
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-# Add parent directory so we can import thesis modules
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-# Add model_tryouts directory so we can import all_models
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_DIR = os.path.dirname(_SCRIPT_DIR)
+sys.path.insert(0, _PROJECT_DIR)
+sys.path.insert(0, _SCRIPT_DIR)
 
 from fingerprint import generate_cache_key, LOSOFingerprint
 from loso_cache import LOSOModelCache
