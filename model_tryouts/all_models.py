@@ -146,21 +146,12 @@ def load_features_from_thesis_cache(
 
         # Select only the channels we need (if cache has 195 features but we want 149)
         if channel_preset == "eeg_only" and features.shape[1] > expected_features:
-            # Select first 6 channels × 23 features + 11 global
-            selected_cols = list(range(6 * n_per_channel)) + list(range(
-                len(channels) * n_per_channel,
-                len(channels) * n_per_channel + n_global
-            ))
-            # Actually the cache might have 8-channel features stored
-            # Use the feature_cache select_channel_features if needed
-            try:
-                from feature_cache import select_channel_features
-                features_df = pd.DataFrame(features)
-                features_selected = select_channel_features(features_df, "eeg_only")
-                features = features_selected.values
-            except ImportError:
-                # Fallback: just take first 149 columns
-                features = features[:, :expected_features]
+            # Cache layout: [ch1×23, ch2×23, ..., ch8×23, 11 global]
+            # For eeg_only: take first 6×23=138 per-channel + last 11 global
+            n_total_channels = features.shape[1] - n_global  # per-channel portion
+            eeg_cols = list(range(6 * n_per_channel))  # first 138
+            global_cols = list(range(n_total_channels, n_total_channels + n_global))  # last 11
+            features = features[:, eeg_cols + global_cols]
 
         # Filter invalid labels
         valid_mask = np.isin(labels, [0, 1, 2, 3, 4])
