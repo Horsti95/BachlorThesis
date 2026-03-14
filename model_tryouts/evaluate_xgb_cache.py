@@ -3,13 +3,15 @@ XGBoost Cache Evaluation - Cold vs Warm LOSO Analysis
 =====================================================
 
 Reads cold training times from the cache registry, then runs a warm
-pass (loading all 9 XGB configs from cache) to produce a thesis-ready
-comparison table.
+pass (loading cached XGB models by their stored fingerprints) to
+produce a thesis-ready comparison table.
+
+Key insight: We read fingerprints FROM the registry (not regenerate them)
+so we're guaranteed to match the exact fingerprints used during training.
 
 Usage (PowerShell, from project root):
   python model_tryouts/evaluate_xgb_cache.py
   python model_tryouts/evaluate_xgb_cache.py --cache-dir results/loso_model_cache
-  python model_tryouts/evaluate_xgb_cache.py --feature-cache results/features_cache_global
 
 Author: Lennart Gorzel
 Date: March 2026
@@ -30,7 +32,6 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score
 from sklearn.model_selection import LeaveOneGroupOut
-from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,16 +39,19 @@ _PROJECT_DIR = os.path.dirname(_SCRIPT_DIR)
 sys.path.insert(0, _PROJECT_DIR)
 sys.path.insert(0, _SCRIPT_DIR)
 
-from fingerprint import LOSOFingerprint
 from loso_cache import LOSOModelCache
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
-def analyze_registry(cache_dir: str) -> Dict[str, Any]:
+def load_xgb_registry(cache_dir: str) -> Dict[str, Dict]:
     """
-    Analyze the cache registry to extract cold training time stats per config.
+    Load registry and extract all XGB entries grouped by config.
+
+    Returns dict of config_group -> list of {fingerprint, subject, training_time, file_size}
+    Since each fingerprint is unique (includes held_out_subject), we group configs
+    by looking at which fingerprints share the same set of subjects (= same config, different folds).
     """
     registry_path = Path(cache_dir) / "cache_registry.json"
     if not registry_path.exists():
@@ -56,52 +60,53 @@ def analyze_registry(cache_dir: str) -> Dict[str, Any]:
     with open(registry_path, 'r') as f:
         registry = json.load(f)
 
-    # Group by (model_type, fingerprint_base)
-    # Since fingerprint includes held_out_subject, each entry has unique fingerprint
-    # Group by model_type to get XGB entries
-    xgb_entries = {}
+    # Collect all XGB entries
+    xgb_entries = []
     for key, info in registry.items():
         if info.get('model_type') == 'xgboost':
-            fp = info['fingerprint']
-            if fp not in xgb_entries:
-                xgb_entries[fp] = {
-                    'fingerprint': fp,
-                    'subject': info['held_out_subject'],
-                    'training_time_s': info['training_time_seconds'],
-                    'file_size_bytes': info.get('file_size_bytes', 0),
-                    'created_at': info.get('created_at', ''),
-                }
-            # Each fingerprint is unique (includes subject), so just store directly
-            xgb_entries[key] = info
+            xgb_entries.append({
+                'cache_key': key,
+                'fingerprint': info['fingerprint'],
+                'subject': info['held_out_subject'],
+                'training_time_s': info['training_time_seconds'],
+                'file_size_bytes': info.get('file_size_bytes', 0),
+                'created_at': info.get('created_at', ''),
+            })
 
-    # Group by config: entries with same training_time pattern belong together
-    # Better approach: regenerate fingerprints for each config to match
-    # But we don't know the configs... Instead, group by file_size_bytes (approximately)
-    # Actually simplest: just report aggregate stats
+    # Group by subject to find config groups
+    # All entries for the same subject but different fingerprints = different configs
+    # All entries with the same fingerprint prefix pattern = same config
+    # Since fingerprint = hash(config + subject), same config + different subject = different fingerprint
+    # Best grouping: by creation time batches (configs were run sequentially)
 
-    total_entries = sum(1 for _, v in registry.items() if v.get('model_type') == 'xgboost')
-    total_training_time = sum(
-        v['training_time_seconds']
-        for v in registry.values()
-        if v.get('model_type') == 'xgboost'
-    )
-    total_size_bytes = sum(
-        v.get('file_size_bytes', 0)
-        for v in registry.values()
-        if v.get('model_type') == 'xgboost'
-    )
+    # Sort by creation time
+    xgb_entries.sort(key=lambda x: x['created_at'])
 
-    n_configs = total_entries // 128 if total_entries >= 128 else 1
-    per_fold_avg = total_training_time / total_entries if total_entries > 0 else 0
+    # Group into batches of 128 (each config = 128 folds)
+    configs = {}
+    n_subjects = 128  # Expected folds per config
+    batch_size = min(n_subjects, len(xgb_entries))
 
-    return {
-        'total_entries': total_entries,
-        'n_configs': n_configs,
-        'total_cold_training_time_s': total_training_time,
-        'avg_cold_per_fold_s': per_fold_avg,
-        'total_cache_size_mb': total_size_bytes / (1024 * 1024),
-        'avg_file_size_mb': (total_size_bytes / total_entries / (1024 * 1024)) if total_entries > 0 else 0,
-    }
+    if batch_size == 0:
+        return {}
+
+    # Calculate how many complete configs we have
+    n_complete = len(xgb_entries) // n_subjects
+    remainder = len(xgb_entries) % n_subjects
+
+    for cfg_idx in range(n_complete):
+        start = cfg_idx * n_subjects
+        end = start + n_subjects
+        batch = xgb_entries[start:end]
+        configs[f"config_{cfg_idx+1}"] = batch
+
+    # Partial config at the end
+    if remainder > 0:
+        start = n_complete * n_subjects
+        batch = xgb_entries[start:]
+        configs[f"config_{n_complete+1}_partial"] = batch
+
+    return configs
 
 
 def run_warm_evaluation(
@@ -110,129 +115,110 @@ def run_warm_evaluation(
     max_subjects: int = None,
 ) -> pd.DataFrame:
     """
-    Run warm evaluation: load all cached XGB models and evaluate accuracy.
-    Compares cold training times (from registry) vs warm load times.
+    Run warm evaluation using fingerprints from the registry.
     """
     from all_models import load_features_from_thesis_cache
 
-    # ── Analyze registry for cold stats ──
     print("=" * 70)
     print("XGBoost LOSO Cache Evaluation: Cold vs Warm")
     print("=" * 70)
 
-    cold_stats = analyze_registry(cache_dir)
-    print(f"\nCache Registry Analysis:")
-    print(f"  XGB cached folds:  {cold_stats['total_entries']}")
-    print(f"  XGB configs:       {cold_stats['n_configs']} (of 9)")
-    print(f"  Total cold time:   {cold_stats['total_cold_training_time_s']:.1f}s "
-          f"({cold_stats['total_cold_training_time_s']/3600:.2f} hrs)")
-    print(f"  Avg cold/fold:     {cold_stats['avg_cold_per_fold_s']:.2f}s")
-    print(f"  Total cache size:  {cold_stats['total_cache_size_mb']:.1f} MB")
-    print(f"  Avg file size:     {cold_stats['avg_file_size_mb']:.2f} MB")
+    # ── Load registry and group by config ──
+    configs = load_xgb_registry(cache_dir)
+    if not configs:
+        print("No XGB entries found in registry!")
+        return pd.DataFrame()
 
-    # ── Load features ──
+    # Print registry summary
+    total_entries = sum(len(v) for v in configs.values())
+    total_cold_time = sum(e['training_time_s'] for batch in configs.values() for e in batch)
+    total_size_bytes = sum(e['file_size_bytes'] for batch in configs.values() for e in batch)
+
+    print(f"\nCache Registry Analysis:")
+    print(f"  XGB cached folds:  {total_entries}")
+    print(f"  XGB configs:       {len(configs)}")
+    print(f"  Total cold time:   {total_cold_time:.1f}s ({total_cold_time/3600:.2f} hrs)")
+    print(f"  Avg cold/fold:     {total_cold_time/total_entries:.2f}s")
+    print(f"  Total cache size:  {total_size_bytes/(1024*1024):.1f} MB")
+    print(f"  Avg file size:     {total_size_bytes/total_entries/(1024*1024):.2f} MB")
+
+    # ── Load features for evaluation ──
     print(f"\nLoading features...")
     X, y, subject_ids = load_features_from_thesis_cache(
         cache_dir=feature_cache_dir,
-        max_subjects=max_subjects
+        max_subjects=max_subjects,
     )
+    X_arr = X.values if hasattr(X, 'values') else X
     n_subjects = len(np.unique(subject_ids))
-    unique_subjects = np.unique(subject_ids)
     print(f"  Loaded {len(y)} epochs from {n_subjects} subjects")
 
-    # ── Define the 9 XGB configs (matching thesis grid) ──
-    # 3 corr × 3 top_k = 9 configs
-    import xgboost as xgb
+    # Build subject -> test indices mapping
+    subject_test_map = {}
+    for idx, sid in enumerate(subject_ids):
+        sid_str = str(sid)
+        if sid_str not in subject_test_map:
+            subject_test_map[sid_str] = []
+        subject_test_map[sid_str].append(idx)
 
-    xgb_params = {
-        'max_depth': 6, 'n_estimators': 200, 'learning_rate': 0.1,
-        'objective': 'multi:softmax', 'num_class': 5,
-        'random_state': 42, 'n_jobs': -1, 'verbosity': 0,
-        'eval_metric': 'mlogloss'
-    }
+    # ── Initialize cache ──
+    cache = LOSOModelCache(
+        cache_dir=cache_dir,
+        enable_registry=True,
+        estimated_training_time=total_cold_time / total_entries,
+    )
 
-    corr_thresholds = [0.75, 0.90, None]
-    top_k_values = [30, 50, None]
-
-    configs = []
-    for corr in corr_thresholds:
-        for top_k in top_k_values:
-            configs.append({
-                'corr': corr,
-                'top_k': top_k,
-                'label': f"corr={corr}, top_k={top_k}",
-            })
-
-    # ── Run warm evaluation per config ──
+    # ── Warm evaluation per config ──
     results = []
-    logo = LeaveOneGroupOut()
 
-    for cfg_idx, cfg in enumerate(configs):
-        label = cfg['label']
-        print(f"\n[{cfg_idx+1}/9] Config: {label}")
+    for cfg_name, entries in configs.items():
+        print(f"\n[{cfg_name}] {len(entries)} cached folds")
         print("-" * 50)
 
-        feature_config = {
-            'base': X.shape[1],
-            'corr': cfg['corr'],
-            'top_k': cfg['top_k'],
-        }
-
-        # Apply feature selection to match what was used during cold training
-        # For now, we use all features (the fingerprint will match or not based on config)
-        X_run = X.values if hasattr(X, 'values') else X
-
-        cache = LOSOModelCache(
-            cache_dir=cache_dir,
-            enable_registry=True,
-            estimated_training_time=cold_stats['avg_cold_per_fold_s'],
-        )
+        # Cold stats for this config
+        cfg_cold_time = sum(e['training_time_s'] for e in entries)
+        cfg_cache_size = sum(e['file_size_bytes'] for e in entries) / (1024 * 1024)
 
         warm_preds = []
         warm_true = []
-        warm_subjects = []
         cache_hits = 0
         cache_misses = 0
+        load_times = []
 
         warm_start = time.time()
 
-        for fold_idx, (train_idx, test_idx) in enumerate(
-            tqdm(logo.split(X_run, y, subject_ids),
-                 total=n_subjects, desc=f"  Warm {label}", unit="fold", leave=False)
-        ):
-            held_out = str(subject_ids[test_idx[0]])
-            X_test = X_run[test_idx]
-            y_test = y[test_idx]
+        for entry in tqdm(entries, desc=f"  Warm {cfg_name}", unit="fold", leave=False):
+            fp = entry['fingerprint']
+            subject = entry['subject']
 
-            # Generate fingerprint (must match cold run)
-            fingerprint = LOSOFingerprint.generate(
-                random_seed=42,
-                model_config={'name': 'xgboost', 'params': xgb_params},
-                feature_config=feature_config,
-                held_out_subject=held_out,
-            )
-
-            # Try cache
+            # Load model from cache using the EXACT fingerprint from registry
+            t0 = time.time()
             cached_model = cache.get(
-                fingerprint=fingerprint,
-                held_out_subject=held_out,
+                fingerprint=fp,
+                held_out_subject=subject,
                 model_type='xgboost',
                 record_metrics=True,
             )
+            load_time = time.time() - t0
 
             if cached_model is not None:
                 cache_hits += 1
-                # Need to scale if the cold run scaled
-                # XGBoost doesn't need scaling, so predict directly
-                y_pred = cached_model.predict(X_test)
-                warm_preds.extend(y_pred)
-                warm_true.extend(y_test)
-                warm_subjects.append(held_out)
+                load_times.append(load_time)
+
+                # Get test data for this subject
+                if subject in subject_test_map:
+                    test_idx = subject_test_map[subject]
+                    X_test = X_arr[test_idx]
+                    y_test = y[test_idx]
+
+                    y_pred = cached_model.predict(X_test)
+                    warm_preds.extend(y_pred)
+                    warm_true.extend(y_test)
             else:
                 cache_misses += 1
 
         warm_total = time.time() - warm_start
 
+        # Metrics
         if warm_preds:
             acc = accuracy_score(warm_true, warm_preds)
             kappa = cohen_kappa_score(warm_true, warm_preds)
@@ -240,24 +226,25 @@ def run_warm_evaluation(
         else:
             acc = kappa = f1 = 0.0
 
-        # Estimate cold time for this config from registry average
-        cold_est = cold_stats['avg_cold_per_fold_s'] * n_subjects
-        time_saved = cold_est - warm_total
-        speedup = cold_est / warm_total if warm_total > 0 else float('inf')
-        cache_size_est = cold_stats['avg_file_size_mb'] * cache_hits
+        time_saved = cfg_cold_time - warm_total
+        speedup = cfg_cold_time / warm_total if warm_total > 0 else float('inf')
+        avg_load = np.mean(load_times) if load_times else 0
+        mb_per_s_saved = cfg_cache_size / time_saved if time_saved > 0 else float('inf')
 
         result = {
-            'config': label,
-            'corr': cfg['corr'],
-            'top_k': cfg['top_k'],
+            'config': cfg_name,
+            'n_folds': len(entries),
             'cache_hits': cache_hits,
             'cache_misses': cache_misses,
             'hit_rate': f"{cache_hits/(cache_hits+cache_misses):.0%}" if (cache_hits+cache_misses) > 0 else "N/A",
-            'warm_time_s': round(warm_total, 2),
-            'warm_per_fold_s': round(warm_total / max(cache_hits, 1), 3),
-            'cold_est_s': round(cold_est, 1),
-            'time_saved_s': round(time_saved, 1),
+            'cold_total_s': round(cfg_cold_time, 1),
+            'cold_per_fold_s': round(cfg_cold_time / len(entries), 2),
+            'warm_total_s': round(warm_total, 2),
+            'warm_per_fold_s': round(avg_load, 4),
             'speedup': round(speedup, 1),
+            'time_saved_s': round(time_saved, 1),
+            'cache_size_mb': round(cfg_cache_size, 1),
+            'mb_per_s_saved': round(mb_per_s_saved, 4),
             'accuracy': round(acc, 4),
             'kappa': round(kappa, 4),
             'f1_macro': round(f1, 4),
@@ -265,39 +252,51 @@ def run_warm_evaluation(
         results.append(result)
 
         print(f"  Hits: {cache_hits}/{cache_hits+cache_misses} | "
-              f"Warm: {warm_total:.1f}s | Cold est: {cold_est:.1f}s | "
-              f"Speedup: {speedup:.1f}x")
+              f"Warm: {warm_total:.1f}s ({avg_load:.3f}s/fold) | "
+              f"Cold: {cfg_cold_time:.1f}s ({cfg_cold_time/len(entries):.2f}s/fold)")
+        print(f"  Speedup: {speedup:.1f}x | Cache: {cfg_cache_size:.1f} MB | "
+              f"MB/s-saved: {mb_per_s_saved:.4f}")
         if cache_hits > 0:
             print(f"  Acc: {acc:.4f} | Kappa: {kappa:.4f} | F1: {f1:.4f}")
 
     # ── Summary Table ──
     df = pd.DataFrame(results)
 
-    print("\n\n" + "=" * 100)
+    print("\n\n" + "=" * 120)
     print("XGBoost LOSO Cache: Cold vs Warm Summary")
-    print("=" * 100)
-    print(f"\n{'Config':<25} {'Hits':>5} {'Warm(s)':>8} {'Cold est(s)':>11} "
-          f"{'Speedup':>8} {'Saved(s)':>9} {'Acc':>7} {'Kappa':>7}")
-    print("-" * 100)
+    print("=" * 120)
+    print(f"\n{'Config':<22} {'Folds':>5} {'Hits':>5} {'Cold(s)':>9} {'Cold/fold':>10} "
+          f"{'Warm(s)':>8} {'Warm/fold':>10} {'Speedup':>8} {'MB':>7} {'MB/s-sav':>9} {'Acc':>7}")
+    print("-" * 120)
 
     for _, row in df.iterrows():
-        print(f"{row['config']:<25} {row['cache_hits']:>5} {row['warm_time_s']:>8.1f} "
-              f"{row['cold_est_s']:>11.1f} {row['speedup']:>7.1f}x "
-              f"{row['time_saved_s']:>8.1f} {row['accuracy']:>7.4f} {row['kappa']:>7.4f}")
+        print(f"{row['config']:<22} {row['n_folds']:>5} {row['cache_hits']:>5} "
+              f"{row['cold_total_s']:>9.1f} {row['cold_per_fold_s']:>9.2f}s "
+              f"{row['warm_total_s']:>8.1f} {row['warm_per_fold_s']:>9.4f}s "
+              f"{row['speedup']:>7.1f}x {row['cache_size_mb']:>6.1f} "
+              f"{row['mb_per_s_saved']:>8.4f} {row['accuracy']:>7.4f}")
 
     # Totals
-    total_warm = df['warm_time_s'].sum()
-    total_cold = df['cold_est_s'].sum()
+    total_warm = df['warm_total_s'].sum()
+    total_cold = df['cold_total_s'].sum()
     total_saved = df['time_saved_s'].sum()
+    total_cache_mb = df['cache_size_mb'].sum()
     avg_speedup = total_cold / total_warm if total_warm > 0 else 0
 
-    print("-" * 100)
-    print(f"{'TOTAL':<25} {df['cache_hits'].sum():>5} {total_warm:>8.1f} "
-          f"{total_cold:>11.1f} {avg_speedup:>7.1f}x {total_saved:>8.1f}")
+    print("-" * 120)
+    print(f"{'TOTAL':<22} {df['n_folds'].sum():>5} {df['cache_hits'].sum():>5} "
+          f"{total_cold:>9.1f} {'':>10} "
+          f"{total_warm:>8.1f} {'':>10} "
+          f"{avg_speedup:>7.1f}x {total_cache_mb:>6.1f}")
 
-    print(f"\n  Cache size (XGB total): {cold_stats['total_cache_size_mb']:.0f} MB")
-    print(f"  Time saved (total):     {total_saved:.0f}s ({total_saved/60:.1f} min)")
-    print(f"  MB per second saved:    {cold_stats['total_cache_size_mb']/total_saved:.4f}" if total_saved > 0 else "")
+    print(f"\n  Total cold training:   {total_cold:.0f}s ({total_cold/60:.1f} min = {total_cold/3600:.2f} hrs)")
+    print(f"  Total warm loading:    {total_warm:.1f}s ({total_warm/60:.1f} min)")
+    print(f"  Time saved:            {total_saved:.0f}s ({total_saved/60:.1f} min)")
+    print(f"  Overall speedup:       {avg_speedup:.1f}x")
+    print(f"  Cache size (XGB):      {total_cache_mb:.0f} MB ({total_cache_mb/1024:.2f} GB)")
+    if total_saved > 0:
+        print(f"  MB per second saved:   {total_cache_mb/total_saved:.4f}")
+        print(f"  Cache efficiency:      {total_saved/total_cache_mb:.1f} seconds saved per MB")
 
     # Save
     output_dir = Path(cache_dir).parent

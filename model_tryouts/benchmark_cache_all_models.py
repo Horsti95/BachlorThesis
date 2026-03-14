@@ -172,7 +172,9 @@ def benchmark_single_model(
         # Generate fingerprint
         fingerprint = LOSOFingerprint.generate(
             random_seed=42,
-            model_config={'name': model_name, 'params': model_params},
+            code_version='1.0.0',
+            model_name=model_name,
+            model_params=model_params,
             feature_config={'base': X.shape[1], 'corr': None, 'top_k': None},
             held_out_subject=held_out,
         )
@@ -238,7 +240,9 @@ def benchmark_single_model(
         # Generate same fingerprint
         fingerprint = LOSOFingerprint.generate(
             random_seed=42,
-            model_config={'name': model_name, 'params': model_params},
+            code_version='1.0.0',
+            model_name=model_name,
+            model_params=model_params,
             feature_config={'base': X.shape[1], 'corr': None, 'top_k': None},
             held_out_subject=held_out,
         )
