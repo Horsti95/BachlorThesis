@@ -275,7 +275,7 @@ def get_classical_models() -> Dict[str, Any]:
     # ── Linear Models ──
     models['logistic_regression'] = {
         'model': LogisticRegression(
-            max_iter=1000, random_state=42, multi_class='multinomial',
+            max_iter=1000, random_state=42,
             solver='lbfgs', n_jobs=-1, class_weight='balanced'
         ),
         'needs_scaling': True,
@@ -396,8 +396,7 @@ def get_classical_models() -> Dict[str, Any]:
             'model': lgb.LGBMClassifier(
                 n_estimators=200, max_depth=6, learning_rate=0.1,
                 random_state=42, n_jobs=-1, verbose=-1,
-                class_weight='balanced', num_class=5,
-                objective='multiclass'
+                class_weight='balanced'
             ),
             'needs_scaling': False,
             'category': 'boosting'
