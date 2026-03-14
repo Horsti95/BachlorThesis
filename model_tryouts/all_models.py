@@ -262,7 +262,7 @@ def get_classical_models() -> Dict[str, Any]:
     """
     from sklearn.linear_model import LogisticRegression, RidgeClassifier
     from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.svm import SVC
+    from sklearn.svm import SVC, LinearSVC
     from sklearn.naive_bayes import GaussianNB
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.ensemble import (
@@ -304,10 +304,12 @@ def get_classical_models() -> Dict[str, Any]:
     }
 
     # ── SVM ──
+    # LinearSVC is orders of magnitude faster than SVC(kernel='linear')
+    # on large datasets (uses liblinear instead of libsvm)
     models['svm_linear'] = {
-        'model': SVC(
-            kernel='linear', probability=True, random_state=42,
-            class_weight='balanced', max_iter=5000
+        'model': LinearSVC(
+            max_iter=2000, random_state=42,
+            class_weight='balanced', dual='auto'
         ),
         'needs_scaling': True,
         'category': 'svm'
@@ -316,7 +318,8 @@ def get_classical_models() -> Dict[str, Any]:
     models['svm_rbf'] = {
         'model': SVC(
             kernel='rbf', probability=True, random_state=42,
-            class_weight='balanced', C=10.0, gamma='scale'
+            class_weight='balanced', C=10.0, gamma='scale',
+            max_iter=5000, cache_size=1000
         ),
         'needs_scaling': True,
         'category': 'svm'
