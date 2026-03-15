@@ -420,7 +420,7 @@ def run_rf_evaluation(
               f"{row['cold_total_s']:>9.1f} {row['cold_per_fold_s']:>7.2f}s "
               f"{row['warm_total_s']:>9.1f} {row['warm_per_fold_s']:>7.4f}s "
               f"{row['speedup']:>5.1f}x {row['cache_size_gb']:>8.2f} "
-              f"{row['mb_per_s_saved']:>7.4f} {row['accuracy']:>7.4f} "
+              f"{row['mb_per_s_saved']:>7.4f} {row['cold_accuracy']:>7.4f} "
               f"{'Y' if row['accuracy_match'] else 'N':>5}")
 
     # Totals
@@ -447,12 +447,15 @@ def run_rf_evaluation(
         print(f"\n  COMPARISON WITH XGBoost (from previous evaluation):")
         print(f"  {'Metric':<25} {'XGBoost':>12} {'Random Forest':>15}")
         print(f"  {'-'*55}")
-        print(f"  {'Cache size/config':<25} {'~184 MB':>12} {f'~{avg_cache_gb:.1f} GB':>15}")
-        print(f"  {'Avg speedup':<25} {'210x':>12} {f'{avg_speedup:.0f}x':>15}")
-        print(f"  {'MB/s-saved (lower=better)':<25} {'0.12':>12} "
-              f"{f'{df[\"mb_per_s_saved\"].mean():.2f}':>15}")
-        print(f"  {'Cache verdict':<25} {'VIABLE':>12} "
-              f"{'NOT VIABLE' if df['mb_per_s_saved'].mean() > 2.0 else 'BORDERLINE' if df['mb_per_s_saved'].mean() > 0.5 else 'VIABLE':>15}")
+        rf_cache_str = f"~{avg_cache_gb:.1f} GB"
+        rf_speedup_str = f"{avg_speedup:.0f}x"
+        rf_mbs_str = f"{df['mb_per_s_saved'].mean():.2f}"
+        rf_mbs_val = df['mb_per_s_saved'].mean()
+        rf_verdict = 'NOT VIABLE' if rf_mbs_val > 2.0 else 'BORDERLINE' if rf_mbs_val > 0.5 else 'VIABLE'
+        print(f"  {'Cache size/config':<25} {'~184 MB':>12} {rf_cache_str:>15}")
+        print(f"  {'Avg speedup':<25} {'210x':>12} {rf_speedup_str:>15}")
+        print(f"  {'MB/s-saved (lower=better)':<25} {'0.12':>12} {rf_mbs_str:>15}")
+        print(f"  {'Cache verdict':<25} {'VIABLE':>12} {rf_verdict:>15}")
 
     # Save final
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
