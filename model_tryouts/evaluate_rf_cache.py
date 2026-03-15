@@ -153,7 +153,7 @@ def run_single_config_cold_warm(
                 'corr': cfg['corr'],
                 'top_k': cfg['top_k'],
                 'n_selected': n_features,
-                'selected_features': selected_features,
+                'selected_features': [str(f) for f in selected_features],
             },
             held_out_subject=held_out,
         )
@@ -229,7 +229,7 @@ def run_single_config_cold_warm(
                 'corr': cfg['corr'],
                 'top_k': cfg['top_k'],
                 'n_selected': n_features,
-                'selected_features': selected_features,
+                'selected_features': [str(f) for f in selected_features],
             },
             held_out_subject=held_out,
         )
