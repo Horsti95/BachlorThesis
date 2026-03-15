@@ -64,15 +64,22 @@ foreach ($n in $SubjectCounts) {
     if ($csvFiles.Count -gt 0) {
         $data = Import-Csv $csvFiles[0].FullName
         foreach ($row in $data) {
+            # Handle "inf" / "nan" values from Python CSV output
+            $speedup = 0.0; $mbps = 0.0
+            if ($row.speedup_ratio -match '^[\d.]+$') { $speedup = [math]::Round([double]$row.speedup_ratio, 1) }
+            elseif ($row.speedup_ratio -eq 'inf') { $speedup = 99999.0 }
+            if ($row.mb_per_second_saved -match '^[\d.]+$') { $mbps = [math]::Round([double]$row.mb_per_second_saved, 4) }
+            elseif ($row.mb_per_second_saved -eq 'inf') { $mbps = 99999.0 }
+
             $summaryRows += [PSCustomObject]@{
                 Subjects        = $n
                 Model           = $row.model_name
                 Category        = $row.category
                 ColdPerFold_s   = [math]::Round([double]$row.cold_per_fold_time_s, 3)
                 WarmPerFold_s   = [math]::Round([double]$row.warm_per_fold_time_s, 3)
-                Speedup         = [math]::Round([double]$row.speedup_ratio, 1)
+                Speedup         = $speedup
                 CachePerFold_MB = [math]::Round([double]$row.cache_size_per_fold_mb, 2)
-                MB_per_s_saved  = [math]::Round([double]$row.mb_per_second_saved, 4)
+                MB_per_s_saved  = $mbps
                 Verdict         = $row.cache_verdict
             }
         }
@@ -90,9 +97,12 @@ Write-Host ""
 
 # Group by model, show how cold_time scales
 $models = $summaryRows | Select-Object -ExpandProperty Model -Unique
-Write-Host ("{0,-22} {1,>10} {2,>10} {3,>10} {4,>10} {5,>12}" -f `
-    "Model", ($SubjectCounts | ForEach-Object { "${_}s" }) + @("Scale factor"))
-Write-Host ("-" * 90)
+# Header: model name + one column per subject count + scale factor
+$header = "{0,-22}" -f "Model"
+foreach ($sc in $SubjectCounts) { $header += " {0,12}" -f "${sc}subj" }
+$header += " {0,14}" -f "Scale factor"
+Write-Host $header
+Write-Host ("-" * (22 + 13 * $SubjectCounts.Count + 14))
 
 foreach ($model in $models) {
     $modelRows = $summaryRows | Where-Object { $_.Model -eq $model } | Sort-Object Subjects
