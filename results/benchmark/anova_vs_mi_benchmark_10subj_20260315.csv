@@ -1,0 +1,3 @@
+method,avg_time_s,std_time_s,runs,accuracy_5fold_cv,accuracy_std,features_selected,dataset_epochs,dataset_features,subjects
+anova_f_classif,0.0215,0.0014,5,0.8426,0.0087,50,9289,195,10
+mutual_information,3.74,0.38,3,0.8058,0.0071,50,9289,195,10
