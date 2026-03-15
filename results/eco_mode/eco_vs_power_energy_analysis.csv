@@ -1,0 +1,6 @@
+model,eco_1core_s,power_1core_s,eco_allcores_s,power_allcores_s,eco_speedup_1_to_all,power_speedup_1_to_all,eco_1core_energy_factor,power_allcores_energy_factor,eco_really_eco
+random_forest,53.52,28.67,3.03,1.68,17.7,17.0,53.52,40.32,no
+extra_trees,10.13,5.34,0.71,0.41,14.2,13.1,10.13,9.84,no
+knn_5,0.01,0.00,0.00,0.00,1.2,2.0,0.01,0.00,negligible
+xgboost,32.86,18.24,5.72,2.98,5.7,6.1,32.86,71.52,yes
+lightgbm,15.66,8.35,2.27,1.07,6.9,7.8,15.66,25.68,yes
