@@ -119,6 +119,7 @@ def benchmark_single_model(
     """
     from sklearn.base import clone
     from sklearn.metrics import accuracy_score
+    from sklearn.preprocessing import LabelEncoder
 
     category = model_info.get('category', 'unknown')
     cache_dir = cache_base_dir / f"bench_{model_name}"
@@ -147,11 +148,17 @@ def benchmark_single_model(
         min_free_space_gb=1.0,
     )
 
+    # Encode labels to consecutive integers (needed when few subjects
+    # cause some classes to be absent, e.g. labels [0,1,2,4] -> [0,1,2,3])
+    le = LabelEncoder()
+    le.fit(y)
+    y_encoded = le.transform(y)
+
     cold_preds_all = []
     cold_true_all = []
     cold_start = time.time()
 
-    fold_iter = logo.split(X, y, subject_ids)
+    fold_iter = logo.split(X, y_encoded, subject_ids)
     for fold_idx, (train_idx, test_idx) in enumerate(
         tqdm(fold_iter, total=n_folds, desc=f"  COLD {model_name}", unit="fold", leave=False)
     ):
@@ -159,7 +166,7 @@ def benchmark_single_model(
             break
 
         X_train, X_test = X[train_idx], X[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
+        y_train, y_test = y_encoded[train_idx], y_encoded[test_idx]
         held_out = str(subject_ids[test_idx[0]])
 
         # Scale if needed
@@ -220,7 +227,7 @@ def benchmark_single_model(
     warm_true_all = []
     warm_start = time.time()
 
-    fold_iter = logo.split(X, y, subject_ids)
+    fold_iter = logo.split(X, y_encoded, subject_ids)
     for fold_idx, (train_idx, test_idx) in enumerate(
         tqdm(fold_iter, total=n_folds, desc=f"  WARM {model_name}", unit="fold", leave=False)
     ):
@@ -228,7 +235,7 @@ def benchmark_single_model(
             break
 
         X_train, X_test = X[train_idx], X[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
+        y_train, y_test = y_encoded[train_idx], y_encoded[test_idx]
         held_out = str(subject_ids[test_idx[0]])
 
         # Scale if needed (must match cold run)
