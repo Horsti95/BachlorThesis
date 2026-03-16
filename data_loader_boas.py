@@ -46,7 +46,11 @@ class RecordingMetadata:
 
 
 class BOASSleepStageMapper:
-    """Maps BOAS sleep stage labels."""
+    """Maps BOAS integer sleep stage codes to/from human-readable labels.
+
+    Valid stages: 0=Wake, 1=N1, 2=N2, 3=N3, 4=REM.
+    Invalid stages (8=disconnection, -2=artifact) are mapped to -1.
+    """
     
     # BOAS standard mapping
     STAGE_TO_INT = {
@@ -130,7 +134,7 @@ class BOASDataLoader:
         logger.info(f"Using {'human' if use_human_labels else 'AI'} labels")
     
     def list_subjects(self) -> List[str]:
-        """Get list of available subject IDs."""
+        """Return sorted list of subject IDs found in base_path (sub-* directories)."""
         subject_dirs = sorted([d for d in self.base_path.iterdir() 
                               if d.is_dir() and d.name.startswith('sub-')])
         subject_ids = [d.name.replace('sub-', '') for d in subject_dirs]
@@ -396,7 +400,7 @@ class BOASDataLoader:
         return raw_picked
     
     def resample_if_needed(self, raw: mne.io.Raw) -> mne.io.Raw:
-        """Resample to target sampling rate if specified."""
+        """Resample to target_sfreq if it differs from current rate. Returns raw unchanged if already at target."""
         if self.target_sfreq is None:
             return raw
         

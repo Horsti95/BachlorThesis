@@ -62,7 +62,10 @@ def _extract_epoch_worker(sfreq: float, epoch: np.ndarray) -> dict:
 
 
 class TimeDomainFeatures:
-    """Extract time-domain features from EEG epochs."""
+    """Extract 10 time-domain features per single-channel epoch.
+
+    Features: mean, std, var, min, max, peak-to-peak, RMS, skew, kurtosis, zero-crossing rate.
+    """
     
     @staticmethod
     def extract(epoch: np.ndarray) -> Dict[str, float]:
@@ -100,7 +103,11 @@ class TimeDomainFeatures:
 
 
 class FrequencyDomainFeatures:
-    """Extract frequency-domain features from EEG epochs."""
+    """Extract 9 frequency-domain features per single-channel epoch.
+
+    Features: 6 band powers (delta/theta/alpha/sigma/beta/gamma),
+    spectral entropy, peak frequency, median frequency.
+    """
     
     def __init__(self, sfreq: float = 128.0):
         """
@@ -423,7 +430,7 @@ class ComplexityFeatures:
 
 
 class GlobalFeatures:
-    """Extract global features across multiple channels."""
+    """Extract 11 cross-channel features: 6 coherence pairs, 3 PLV pairs, global entropy, global complexity."""
     
     def __init__(self, sfreq: float = 128.0):
         """
@@ -684,9 +691,10 @@ class FeatureExtractor:
         
         Args:
             epochs: (n_epochs, n_channels, n_samples) array
-            
+            n_jobs: Number of parallel workers (None or 1 = sequential, -1 = all CPUs)
+
         Returns:
-            DataFrame with shape (n_epochs, 149 features)
+            DataFrame with shape (n_epochs, n_features)
         """
         n_epochs = epochs.shape[0]
         logger.info(f"Extracting features from {n_epochs} epochs...")

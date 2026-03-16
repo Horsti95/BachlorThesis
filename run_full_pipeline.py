@@ -52,7 +52,7 @@ THESIS_TOP_K = [30, 50, None]
 # =============================================================================
 
 def collect_system_info() -> Dict:
-    """Collect machine info for cross-system comparison."""
+    """Collect machine info (hostname, CPU, RAM) for cross-system comparison."""
     import multiprocessing
 
     info = {
@@ -123,7 +123,7 @@ def append_to_history(report: Dict, run_type: str = "normal"):
 
 
 def print_run_history():
-    """Print comparison of all previous runs."""
+    """Print tabular comparison of the last 10 runs from run_history.json."""
     if not RUN_HISTORY_FILE.exists():
         return
 
@@ -161,7 +161,7 @@ def print_run_history():
 # =============================================================================
 
 def check_environment() -> List[str]:
-    """Check that all required packages are installed. Returns list of issues."""
+    """Check that all required Python packages are importable. Returns list of missing packages."""
     issues = []
     required = [
         ('mne', 'mne'),
@@ -188,7 +188,7 @@ def check_environment() -> List[str]:
 
 
 def check_data(data_path: str, expected_subjects: int) -> Dict:
-    """Verify BOAS dataset exists and count subjects."""
+    """Verify BOAS dataset directory exists and count sub-* directories. Returns status dict."""
     data_dir = Path(data_path)
 
     if not data_dir.exists():
@@ -221,9 +221,9 @@ def run_stage1_feature_extraction(
     experiment_name: str
 ) -> Dict:
     """
-    Stage 1: Feature extraction with Layer 1 caching.
+    Stage 1: Load, preprocess, and extract features for all subjects.
 
-    Returns timing and cache metrics.
+    Uses Layer 1 (feature) caching. Returns dict with timing and cache metrics.
     """
     from config import ConfigManager
     from pipeline import DataPipeline
@@ -259,9 +259,10 @@ def run_stage2_training(
     top_k_features: Optional[List] = None,
 ) -> Dict:
     """
-    Stage 2: Training with LOSO CV and Layer 2 model caching.
+    Stage 2: Run LOSO cross-validation training grid with Layer 2 model caching.
 
-    Returns timing, cache metrics, and model results.
+    Loads cached features, trains all model/feature configs, returns results with
+    timing, cache metrics, and best model accuracy.
     """
     import numpy as np
     import pandas as pd
@@ -363,9 +364,7 @@ def run_stage3_evaluation(
     stage2_output_dir: Path,
     stage2_results: Dict,
 ) -> Dict:
-    """
-    Stage 3: Generate visualizations and LaTeX tables.
-    """
+    """Stage 3: Generate result visualizations and LaTeX tables from training output."""
     viz_start = time.time()
 
     try:
@@ -615,6 +614,7 @@ Examples:
 
 
 def main():
+    """Entry point: parse args, run stages 1-3 (or benchmark mode), save report."""
     args = parse_arguments()
 
     # Setup logging

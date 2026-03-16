@@ -72,6 +72,7 @@ def plot_cache_cold_vs_warm(
     
     # Format time labels
     def format_time(seconds: float) -> str:
+        """Format seconds into a human-readable string (e.g., '2.5h', '3.1min', '0.8s')."""
         if seconds >= 3600:
             hours = seconds / 3600
             return f"{hours:.1f}h"
@@ -369,6 +370,7 @@ def generate_cache_metrics_latex_table(
     """
     
     def format_time(seconds: float) -> str:
+        """Format seconds into a human-readable string for LaTeX output."""
         if seconds >= 3600:
             hours = int(seconds // 3600)
             minutes = int((seconds % 3600) // 60)

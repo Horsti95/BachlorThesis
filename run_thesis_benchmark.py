@@ -38,7 +38,7 @@ from run_full_pipeline import (
 
 
 def clear_model_cache() -> int:
-    """Clear LOSO model cache. Returns number of models cleared."""
+    """Delete all cached LOSO models from disk. Returns number of .joblib files removed."""
     if LOSO_CACHE_DIR.exists():
         n = len(list(LOSO_CACHE_DIR.glob("*.joblib")))
         shutil.rmtree(LOSO_CACHE_DIR)
@@ -50,7 +50,7 @@ def run_training_timed(
     subjects, output_dir, name, enable_cache=True,
     models=None, correlation_thresholds=None, top_k_features=None,
 ):
-    """Run training and return results with wall-clock time."""
+    """Run Stage 2 training and return results dict with wall_time, hits, and misses added."""
     start = time.time()
     results = run_stage2_training(
         subjects, output_dir, name,
@@ -73,9 +73,10 @@ def run_training_timed(
 
 def experiment_a_scaling(data_path: str, output_dir: Path) -> Dict:
     """
-    Prove: More subjects → more absolute time saved, consistent speedup.
+    Scaling experiment: run cold+warm for 3 and 10 subjects.
 
-    Runs cold+warm for 3 subjects and 10 subjects.
+    Proves more subjects yield more absolute time saved with consistent speedup.
+    Returns per-size results with cold/warm times and speedup factors.
     """
     print("\n" + "=" * 70)
     print("EXPERIMENT A: SCALING (3 vs 10 subjects)")
@@ -130,13 +131,11 @@ def experiment_a_scaling(data_path: str, output_dir: Path) -> Dict:
 
 def experiment_b_fingerprint(data_path: str, output_dir: Path) -> Dict:
     """
-    Prove: Changing one parameter only retrains affected models.
+    Fingerprint invalidation experiment: incrementally expand the training grid.
 
-    Step 1: Train with grid [xgboost] × [0.90] × [30, 50]  → 2 configs, all misses
-    Step 2: Train with grid [xgboost] × [0.90] × [30, 50, None] → 3 configs
-            Expected: 2 hits (30, 50 cached) + 1 miss (None is new)
-    Step 3: Train with grid [xgboost, random_forest] × [0.90] × [30, 50, None] → 6 configs
-            Expected: 3 hits (xgboost cached) + 3 misses (random_forest is new)
+    Proves that only configs with changed parameters retrain; unchanged configs
+    are cache hits. Three steps: initial grid -> add top_k -> add model.
+    Returns per-step hit/miss counts and wall times.
     """
     print("\n" + "=" * 70)
     print("EXPERIMENT B: FINGERPRINT INVALIDATION")
@@ -210,11 +209,11 @@ def experiment_b_fingerprint(data_path: str, output_dir: Path) -> Dict:
 
 def experiment_c_reproducibility(data_path: str, output_dir: Path) -> Dict:
     """
-    Prove: Same config → identical metrics across two independent runs.
+    Reproducibility experiment: train the same config twice from scratch.
 
-    Run 1: Cold start, train everything
-    Run 2: Cold start (cache cleared), train everything again
-    Compare: Accuracy, kappa, F1 must be identical
+    Clears cache between runs to ensure independent training. Compares accuracy,
+    kappa, and F1 between the two runs -- all must be identical.
+    Returns per-run metrics and match flags.
     """
     print("\n" + "=" * 70)
     print("EXPERIMENT C: REPRODUCIBILITY")
@@ -280,7 +279,7 @@ def experiment_c_reproducibility(data_path: str, output_dir: Path) -> Dict:
 
 def print_summary(system_info: Dict, exp_a: Dict, exp_b: Dict, exp_c: Dict,
                   total_time: float = 0):
-    """Print clean thesis-ready summary."""
+    """Print formatted thesis-ready summary table for all three experiments."""
 
     machine = system_info.get('hostname', 'unknown')
     cpu = system_info.get('cpu_count', '?')
@@ -368,6 +367,7 @@ def print_summary(system_info: Dict, exp_a: Dict, exp_b: Dict, exp_c: Dict,
 # =============================================================================
 
 def main():
+    """Entry point: run preflight checks, populate feature cache, execute experiments A/B/C, save report."""
     parser = argparse.ArgumentParser(
         description="Thesis benchmark suite: scaling, fingerprint, reproducibility",
     )

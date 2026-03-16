@@ -1,797 +1,289 @@
 # ML Experiment Caching Pipeline
 ## Intelligent Result Caching for Machine Learning Experiments
 
-**Bachelor Thesis Project**  
-**Author:** Lennart Gorzel  
-**Institution:** IMC FH Krems  
-**Supervisor:** Prof. Himanshu Buckchash  
-**Submission Deadline:** January 15, 2026
+**Bachelor Thesis Project**
+**Author:** Lennart Gorzel
+**Institution:** IMC FH Krems
+**Supervisor:** Prof. Himanshu Buckchash
 
 ---
 
-## 📋 Table of Contents
+## Overview
 
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Technical Specifications](#technical-specifications)
-- [Results & Output](#results--output)
-- [Design Decisions](#design-decisions)
-- [Troubleshooting](#troubleshooting)
-- [Development Status](#development-status)
-- [Citation](#citation)
+This project implements and evaluates **fingerprint-based result caching** for iterative ML experiments on EEG sleep stage classification. Using the BOAS dataset (128 subjects, 5-class sleep staging), we demonstrate that a two-tier caching system (feature-level + model-level) can reduce experiment iteration time by up to **498x** while guaranteeing identical results.
+
+**Research Question:** *Can fingerprint-based result caching reduce computational costs in iterative ML experiments by >80% while ensuring reproducibility through intelligent cache invalidation?*
+
+**Answer:** Yes. XGBoost achieves 498x speedup, SVM-Linear 3,093x. 11 of 15 tested models are cache-viable. All cached results are bit-identical to fresh training.
 
 ---
 
+## Development Status - ALL STAGES COMPLETE
 
-## 🚧 Development Status
+| Stage | Description | Status |
+|-------|-------------|--------|
+| **Stage 1** | Data Loading (BOAS, 128 subjects, 6 EEG channels) | COMPLETE |
+| **Stage 2** | Preprocessing + Feature Extraction (149 features/epoch) | COMPLETE |
+| **Stage 3** | Feature Selection (ANOVA) + Models (XGBoost, RF) + LOSO splitter | COMPLETE |
+| **Stage 4** | LOSO Model Caching (fingerprint-based, two-tier) | COMPLETE |
+| **Experiments** | 9 configs x 128 folds x 2 models + 7 bonus experiments | COMPLETE |
+| **Results** | All thesis claims validated with data | COMPLETE |
 
-### ✅ Stage 1: Data Loading - COMPLETE
-- ✅ BOAS dataset loader (128 subjects)
-- ✅ 6 EEG channel configuration
-- ✅ Human consensus labels
+### Thesis Claims - Validation Summary
 
-### ✅ Stage 2: Preprocessing & Features - COMPLETE
-- ✅ Signal preprocessing (bandpass 0.5-40Hz, notch 50Hz, downsample 256→128Hz)
-- ✅ Feature extraction (149 features per epoch)
-- ✅ Feature caching with SHA-256 fingerprinting (128/128 subjects cached)
-- ✅ 224× speedup on cached runs
+| # | Claim | Result |
+|---|-------|--------|
+| 1 | Cache provides significant LOSO speedup | XGBoost: 122-498x, SVM-Linear: 1,550-3,093x |
+| 2 | Cached models = identical accuracy | 100% match across all 18 configs |
+| 3 | ANOVA is fast and effective for feature selection | 174x faster AND +3.68% accuracy vs MI |
+| 4 | Cache benefit scales with dataset size | SVM-RBF: 9x at 10 subjects to 201x at 128 subjects |
+| 5 | Clear model viability spectrum exists | 11/15 viable (boosting=viable, tree ensembles=not viable) |
+| 6 | Results are hardware-portable | Same verdicts on old and new machine |
 
-### ✅ Stage 3: Feature Selection & Models - COMPLETE
-- ✅ ANOVA-based feature selection (GLOBAL scope)
-- ✅ Correlation filter (configurable threshold)
-- ✅ XGBoost and Random Forest models
-- ✅ LOSO cross-validation splitter
-- ⚠️ FNN model placeholder (not required for thesis)
+---
 
-### ⏳ Stage 4: LOSO Model Caching - IN PROGRESS (Critical Gap!)
-- ❌ LOSOFingerprint class (includes holdout_subject for data leakage prevention)
-- ❌ LOSOModelCache class (save/load trained models)
-- ❌ Training integration (cache check before train, save after)
-- ❌ Demo script showing 30× speedup
+## Project Structure
 
-**Estimated effort: 5-6 hours**
-
-### Project Timeline
-
-| Milestone | Target Date | Status |
-|-----------|-------------|--------|
-| Architecture design | Dec 22, 2025 | ✅ Complete |
-| Stage 1 & 2 (Data + Features) | Dec 23, 2025 | ✅ Complete |
-| Stage 3 (Feature Selection + Models) | Dec 25, 2025 | ✅ Complete |
-| **Stage 4 (LOSO Model Cache)** | **Dec 28, 2025** | **⏳ In Progress** |
-| Full Experiments (18 configs × 128 folds) | Jan 5, 2026 | ⏳ Planned |
-| Results Analysis & Thesis Writing | Jan 10-14, 2026 | ⏳ Planned |
-| **Submission Deadline** | **Jan 15, 2026** | 🎯 Target |
-Channel configuration: eeg_only
-  Channels: 6 (PSG_F3, PSG_F4, PSG_C3, PSG_C4, PSG_O1, PSG_O2)
-  Expected features: 149
-
-PROCESSING SUBJECT 1/3: 1
-  [Step 1/3] Loading raw EEG data...
-  ✓ Loaded: 997 total epochs, 256.0 Hz
-  
-  [Step 2/3] Preprocessing (filtering, downsampling, epoching)...
-  ✓ Preprocessed: 997 valid epochs, shape (997, 6, 3840)
-  
-  [Step 3/3] Extracting 149 features...
-  ✓ Features extracted: (997, 149)
-
-Total epochs: 2,528
-Features per epoch: 149
-Time: 3.5 minutes
+```
+BachlorThesis/
+|
+|-- Core Pipeline (22 Python files)
+|   |-- config.py                  # Central configuration management (YAML-based)
+|   |-- data_loader_boas.py        # BOAS dataset loader (128 subjects, 6 EEG channels)
+|   |-- preprocessing.py           # EEG signal preprocessing (bandpass, notch, resample)
+|   |-- feature_extractor.py       # 149 features per epoch (time, freq, complexity, global)
+|   |-- feature_cache.py           # Layer 1: Feature-level caching with SHA-256 keys
+|   |-- feature_selection.py       # ANOVA-based selection with correlation filtering
+|   |-- fingerprint.py             # SHA-256 fingerprint generation for LOSO cache keys
+|   |-- loso_cache.py              # Layer 2: Model-level caching per LOSO fold
+|   |-- models.py                  # XGBoost, Random Forest, FNN implementations
+|   |-- cross_validation.py        # LOSO and K-Fold cross-validation
+|   |-- training.py                # Training orchestrator with cache integration
+|   |-- evaluation.py              # Accuracy, Cohen's Kappa, F1-Macro metrics
+|   |-- visualization.py           # Confusion matrices, heatmaps, feature importance
+|   |-- cache_visualization.py     # Cache performance visualizations
+|   |-- output_formatter.py        # Structured console output
+|   |-- leaderboard.py             # Cache performance tracking across experiments
+|   |-- interactive_menu.py        # Interactive configuration interface
+|   |-- utils.py                   # Common helper functions
+|   |-- pipeline.py                # ML pipeline orchestrator
+|   |-- run_full_pipeline.py       # Single entry point for complete pipeline
+|   |-- run_training.py            # Training experiment runner
+|   |-- run_experiment.py          # CLI for ML caching experiments
+|   +-- run_thesis_benchmark.py    # Three core thesis experiments (scaling, fingerprint, reproducibility)
+|
+|-- benchmarks_and_tests/          # Benchmark scripts and test suites
+|   |-- benchmark_anova_vs_mi.py   # ANOVA vs Mutual Information comparison
+|   |-- benchmark_feature_selection.py  # Feature selection combination testing
+|   |-- benchmark_njobs.py         # Parallelism (n_jobs) impact analysis
+|   |-- test_loso_cache.py         # Comprehensive LOSO cache test suite
+|   +-- *.ps1                      # PowerShell automation scripts (Windows)
+|
+|-- model_tryouts/                 # Experimental model comparison (15 models)
+|   |-- all_models.py              # Standalone 30+ model comparison
+|   |-- benchmark_cache_all_models.py  # Cache viability per model type
+|   |-- evaluate_rf_cache.py       # RF 9-config cache evaluation
+|   +-- evaluate_xgb_cache.py      # XGBoost 9-config cache evaluation
+|
+|-- results/                       # All experiment outputs
+|   |-- thesis_results_human_readable.txt   # Consolidated summary
+|   |-- thesis_results_machine_readable.json  # Machine-readable results
+|   |-- xgb_cache_evaluation_*.csv           # XGBoost 9-config results
+|   |-- rf_cache_evaluation_*.csv            # RF 9-config results
+|   |-- benchmark/                 # ANOVA vs MI benchmark results
+|   |-- eco_mode/                  # Eco vs power mode analysis
+|   |-- feature_size_*/            # Feature count scaling study
+|   |-- svm_scaling_*/             # Dataset size scaling study
+|   +-- old_machine_30subj/        # Hardware portability results
+|
+|-- thesis/                        # LaTeX thesis document
+|   |-- main.tex                   # Master document
+|   |-- chapters/                  # 7 chapters + 2 appendices
+|   +-- references.bib             # Bibliography
+|
+|-- markdowns/                     # Documentation
+|   |-- THESIS_DESIGN_DECISIONS.md # Key design rationale
+|   |-- BOAS_DATASET_APPROACH.md   # Dataset loading strategy
+|   |-- PIPELINE_PROCESSING_DETAILS.md  # Step-by-step pipeline
+|   |-- PIPELINE_README.md         # Pipeline architecture
+|   |-- CHANNEL_CONFIGURATION_GUIDE.md  # EEG channel configs
+|   |-- EXAMPLE_OUTPUT.md          # Example pipeline outputs
+|   +-- QUICK_START.md             # Getting started guide
+|
+|-- test_*.py                      # Root-level test files
+|-- example_config.yaml            # Default 6-channel config
+|-- config_8channels.yaml          # 8-channel config
+|-- requirements.txt               # Python dependencies
++-- papierkorb/                    # Archived outdated documentation
 ```
 
 ---
 
-## 📁 Project Structure
+## Module Responsibilities
 
-```
-Code/
-│
-├── 📄 Core Python Modules (9 files)
-│   ├── run_experiment.py          # CLI entry point (YOU RUN THIS)
-│   ├── pipeline.py                # Main orchestrator
-│   ├── config.py                  # Configuration system
-│   ├── data_loader_boas.py        # BOAS dataset loader
-│   ├── preprocessing.py           # Signal filtering, downsampling, epoching
-│   ├── feature_extractor.py       # 149/195 feature extraction
-│   ├── utils.py                   # Helper functions
-│   ├── example_config.yaml        # Config: 6 channels (default)
-│   └── requirements.txt           # Python dependencies
-│
-├── 📄 Configuration Templates (2 files)
-│   ├── example_config.yaml        # 6 EEG channels → 149 features (STANDARD)
-│   └── config_8channels.yaml      # 8 channels (EEG+EOG+EMG) → 195 features
-│
-├── 📚 Documentation (3 essential files)
-│   ├── README.md                  # This file
-│   ├── QUICK_START.md             # Detailed getting started guide
-│   ├── THESIS_DESIGN_DECISIONS.md # Design justifications for thesis
-│   └── CHANNEL_CONFIGURATION_GUIDE.md  # 6 vs 8 channel comparison
-│
-├── 📦 Archive (deprecated files)
-│   └── archive/
-│       ├── data_loader_sleepedf_OLD.py  # OLD: Sleep-EDF loader
-│       └── DATA_LOADER_README.md        # OLD: Sleep-EDF docs
-│
-└── 📊 Results (generated at runtime)
-    └── results/
-        └── experiment_YYYYMMDD_HHMMSS/
-            ├── per_subject/         # Individual subject data
-            ├── features/            # Aggregated features
-            └── pipeline_stats.json  # Timing statistics
-```
-
-### Active Files Summary
-
-| Category | Files | Purpose |
-|----------|-------|---------|
-| **Core Python** | 9 | Pipeline implementation |
-| **Configs** | 2 | Experiment configurations |
-| **Essential Docs** | 4 | Usage & design documentation |
-| **Total Active** | **15** | **All ready to use** |
+| Module | Role |
+|--------|------|
+| `config.py` | Experiment and channel configuration (YAML-based presets, paths, feature counts) |
+| `data_loader_boas.py` | BOAS dataset loader (EDF/annotation files, channel selection, MNE integration) |
+| `preprocessing.py` | Signal preprocessing (bandpass 0.5-40Hz, notch 50Hz, resample 256->128Hz, 30s epochs) |
+| `feature_extractor.py` | 149 features per epoch: 10 time-domain + 9 frequency-domain + 4 complexity per channel + 11 global |
+| `feature_cache.py` | **Layer 1 cache:** Compressed .npz feature caches with SHA-256 keys (224x speedup) |
+| `fingerprint.py` | SHA-256 fingerprint generation for LOSO model caching (includes seed, version, model, features, subject) |
+| `loso_cache.py` | **Layer 2 cache:** Per-fold trained model caching with fingerprint-based invalidation |
+| `feature_selection.py` | ANOVA (f_classif) + correlation filtering, 9 config variations (3 thresholds x 3 top-k) |
+| `models.py` | XGBoost, Random Forest, FNN (PyTorch) model implementations |
+| `cross_validation.py` | LOSO (128 folds) and K-Fold cross-validation |
+| `training.py` | Training orchestrator: loads cached features, applies selection, runs LOSO CV, tracks cache metrics |
+| `evaluation.py` | Metrics: Accuracy, Cohen's Kappa, F1-Macro; per-subject and aggregate reporting |
+| `pipeline.py` | Pipeline orchestrator (load -> preprocess -> extract features) |
+| `run_full_pipeline.py` | Single entry point: feature extraction -> training -> evaluation -> visualization |
+| `run_thesis_benchmark.py` | Three thesis experiments: scaling, fingerprint invalidation, reproducibility |
 
 ---
 
-## 🧭 Module Responsibilities (Short)
+## Installation & Usage
 
-Brief role descriptions for the main modules in this repository:
-
-- `run_experiment.py`: CLI entry point — parse CLI args, build the experiment config, and launch the pipeline.
-- `pipeline.py`: Main orchestrator — loads subjects, runs preprocessing, handles feature extraction, integrates caching, and saves per-subject and aggregated outputs.
-- `config.py`: Experiment and channel configuration model — defines presets, paths, and expected feature counts.
-- `data_loader_boas.py`: BOAS dataset loader — finds EDF/annotation files, selects channels, and returns MNE raw objects and annotations.
-- `preprocessing.py`: Signal preprocessing and epoching — filtering, notch, resampling, and creation of fixed-length epochs.
-- `feature_extractor.py`: Feature extraction core — computes per-channel and global features; supports 6 or 8 channels; exposes batch extraction routines.
-- `feature_cache.py`: Caching helpers — save/load compressed full-feature `.npz` caches and filter cached features to a requested channel subset.
-- `utils.py`: Utility helpers — I/O wrappers, formatters, progress tracker, validation, and small helpers used across modules.
-- `requirements.txt`: Dependency manifest — Python packages required to run the pipeline.
-
-If you want, I can expand any of these into a dedicated markdown under `markdowns/` with API details and example outputs.
-
-
----
-
-## 💻 Installation
-
-### Step 1: Install Python Dependencies
-
+### Install
 ```bash
 pip install -r requirements.txt
 ```
 
-**Key Packages:**
-- `mne >= 1.5.0` - EEG processing
-- `numpy >= 1.23.0` - Numerical computing
-- `scipy >= 1.9.0` - Signal processing
-- `pandas >= 1.5.0` - Data manipulation
-- `scikit-learn >= 1.2.0` - Machine learning (for future stages)
-- `xgboost >= 1.7.0` - Gradient boosting (for future stages)
-- `pyyaml >= 6.0` - Configuration files
-
-### Step 2: Verify Data Path
-
-Ensure your BOAS dataset is accessible:
-
+### Run Experiments
 ```bash
-# Windows
-dir "C:\Users\DerHo\Desktop\Data\sub-1"
-
-# Should show:
-#   sub-1/eeg/sub-1_task-Sleep_acq-psg_eeg.edf
-#   sub-1/eeg/sub-1_task-Sleep_acq-psg_events.txt
-```
-
-### Step 3: Test Installation
-
-```bash
+# Quick test (3 subjects)
 python run_experiment.py --quick-test
-```
 
-If you see processing output and no errors, installation is complete! ✅
-
----
-
-## 🎮 Usage
-
-### Command-Line Interface
-
-```bash
-python run_experiment.py [OPTIONS]
-```
-
-### Common Commands
-
-#### Quick Test (3 subjects, ~3 minutes)
-```bash
-python run_experiment.py --quick-test
-```
-
-#### Pilot Run (10 subjects, ~15 minutes)
-```bash
+# Pilot (10 subjects)
 python run_experiment.py --pilot
-```
 
-#### Full Dataset (128 subjects, ~2-3 hours)
-```bash
+# Full dataset (128 subjects)
 python run_experiment.py --full
+
+# Complete thesis pipeline
+python run_full_pipeline.py
+
+# Thesis benchmarks (scaling, fingerprint, reproducibility)
+python run_thesis_benchmark.py
+
+# Custom config
+python run_experiment.py --config my_config.yaml --data-path /path/to/BOAS
 ```
 
-#### Custom Configuration
+### Re-Running the Full 9-Config Evaluation
+To reproduce the thesis results from scratch:
 ```bash
-python run_experiment.py --config my_experiment.yaml
+# XGBoost: 9 configs x 128 folds (~3.5 hours cold, ~1 min warm)
+python model_tryouts/evaluate_xgb_cache.py
+
+# Random Forest: 9 configs x 128 folds (~24 hours cold, ~50 min warm)
+python model_tryouts/evaluate_rf_cache.py
+
+# Multi-model viability: 15 models x 5 folds (~2 hours)
+python model_tryouts/benchmark_cache_all_models.py
+
+# SVM scaling study
+# Run via PowerShell: benchmarks_and_tests/benchmark_svm_scaling.ps1
+# Or manually adjust subject count in benchmark_cache_all_models.py
+
+# ANOVA vs MI benchmark
+python benchmarks_and_tests/benchmark_anova_vs_mi.py
 ```
-
-#### With Overrides
-```bash
-python run_experiment.py --pilot --experiment-name test1 --log-level DEBUG
-```
-
-### Command-Line Options
-
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--quick-test` | Run on 3 subjects | `--quick-test` |
-| `--pilot` | Run on 10 subjects | `--pilot` |
-| `--full` | Run on all 128 subjects | `--full` |
-| `--config FILE` | Use custom config | `--config my_config.yaml` |
-| `--experiment-name NAME` | Set experiment name | `--experiment-name baseline_v1` |
-| `--log-level LEVEL` | Set logging level | `--log-level DEBUG` |
-| `--log-file FILE` | Save logs to file | `--log-file experiment.log` |
-| `--data-path PATH` | Override data directory | `--data-path D:\Data` |
-| `--output-dir DIR` | Override output directory | `--output-dir ./my_results` |
 
 ---
 
-## ⚙️ Configuration
-
-### Basic Configuration (example_config.yaml)
-
-```yaml
-experiment_name: "pilot_xgboost_baseline"
-
-data:
-  base_path: "C:/Users/DerHo/Desktop/Data"
-  channel_preset: "eeg_only"  # 6 channels → 149 features
-  use_human_labels: true      # Use human consensus labels
-
-preprocessing:
-  bandpass_low: 0.5           # Hz
-  bandpass_high: 40.0         # Hz
-  notch_frequency: 50.0       # Hz (50=Europe, 60=US)
-  target_sfreq: 128.0         # Hz (downsampled from 256)
-  epoch_duration: 30.0        # seconds
-
-features:
-  compute_time_domain: true
-  compute_frequency_domain: true
-  compute_complexity: true
-  compute_global_features: true
-
-output_dir: "./results"
-log_level: "INFO"
-```
-
-### Channel Configuration Options
-
-The pipeline supports flexible channel configurations:
-
-#### Option 1: 6 EEG Channels (Standard) ✅ **RECOMMENDED**
-
-```yaml
-data:
-  channel_preset: "eeg_only"
-  # Results in: 149 features (6 × 23 + 11)
-```
-
-**Channels:** F3, F4, C3, C4, O1, O2  
-**Best for:** Standard sleep staging, faster processing, smaller storage
-
-#### Option 2: 8 Channels (EEG + Physiological)
-
-```yaml
-data:
-  channel_preset: "eeg_plus_physiological"
-  # Results in: 195 features (8 × 23 + 11)
-```
-
-**Channels:** F3, F4, C3, C4, O1, O2, EOG, EMG  
-**Best for:** Enhanced REM/Wake detection, comprehensive analysis
-
-#### Option 3: Custom Channels
-
-```yaml
-data:
-  channel_preset: "custom"
-  channels:
-    - PSG_F3
-    - PSG_C3
-    - PSG_O1
-  # Specify any combination
-```
-
-**See `CHANNEL_CONFIGURATION_GUIDE.md` for detailed comparison.**
-
----
-
-## 🔬 Technical Specifications
+## Technical Specifications
 
 ### Dataset: BOAS (Bitbrain Open Access Sleep)
-
-- **Source:** PhysioNet, recorded in Spain
-- **Subjects:** 128 (108 unique individuals, some with multiple nights)
-- **Channels:** 8 total (6 EEG + EOG + EMG)
+- **Source:** PhysioNet
+- **Subjects:** 128 (108 unique individuals)
+- **Channels:** 6 EEG (F3, F4, C3, C4, O1, O2)
 - **Sampling Rate:** 256 Hz (downsampled to 128 Hz)
 - **Sleep Stages:** 5 (Wake, N1, N2, N3, REM)
 - **Labeling:** Human consensus from 3 expert scorers
-- **Duration:** ~8 hours per recording
 
 ### Preprocessing Pipeline
-
 ```
-Raw EDF (256 Hz, 6-8 channels)
-    ↓
-1. Channel Selection
-   → Select 6 EEG or 8 channels
-    ↓
-2. Bandpass Filter
-   → 0.5-40 Hz (FIR filter, Hamming window)
-    ↓
-3. Notch Filter
-   → 50 Hz (power line noise removal)
-    ↓
-4. Downsampling
-   → 256 Hz → 128 Hz (antialiasing applied)
-    ↓
-5. Epoch Extraction
-   → 30-second windows (3,840 samples @ 128 Hz)
-    ↓
-6. Quality Validation
-   → Amplitude checks (currently disabled for BOAS)
-    ↓
-Output: (n_epochs, n_channels, 3840)
+Raw EDF (256 Hz) -> Bandpass 0.5-40 Hz (FIR) -> Notch 50 Hz -> Downsample to 128 Hz -> 30s epochs -> (n_epochs, 6, 3840)
 ```
 
-### Feature Extraction (149 Features for 6 Channels)
+### Feature Extraction (149 Features)
+- **Per-channel (23 x 6 = 138):** Time-domain (10), Frequency-domain (9), Complexity (4)
+- **Global (11):** Coherence (6 pairs), Phase-Locking Value (3 pairs), entropy, complexity
 
-#### Per-Channel Features (23 × 6 = 138)
+### Experiment Grid (18 Configurations)
+- **Models:** XGBoost, Random Forest (2)
+- **Correlation thresholds:** 0.75, 0.90, None (3)
+- **Top-K features:** 30, 50, None/149 (3)
+- **Validation:** LOSO (128 folds per config)
 
-**Time-Domain (10 features per channel):**
-- Statistical: mean, std, var, min, max, peak-to-peak
-- Derived: RMS, skewness, kurtosis, zero-crossing rate
+### Fingerprint Components
+The cache fingerprint (SHA-256, 32 hex chars) includes:
+- `random_seed` - Reproducibility guarantee
+- `code_version` - Tracks code changes
+- `model_config` - Algorithm name + all hyperparameters
+- `feature_config` - Base features, correlation threshold, top-k, selected feature hash
+- `held_out_subject` - Prevents data leakage across LOSO folds
 
-**Frequency-Domain (9 features per channel):**
-- Band Powers: delta (0.5-4 Hz), theta (4-8 Hz), alpha (8-13 Hz), sigma (12-16 Hz), beta (16-30 Hz), gamma (30-40 Hz)
-- Spectral: spectral entropy, peak frequency, median frequency
-
-**Complexity (4 features per channel):**
-- Hjorth parameters: mobility, complexity
-- Fractal analysis: Hurst exponent, DFA (detrended fluctuation analysis)
-
-#### Global Features (11)
-
-- **Coherence (6 pairs):** F3-F4, F3-C3, F3-C4, F4-C4, C3-C4, O1-O2
-- **Phase-Locking Value (3 pairs):** F3-O1, F4-O2, C3-C4
-- **Global Metrics (2):** global entropy, global complexity
-
-### Performance Benchmarks
-
-| Dataset Size | Processing Time | Storage | Output Epochs |
-|-------------|----------------|---------|---------------|
-| **Quick Test (3 subjects)** | 2-3 min | ~15 MB | ~2,500 |
-| **Pilot (10 subjects)** | 10-15 min | ~50 MB | ~8,400 |
-| **Full (128 subjects)** | 2-3 hours | ~640 MB | ~106,680 |
-
-*Measured on: Intel i7, 16GB RAM, SSD*
+**Note:** Dataset version and preprocessing config are NOT in the fingerprint (they affect feature extraction, which is cached separately in Layer 1).
 
 ---
 
-## 📊 Results & Output
+## Key Results
 
-### Output Directory Structure
+### XGBoost (Best Overall)
+- Best config: corr=None, k=None (all 149 features) -> **85.5% accuracy, 498x speedup, 188 MB cache**
+- Average across 9 configs: 208x speedup, 185 MB cache, 7.1s warm time
 
-```
-results/
-└── experiment_20251222_143015_quick/
-    │
-    ├── per_subject/                      # Per-subject data
-    │   ├── subject_1/
-    │   │   ├── epochs.npy                # (n_epochs, 6, 3840) preprocessed signals
-    │   │   ├── labels.npy                # (n_epochs,) sleep stage labels
-    │   │   └── features.csv              # (n_epochs, 149) extracted features
-    │   ├── subject_2/
-    │   └── subject_3/
-    │
-    ├── features/                         # Aggregated dataset
-    │   ├── all_features.csv              # (total_epochs, 149) ALL features
-    │   ├── all_labels.npy                # (total_epochs,) ALL labels
-    │   ├── subject_ids.npy               # (total_epochs,) subject ID per epoch
-    │   └── dataset_metadata.json         # Statistics and metadata
-    │
-    └── pipeline_stats.json               # Timing and performance statistics
-```
+### Random Forest (Borderline Cache-Viable)
+- Best config: corr=None, k=None -> **81.9% accuracy, 109.8x speedup, 16.3 GB cache**
+- Average: 28x speedup, 18.5 GB cache, 330s warm time
 
-### Loading Processed Data
+### Multi-Model Viability (15 models tested)
+- **11 VIABLE:** Gradient Boosting (18,030x), AdaBoost (2,616x), SVM-Linear (1,950x), XGBoost (119x), LightGBM (90x), and 6 more
+- **4 NOT VIABLE:** Random Forest (15x), Extra Trees (4x), KNN (5x) - large serialized models
 
-```python
-import pandas as pd
-import numpy as np
-
-# Load aggregated features
-features = pd.read_csv('results/experiment_*/features/all_features.csv')
-labels = np.load('results/experiment_*/features/all_labels.npy')
-subject_ids = np.load('results/experiment_*/features/subject_ids.npy')
-
-print(f"Features: {features.shape}")  # (106680, 149) for full dataset
-print(f"Labels: {labels.shape}")      # (106680,)
-print(f"Unique subjects: {len(np.unique(subject_ids))}")  # 128
-```
-
-### Example Output
-
-```
-============================================================
-   PIPELINE COMPLETE - STAGE 1 & 2
-============================================================
-Subjects processed: 128
-Total epochs: 106,680
-Features per epoch: 149
-
-Time Statistics:
-  Start: 14:30:15
-  End: 17:15:42
-  Elapsed: 9,927 seconds (165.5 minutes)
-  Avg per subject: 77.6 seconds
-
-Label Distribution:
-  Wake: 12,345 (11.6%)
-  N1: 5,234 (4.9%)
-  N2: 48,901 (45.8%)
-  N3: 29,123 (27.3%)
-  REM: 11,077 (10.4%)
-
-Output saved to:
-  results/experiment_20251222_143015_full
-============================================================
-```
+### Scaling: More Subjects = More Speedup
+SVM-RBF: 9x (10 subjects) -> 201x (128 subjects). Training cost grows quadratically, cache loading is constant.
 
 ---
 
-## 🎓 Design Decisions (For Thesis)
+## Configuration
 
-### 1. Dataset Selection: BOAS vs Sleep-EDF
-
-**Decision:** Use BOAS dataset
-
-**Rationale:**
-- ✅ 128 subjects (ideal for LOSO cross-validation)
-- ✅ 6 EEG channels (richer than Sleep-EDF's 2)
-- ✅ Open access, well-documented
-- ✅ ~20 GB storage (demonstrates caching benefits)
-
-**Reference:** See `THESIS_DESIGN_DECISIONS.md` for full justification.
-
----
-
-### 2. Sampling Rate: 256 Hz → 128 Hz
-
-**Decision:** Downsample from 256 Hz to 128 Hz
-
-**Rationale:**
-
-| Criterion | Analysis | Conclusion |
-|-----------|----------|------------|
-| **Signal preservation** | Bandpass 0.5-40 Hz requires ≥80 Hz (Nyquist) | ✅ Safe (128 > 80) |
-| **Computation** | 50% fewer samples = 1.5× faster | ✅ Significant |
-| **Storage** | 50% reduction in preprocessed data | ✅ Meaningful |
-| **Literature** | 100-128 Hz standard in sleep research | ✅ Justified |
-
-**References:**
-- Rechtschaffen & Kales (1968): Sleep scoring ≤100 Hz sufficient
-- AASM Manual (2015): ≥100 Hz recommended
-
----
-
-### 3. Channel Configuration: 6 vs 8 Channels
-
-**Decision:** Use 6 EEG channels as primary configuration
-
-**Channels Used:** F3, F4, C3, C4, O1, O2  
-**Features Generated:** 149 (6 × 23 + 11)
-
-**Rationale:**
-- ✅ Standard in sleep research (AASM guidelines)
-- ✅ EEG contains primary sleep staging information
-- ✅ Simpler to explain and interpret
-- ✅ Sufficient for demonstrating caching effectiveness
-
-**Alternative (Supported but not used in main experiments):**
-- 8 channels (EEG + EOG + EMG) → 195 features
-- Potentially better for REM/Wake detection
-- Available via: `channel_preset: "eeg_plus_physiological"`
-
-**For Thesis Discussion:**
-```
-The pipeline architecture supports both 6-channel (149 features)
-and 8-channel (195 features) configurations, demonstrating system
-flexibility. Main experiments use the 6-channel configuration
-following standard sleep research practices.
-```
-
-**Reference:** See `CHANNEL_CONFIGURATION_GUIDE.md` for detailed comparison.
-
----
-
-### 4. Feature Set: 149 Features
-
-**Decision:** 23 features per channel + 11 global features
-
-**Breakdown:**
-- Time-domain (10): Basic statistics and zero-crossing rate
-- Frequency (9): Power bands (delta through gamma) + spectral metrics
-- Complexity (4): Hjorth parameters, Hurst exponent, DFA
-- Global (11): Coherence, phase-locking, entropy
-
-**Rationale:**
-- ✅ Captures multi-domain characteristics (time, frequency, complexity)
-- ✅ Includes spatial information (coherence, PLV)
-- ✅ Computationally efficient (~12s per subject)
-- ✅ Deterministic (same input → same output → cacheable)
-
-**Alternatives Rejected:**
-- Deep learning features (non-deterministic, harder to cache)
-- Wavelet features (redundant with frequency bands)
-- >200 features (diminishing returns, longer computation)
-
----
-
-### 5. Cross-Validation: LOSO (Leave-One-Subject-Out)
-
-**Decision:** LOSO with 128 folds
-
-**Rationale:**
-
-| Criterion | Random K-Fold | LOSO | Winner |
-|-----------|--------------|------|--------|
-| **Data leakage** | Epochs from same subject in train+test | No leakage | **LOSO** |
-| **Generalization** | Within-subject | Cross-subject | **LOSO** |
-| **Clinical relevance** | Not realistic | Models unseen patients | **LOSO** |
-| **Cache benefit** | Low (5-10 folds) | **High (128 folds)** | **LOSO** |
-
-**Cache Optimization:**
-- 128 folds × 3 models = 384 training runs
-- High repetition → perfect for demonstrating caching benefits
-- First run: ~9 hours (all cache misses)
-- Second run: ~1 hour (97% cache hits)
-
----
-
-### 6. Quality Validation: Disabled for BOAS
-
-**Decision:** Disable amplitude-based quality validation
-
-**Original Implementation:**
-```python
-max_amplitude: 200.0 µV  # Too strict
-min_amplitude: 1.0 µV
-```
-
-**Issue:** All BOAS epochs rejected (0/997 passed for each subject)
-
-**Solution:** Quality validation disabled by default
-```python
-validate_quality=False  # in preprocessing
-```
-
-**Rationale:**
-- BOAS data has different amplitude characteristics than expected
-- Manual inspection shows data quality is good
-- Filtering disconnections (stage=8) already removes bad epochs
-- Can re-enable later with appropriate thresholds for BOAS
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. No Epochs Generated (0 valid epochs)
-
-**Symptom:**
-```
-INFO:preprocessing:Quality validation: 0/997 epochs passed (997 rejected)
-```
-
-**Solution:** This was fixed in latest version. Update to newest `preprocessing.py` and `pipeline.py`.
-
-**Technical Details:** Quality validation was too strict for BOAS data and has been disabled by default.
-
----
-
-#### 2. Wrong Number of Features
-
-**Symptom:**
-```
-Expected: 149 features
-Actual: 0 features or wrong count
-```
-
-**Solution:** Ensure you're using 6 EEG channels:
+### Default (example_config.yaml)
 ```yaml
-# In config:
-channel_preset: "eeg_only"  # NOT "all" or "eeg_plus_physiological"
-```
-
----
-
-#### 3. ModuleNotFoundError
-
-**Symptom:**
-```
-ModuleNotFoundError: No module named 'mne'
-```
-
-**Solution:**
-```bash
-pip install -r requirements.txt
-```
-
----
-
-#### 4. Data Path Not Found
-
-**Symptom:**
-```
-FileNotFoundError: Base path not found: C:\Users\DerHo\Desktop\Data
-```
-
-**Solution:** Override data path:
-```bash
-python run_experiment.py --quick-test --data-path "D:\MyData\BOAS"
-```
-
-Or update in config:
-```yaml
+experiment_name: "pilot_xgboost_baseline"
 data:
-  base_path: "D:/MyData/BOAS"
+  base_path: "C:/Users/DerHo/Desktop/Data"
+  channel_preset: "eeg_only"    # 6 channels -> 149 features
+  use_human_labels: true
+preprocessing:
+  bandpass_low: 0.5
+  bandpass_high: 40.0
+  notch_frequency: 50.0
+  target_sfreq: 128.0
+  epoch_duration: 30.0
+output_dir: "./results"
 ```
 
 ---
 
-#### 5. Out of Memory
+## Documentation
 
-**Symptom:**
-```
-MemoryError: Unable to allocate array
-```
-
-**Solutions:**
-- Use `--no-save-intermediate` flag
-- Process fewer subjects at once
-- Close other applications
-- Ensure 16+ GB RAM available
-
----
-
-#### 6. Slow Processing
-
-**Diagnosis:**
-```bash
-python run_experiment.py --quick-test --log-level DEBUG
-```
-
-Check timing for each stage. Filtering typically takes longest (~15-20s per subject).
-
-**Solutions:**
-- Normal: 30-40s per subject is expected
-- If >60s per subject, check disk I/O (use SSD)
-- If >120s per subject, check RAM usage
+| File | Purpose |
+|------|---------|
+| `markdowns/THESIS_DESIGN_DECISIONS.md` | Why BOAS, why LOSO, why ANOVA, why 149 features |
+| `markdowns/PIPELINE_PROCESSING_DETAILS.md` | Step-by-step pipeline walkthrough |
+| `markdowns/BOAS_DATASET_APPROACH.md` | Dataset structure and loading strategy |
+| `markdowns/CHANNEL_CONFIGURATION_GUIDE.md` | 6 vs 8 channel comparison |
+| `markdowns/QUICK_START.md` | Getting started guide |
+| `METHODOLOGY_VERIFICATION_REPORT.md` | Known discrepancies between thesis text and code (9 items) |
+| `CACHE_INVALIDATION_VERIFICATION.md` | Proof that cache invalidation works correctly |
+| `TWO_TIER_CACHE_EXPLAINED.md` | Two-tier caching architecture explanation |
+| `results/thesis_results_human_readable.txt` | Complete experimental results summary |
 
 ---
 
-### Getting Help
-
-```bash
-# View all command options
-python run_experiment.py --help
-
-# Enable debug logging
-python run_experiment.py --quick-test --log-level DEBUG
-
-# Save logs to file
-python run_experiment.py --pilot --log-file debug.log
-```
-
-For detailed debugging, check:
-1. Console output for error messages
-2. Log file (if `--log-file` used)
-3. `pipeline_stats.json` for timing information
-
----
-
-## 🚧 Development Status
-
-### ✅ Stage 1 & 2: COMPLETE (Current Release)
-
-**Implemented:**
-- ✅ BOAS dataset loader (6 or 8 channels)
-- ✅ Signal preprocessing (filtering, downsampling, epoching)
-- ✅ Feature extraction (149 or 195 features)
-- ✅ Configuration system (YAML-based)
-- ✅ CLI interface
-- ✅ Progress tracking and logging
-- ✅ Data validation and quality checks
-
-**Output:** Preprocessed data + extracted features ready for model training
-
----
-
-### ⏳ Stage 3: IN PROGRESS (Next Release)
-
-**Planned:**
-- ⏳ Fingerprinting module (SHA-256 hashing)
-- ⏳ 4-stage cache system (preprocessing, features, models, results)
-- ⏳ Cache manager with cascade invalidation
-- ⏳ Cache hit/miss tracking
-
-**Goal:** Demonstrate intelligent caching with fingerprint-based invalidation
-
----
-
-### ⏳ Stage 4: PLANNED (Final Release)
-
-**Planned:**
-- ⏳ Model training (XGBoost, Random Forest, FNN)
-- ⏳ LOSO cross-validation (128 folds)
-- ⏳ Results aggregation and metrics
-- ⏳ Cache performance analysis
-
-**Goal:** Complete end-to-end ML pipeline with caching
-
----
-
-### Project Timeline
-
-| Milestone | Target Date | Status |
-|-----------|-------------|--------|
-| Architecture design | Dec 22, 2025 | ✅ Complete |
-| Stage 1 & 2 (Data + Features) | Dec 23, 2025 | ✅ Complete |
-| Stage 3 (Fingerprinting + Cache) | Dec 28, 2025 | ⏳ In Progress |
-| Stage 4 (Models + LOSO) | Jan 5, 2026 | ⏳ Planned |
-| Experiments & Results | Jan 8, 2026 | ⏳ Planned |
-| Thesis Writing | Jan 10-14, 2026 | ⏳ Planned |
-| **Submission Deadline** | **Jan 15, 2026** | 🎯 Target |
-
----
-
-## 📚 Documentation Files
-
-### Essential Documentation (3 files)
-
-| File | Purpose | When to Read |
-|------|---------|--------------|
-| **README.md** (this file) | Complete overview | Start here |
-| **QUICK_START.md** | Detailed getting started guide | First time setup |
-| **THESIS_DESIGN_DECISIONS.md** | Design justifications | Writing methodology |
-| **CHANNEL_CONFIGURATION_GUIDE.md** | 6 vs 8 channel comparison | Configuring experiments |
-
-### Additional Reference Documentation
-
-Available in repository for detailed reference:
-- `PIPELINE_README.md` - Technical implementation details
-- `EXAMPLE_OUTPUT.md` - Sample output and progress indicators
-- `PROJECT_STRUCTURE.md` - Complete file structure
-- `BOAS_DATASET_APPROACH.md` - Dataset analysis
-
----
-
-## 📖 Citation
-
-### For Academic Use
+## Citation
 
 ```bibtex
 @mastersthesis{gorzel2026mlcaching,
@@ -804,92 +296,7 @@ Available in repository for detailed reference:
 }
 ```
 
-### Dataset Citation
-
-```bibtex
-@misc{boas2023,
-  title        = {Bitbrain Open Access Sleep (BOAS) Database},
-  author       = {Bitbrain Technologies},
-  year         = {2023},
-  howpublished = {PhysioNet},
-  doi          = {10.13026/xxx}
-}
-```
-
 ---
 
-## 🤝 Contributing
-
-This is a bachelor thesis project. For academic collaboration or questions:
-
-**Contact:**
-- **Author:** Lennart Gorzel
-- **Email:** [Your Email]
-- **Supervisor:** Prof. Himanshu Buckchash
-- **Institution:** IMC FH Krems
-
----
-
-## 📄 License
-
-This code is part of a Bachelor thesis at IMC FH Krems.  
-**For academic and educational use only.**
-
----
-
-## 🙏 Acknowledgments
-
-- **Supervisor:** Prof. Himanshu Buckchash (IMC FH Krems)
-- **Dataset:** Bitbrain Technologies (BOAS Dataset)
-- **Libraries:** MNE-Python, scikit-learn, XGBoost, PyTorch
-- **Institution:** IMC Fachhochschule Krems
-
----
-
-
-## 📋 Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| **1.0.0** | Dec 22, 2025 | Initial release - Stage 1 & 2 complete |
-| **1.1.0** | Dec 22, 2025 | Added flexible channel configuration (6/8 channels) |
-| **2.0.0** | Dec 25, 2025 | Stage 3 complete - Feature selection, models, LOSO splitter |
-| **2.1.0** | Dec 27, 2025 | Documentation update, thesis grid (18 configs) verified |
-| **3.0.0** | TBD | Stage 4 - LOSO Model Caching (in progress) |
-
----
-
-## 🎯 Quick Reference Card
-
-```bash
-# MOST COMMON COMMANDS
-
-# First time: Test with 3 subjects
-python run_experiment.py --quick-test
-
-# Pilot study: 10 subjects
-python run_experiment.py --pilot
-
-# Full dataset: 128 subjects
-python run_experiment.py --full
-
-# Use 8 channels instead of 6
-python run_experiment.py --pilot --config config_8channels.yaml
-
-# Debug mode
-python run_experiment.py --quick-test --log-level DEBUG
-
-# Custom experiment name
-python run_experiment.py --pilot --experiment-name my_experiment_v1
-```
-
----
-
-**README Version:** 2.1  
-**Last Updated:** December 27, 2025  
-**Status:** Stage 1-3 Complete, Stage 4 (LOSO Cache) In Progress  
-**Next Update:** After LOSO Model Cache Implementation
-
----
-
-**Ready to start? Run:** `python run_experiment.py --quick-test` 🚀
+**Author:** Lennart Gorzel | **Supervisor:** Prof. Himanshu Buckchash | **Institution:** IMC FH Krems
+**README Version:** 3.0 | **Last Updated:** March 16, 2026 | **Status:** All stages complete, experiments done

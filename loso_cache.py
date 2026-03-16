@@ -122,6 +122,7 @@ class CacheMetrics:
             return f"{hours:.1f}h"
     
     def __str__(self) -> str:
+        """Return human-readable summary of hits, misses, hit rate, and time saved."""
         return (
             f"CacheMetrics(hits={self.hits}, misses={self.misses}, "
             f"hit_rate={self.hit_rate:.1%}, time_saved={self._format_time(self.time_saved_seconds)})"
@@ -144,6 +145,7 @@ class CachedModelInfo:
     file_size_bytes: int = 0
     
     def to_dict(self) -> Dict[str, Any]:
+        """Convert metadata fields to a plain dictionary for JSON serialization."""
         return asdict(self)
 
 
@@ -245,7 +247,7 @@ class LOSOModelCache:
         return self.cache_dir / self.REGISTRY_FILENAME
     
     def _load_registry(self):
-        """Load cache registry from disk."""
+        """Load cache registry from disk. Silently resets on read errors."""
         registry_path = self._get_registry_path()
         if registry_path.exists():
             try:
@@ -260,7 +262,7 @@ class LOSOModelCache:
                 self._registry = {}
     
     def _save_registry(self):
-        """Save cache registry to disk."""
+        """Save cache registry to disk as JSON. No-op if registry is disabled."""
         if not self.enable_registry:
             return
         
@@ -608,6 +610,7 @@ class LOSOModelCache:
         self.metrics = CacheMetrics()
     
     def __repr__(self) -> str:
+        """Return a string summary with cache directory, model count, and metrics."""
         cached_count = len(list(self.cache_dir.glob(f"*{self.MODEL_EXTENSION}")))
         return f"LOSOModelCache(dir='{self.cache_dir}', cached={cached_count}, {self.metrics})"
 

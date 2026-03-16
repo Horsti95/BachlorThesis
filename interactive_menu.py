@@ -141,7 +141,7 @@ def print_header():
 
 
 def print_research_context():
-    """Print thesis research context."""
+    """Print thesis research questions (SQ1-SQ4) to the console."""
     print("-" * 70)
     print("THESIS RESEARCH QUESTIONS")
     print("-" * 70)
@@ -157,7 +157,7 @@ def print_research_context():
 
 
 def print_cache_targets():
-    """Print cache timing targets (ESTIMATES)."""
+    """Print estimated cache timing targets (RAM hit, disk hit, cold miss)."""
     print("\n" + "-" * 70)
     print("CACHE TIMING TARGETS (ESTIMATES - require validation)")
     print("-" * 70)
@@ -172,7 +172,7 @@ def print_cache_targets():
 
 
 def print_leaderboard_summary():
-    """Print current leaderboard stats."""
+    """Print one-line cache leaderboard stats (experiments, hit rate, time saved)."""
     leaderboard = get_leaderboard()
     
     if leaderboard.total_cache_hits + leaderboard.total_cache_misses == 0:
@@ -184,8 +184,8 @@ def print_leaderboard_summary():
 
 
 class InteractiveMenu:
-    """Interactive menu system for experiment configuration."""
-    
+    """Interactive menu system for configuring and launching ML caching experiments."""
+
     def __init__(self, data_path: str = r"C:\Users\DerHo\Desktop\Data"):
         self.data_path = data_path
         self.selected_subjects: List[int] = []
@@ -194,7 +194,7 @@ class InteractiveMenu:
         self.cv_method: str = 'loso'
         
     def run(self):
-        """Run the interactive menu."""
+        """Run the main menu loop. Returns an ExperimentConfig or exits."""
         while True:
             clear_screen()
             print_header()
@@ -239,7 +239,7 @@ class InteractiveMenu:
                 input("Press Enter to continue...")
     
     def configure_experiment(self) -> Optional[ExperimentConfig]:
-        """Full experiment configuration wizard."""
+        """Step-by-step wizard: subjects -> models -> features -> confirm. Returns config or None."""
         clear_screen()
         print("=" * 70)
         print("EXPERIMENT CONFIGURATION")
@@ -270,7 +270,7 @@ class InteractiveMenu:
         return None
     
     def select_subjects(self) -> Optional[List[int]]:
-        """Subject selection step."""
+        """Prompt user to select subjects from presets or custom input. Returns list or None."""
         print("=" * 50)
         print("STEP 1: SUBJECT SELECTION")
         print("=" * 50)
@@ -294,7 +294,7 @@ class InteractiveMenu:
             return None
     
     def custom_subject_selection(self) -> Optional[List[int]]:
-        """Custom subject selection."""
+        """Parse comma-separated or range input (e.g. '1-10,15') into subject list."""
         print("\nCustom subject selection:")
         print("Enter subject numbers separated by commas (e.g., 1,5,10,15)")
         print("Or enter a range like 1-10")
@@ -325,7 +325,7 @@ class InteractiveMenu:
             return None
     
     def select_models(self) -> Optional[List[str]]:
-        """Model selection step."""
+        """Prompt user to select ML models from presets or custom input."""
         print("\n" + "=" * 50)
         print("STEP 2: MODEL SELECTION")
         print("=" * 50)
@@ -358,7 +358,7 @@ class InteractiveMenu:
             return None
     
     def custom_model_selection(self) -> Optional[List[str]]:
-        """Custom model selection."""
+        """Parse comma-separated model names from user input."""
         print("\nEnter model names separated by commas:")
         print(f"Available: {', '.join(MODEL_INFO.keys())}")
         
@@ -371,7 +371,7 @@ class InteractiveMenu:
         return None
     
     def select_feature_strategy(self) -> Optional[str]:
-        """Feature strategy selection step."""
+        """Prompt user to choose a feature selection strategy (quick/comprehensive/full/custom)."""
         print("\n" + "=" * 50)
         print("STEP 3: FEATURE SELECTION STRATEGY")
         print("=" * 50)
@@ -402,7 +402,7 @@ class InteractiveMenu:
         models: List[str],
         feature_strategy: str
     ) -> ExperimentConfig:
-        """Build experiment configuration from selections."""
+        """Build an ExperimentConfig from the user's subject, model, and feature selections."""
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         n_subjects = len(subjects)
@@ -448,7 +448,7 @@ class InteractiveMenu:
         models: List[str],
         feature_strategy: str
     ) -> bool:
-        """Show configuration summary and confirm."""
+        """Display config summary with time estimate and ask user to confirm. Returns True if confirmed."""
         
         clear_screen()
         print("=" * 70)
@@ -491,7 +491,7 @@ class InteractiveMenu:
         return response == 'y'
     
     def quick_test_config(self) -> ExperimentConfig:
-        """Create quick test configuration."""
+        """Create a quick test config: 3 subjects, XGBoost, LOSO CV."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         config = ExperimentConfig(
@@ -509,14 +509,14 @@ class InteractiveMenu:
         return config
     
     def view_leaderboard(self):
-        """View full leaderboard."""
+        """Display the full cache performance leaderboard."""
         clear_screen()
         leaderboard = get_leaderboard()
         leaderboard.print_summary()
         input("\nPress Enter to continue...")
     
     def system_status(self):
-        """Show system status."""
+        """Show data path, cache status, model implementation status, and thesis grid info."""
         clear_screen()
         print("=" * 70)
         print("SYSTEM STATUS")

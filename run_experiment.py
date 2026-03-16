@@ -211,7 +211,7 @@ def create_config_from_args(args) -> ExperimentConfig:
 
 
 def print_experiment_summary(config: ExperimentConfig):
-    """Print experiment configuration summary."""
+    """Print full experiment configuration: data, preprocessing, features, model, and CV settings."""
     print("\n" + "="*60)
     print("EXPERIMENT CONFIGURATION")
     print("="*60)
@@ -249,7 +249,7 @@ def print_experiment_summary(config: ExperimentConfig):
 
 
 def main():
-    """Main entry point."""
+    """Entry point: handle info commands, launch interactive or CLI mode, run Stage 1+2 pipeline."""
     # Parse arguments
     args = parse_arguments()
     

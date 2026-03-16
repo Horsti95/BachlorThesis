@@ -32,9 +32,18 @@ logger = logging.getLogger(__name__)
 
 
 class BaseModel(ABC):
-    """Abstract base class for all models."""
-    
+    """Abstract base class for all sleep stage classification models.
+
+    Subclasses must implement fit, predict, and predict_proba.
+    """
+
     def __init__(self, params: Dict[str, Any], random_seed: int = 42):
+        """Initialize base model.
+
+        Args:
+            params: Model-specific hyperparameters.
+            random_seed: Random seed for reproducibility.
+        """
         self.params = params
         self.random_seed = random_seed
         self.model = None
@@ -42,21 +51,43 @@ class BaseModel(ABC):
     
     @abstractmethod
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'BaseModel':
-        """Fit the model to training data."""
+        """Fit the model to training data.
+
+        Args:
+            X: Training feature matrix (n_samples, n_features).
+            y: Target labels (n_samples,).
+
+        Returns:
+            Self for method chaining.
+        """
         pass
-    
+
     @abstractmethod
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Predict labels for samples."""
+        """Predict sleep stage labels for samples.
+
+        Args:
+            X: Feature matrix (n_samples, n_features).
+
+        Returns:
+            Predicted labels (n_samples,).
+        """
         pass
-    
+
     @abstractmethod
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Predict class probabilities."""
+        """Predict class probabilities for each sleep stage.
+
+        Args:
+            X: Feature matrix (n_samples, n_features).
+
+        Returns:
+            Probability matrix (n_samples, n_classes).
+        """
         pass
-    
+
     def get_params(self) -> Dict[str, Any]:
-        """Get model parameters."""
+        """Get a copy of the model's hyperparameters."""
         return self.params.copy()
 
 
@@ -74,6 +105,12 @@ class XGBoostModel(BaseModel):
     """
     
     def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
+        """Initialize XGBoost classifier with default or custom parameters.
+
+        Args:
+            params: Optional dict of XGBoost hyperparameters to override defaults.
+            random_seed: Random seed for reproducibility.
+        """
         default_params = {
             'max_depth': 6,
             'n_estimators': 200,
@@ -99,7 +136,7 @@ class XGBoostModel(BaseModel):
             raise ImportError("XGBoost not installed. Run: pip install xgboost")
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'XGBoostModel':
-        """Fit XGBoost model."""
+        """Train the XGBoost classifier on the provided data."""
         logger.debug(f"Training XGBoost on {X.shape[0]} samples, {X.shape[1]} features")
         self.model.fit(X, y)
         self.is_fitted = True
@@ -118,7 +155,11 @@ class XGBoostModel(BaseModel):
         return self.model.predict_proba(X)
     
     def feature_importance(self) -> np.ndarray:
-        """Get feature importances."""
+        """Get feature importances from the trained XGBoost model.
+
+        Returns:
+            Array of importance scores, one per feature.
+        """
         if not self.is_fitted:
             raise RuntimeError("Model must be fitted first")
         return self.model.feature_importances_
@@ -138,6 +179,12 @@ class RandomForestModel(BaseModel):
     """
     
     def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
+        """Initialize Random Forest classifier with default or custom parameters.
+
+        Args:
+            params: Optional dict of RF hyperparameters to override defaults.
+            random_seed: Random seed for reproducibility.
+        """
         default_params = {
             'n_estimators': 200,
             'max_depth': None,  # No limit
@@ -162,7 +209,7 @@ class RandomForestModel(BaseModel):
             raise ImportError("scikit-learn not installed. Run: pip install scikit-learn")
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'RandomForestModel':
-        """Fit Random Forest model."""
+        """Train the Random Forest classifier on the provided data."""
         logger.debug(f"Training Random Forest on {X.shape[0]} samples, {X.shape[1]} features")
         self.model.fit(X, y)
         self.is_fitted = True
@@ -181,7 +228,11 @@ class RandomForestModel(BaseModel):
         return self.model.predict_proba(X)
     
     def feature_importance(self) -> np.ndarray:
-        """Get feature importances."""
+        """Get feature importances from the trained Random Forest model.
+
+        Returns:
+            Array of importance scores, one per feature.
+        """
         if not self.is_fitted:
             raise RuntimeError("Model must be fitted first")
         return self.model.feature_importances_
@@ -207,6 +258,12 @@ class FNNModel(BaseModel):
     """
     
     def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
+        """Initialize FNN model. Requires PyTorch.
+
+        Args:
+            params: Optional dict of hyperparameters (hidden_dims, dropout, lr, etc.).
+            random_seed: Random seed for reproducibility.
+        """
         default_params = {
             'hidden_dims': [256, 128, 64],
             'dropout': 0.3,
@@ -246,7 +303,15 @@ class FNNModel(BaseModel):
         self._n_features = None
     
     def _build_network(self, n_features: int, n_classes: int = 5):
-        """Build the neural network architecture."""
+        """Build the feedforward neural network as nn.Sequential.
+
+        Args:
+            n_features: Number of input features.
+            n_classes: Number of output classes (default 5 sleep stages).
+
+        Returns:
+            nn.Sequential model with BatchNorm, ReLU, and Dropout layers.
+        """
         import torch.nn as nn
         
         hidden_dims = self.params['hidden_dims']
@@ -270,7 +335,11 @@ class FNNModel(BaseModel):
         return nn.Sequential(*layers)
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'FNNModel':
-        """Fit FNN model using PyTorch."""
+        """Train the FNN using PyTorch with early stopping.
+
+        Scales features with StandardScaler, then trains via Adam optimizer
+        with CrossEntropyLoss. Stops early if loss plateaus.
+        """
         if not self._torch_available:
             raise ImportError("PyTorch not installed. Run: pip install torch")
         

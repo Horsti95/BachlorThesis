@@ -565,7 +565,7 @@ def run_training_experiment(
 
 
 def main():
-    """Main entry point."""
+    """Parse CLI args, verify cache, build training grid, run experiment, and generate outputs."""
     args = parse_arguments()
     
     # Setup logging
