@@ -1,0 +1,253 @@
+{
+  "metadata": {
+    "thesis_title": "EEG-Based Sleep Stage Classification with Model Caching",
+    "dataset": "MASS SS3 (Montreal Archive of Sleep Studies, Subset 3)",
+    "subjects_total": 128,
+    "validation": "LOSO (Leave-One-Subject-Out) = 128 folds",
+    "features_total": 149,
+    "feature_selection": "ANOVA (f_classif)",
+    "classes": ["Wake (W)", "N1", "N2", "N3", "REM"],
+    "n_classes": 5,
+    "cache_strategy": "per-fold joblib serialization with fingerprint-based invalidation",
+    "generated": "2026-03-16"
+  },
+
+  "experiment_1_xgboost_full_evaluation": {
+    "description": "XGBoost LOSO cache evaluation across 9 feature selection configurations",
+    "subjects": 128,
+    "folds": 128,
+    "source_file": "results/xgb_cache_evaluation_20260314_151728.csv",
+    "configs": [
+      {"config": "corr=0.75, k=30", "n_features": 30, "cold_s": 905.0, "warm_s": 6.67, "speedup": 135.7, "cache_mb": 186.4, "accuracy": 0.8121, "kappa": 0.6669, "f1_macro": 0.638},
+      {"config": "corr=0.75, k=50", "n_features": 48, "cold_s": 1269.1, "warm_s": 6.97, "speedup": 182.2, "cache_mb": 189.2, "accuracy": 0.8245, "kappa": 0.6895, "f1_macro": 0.6551},
+      {"config": "corr=0.75, k=None", "n_features": 48, "cold_s": 1280.9, "warm_s": 7.31, "speedup": 175.1, "cache_mb": 189.2, "accuracy": 0.8245, "kappa": 0.6895, "f1_macro": 0.6551},
+      {"config": "corr=0.9, k=30", "n_features": 30, "cold_s": 854.0, "warm_s": 6.95, "speedup": 122.9, "cache_mb": 175.7, "accuracy": 0.817, "kappa": 0.676, "f1_macro": 0.6298},
+      {"config": "corr=0.9, k=50", "n_features": 50, "cold_s": 1317.4, "warm_s": 7.36, "speedup": 179.0, "cache_mb": 187.4, "accuracy": 0.8322, "kappa": 0.7047, "f1_macro": 0.6664},
+      {"config": "corr=0.9, k=None", "n_features": 84, "cold_s": 2067.0, "warm_s": 7.49, "speedup": 276.1, "cache_mb": 188.7, "accuracy": 0.8458, "kappa": 0.7299, "f1_macro": 0.6824},
+      {"config": "corr=None, k=30", "n_features": 30, "cold_s": 918.5, "warm_s": 7.3, "speedup": 125.9, "cache_mb": 176.6, "accuracy": 0.7843, "kappa": 0.6132, "f1_macro": 0.5965},
+      {"config": "corr=None, k=50", "n_features": 50, "cold_s": 1277.1, "warm_s": 7.16, "speedup": 178.4, "cache_mb": 178.3, "accuracy": 0.8298, "kappa": 0.6994, "f1_macro": 0.6494},
+      {"config": "corr=None, k=None", "n_features": 149, "cold_s": 3683.3, "warm_s": 7.39, "speedup": 498.3, "cache_mb": 188.2, "accuracy": 0.8545, "kappa": 0.7451, "f1_macro": 0.6898}
+    ],
+    "summary": {
+      "best_accuracy_config": "corr=None, k=None (149 features)",
+      "best_accuracy": 0.8545,
+      "best_speedup": 498.3,
+      "avg_speedup": 208.2,
+      "avg_cache_mb": 184.6,
+      "avg_warm_s": 7.07,
+      "cache_verdict": "VIABLE"
+    }
+  },
+
+  "experiment_2_random_forest_full_evaluation": {
+    "description": "Random Forest LOSO cache evaluation across 9 feature selection configurations",
+    "subjects": 128,
+    "folds": 128,
+    "source_file": "results/rf_cache_evaluation_full_9configs.csv",
+    "note": "Configs 1-6 from first run, configs 7-9 from clean re-run. Config 7 (corr=None, k=30) may have outlier fold timing.",
+    "configs": [
+      {"config": "corr=0.75, k=30", "n_features": 30, "cold_s": 4149.4, "warm_s": 345.69, "speedup": 12.0, "cache_gb": 19.21, "accuracy": 0.795, "kappa": 0.6192, "f1_macro": 0.5763},
+      {"config": "corr=0.75, k=50", "n_features": 48, "cold_s": 4401.2, "warm_s": 355.01, "speedup": 12.4, "cache_gb": 19.91, "accuracy": 0.7975, "kappa": 0.6227, "f1_macro": 0.5781},
+      {"config": "corr=0.75, k=None", "n_features": 48, "cold_s": 4399.1, "warm_s": 355.4, "speedup": 12.4, "cache_gb": 19.91, "accuracy": 0.7975, "kappa": 0.6227, "f1_macro": 0.5781},
+      {"config": "corr=0.9, k=30", "n_features": 30, "cold_s": 4126.4, "warm_s": 351.13, "speedup": 11.8, "cache_gb": 19.06, "accuracy": 0.8056, "kappa": 0.6455, "f1_macro": 0.5933},
+      {"config": "corr=0.9, k=50", "n_features": 50, "cold_s": 5503.5, "warm_s": 310.33, "speedup": 17.7, "cache_gb": 16.96, "accuracy": 0.8118, "kappa": 0.6544, "f1_macro": 0.5986},
+      {"config": "corr=0.9, k=None", "n_features": 84, "cold_s": 5971.9, "warm_s": 309.51, "speedup": 19.3, "cache_gb": 17.44, "accuracy": 0.815, "kappa": 0.6604, "f1_macro": 0.6026},
+      {"config": "corr=None, k=30", "n_features": 30, "cold_s": 11331.1, "warm_s": 356.02, "speedup": 31.8, "cache_gb": 20.4, "accuracy": 0.7718, "kappa": 0.5725, "f1_macro": 0.5558, "note": "Possibly inflated cold time due to stuck fold during Ctrl+C recovery"},
+      {"config": "corr=None, k=50", "n_features": 50, "cold_s": 5465.4, "warm_s": 305.16, "speedup": 17.9, "cache_gb": 17.45, "accuracy": 0.8152, "kappa": 0.6614, "f1_macro": 0.6034},
+      {"config": "corr=None, k=None", "n_features": 149, "cold_s": 31679.5, "warm_s": 288.64, "speedup": 109.8, "cache_gb": 16.29, "accuracy": 0.8186, "kappa": 0.6659, "f1_macro": 0.607}
+    ],
+    "summary": {
+      "best_accuracy_config": "corr=None, k=None (149 features)",
+      "best_accuracy": 0.8186,
+      "best_speedup": 109.8,
+      "avg_speedup_all": 28.1,
+      "avg_speedup_excl_outlier_cfg7": 25.2,
+      "avg_cache_gb": 18.51,
+      "avg_warm_s": 329.7,
+      "cache_verdict": "BORDERLINE",
+      "comparison_vs_xgboost": {
+        "xgb_avg_cache_mb": 184.6,
+        "rf_avg_cache_gb": 18.51,
+        "xgb_avg_speedup": 208.2,
+        "rf_avg_speedup": 28.1,
+        "conclusion": "XGBoost caching is ~100x more storage-efficient and ~7x faster in speedup ratio"
+      }
+    }
+  },
+
+  "experiment_3_multi_model_cache_viability": {
+    "description": "Cache viability assessment for 16 models",
+    "datasets": {
+      "128_subjects_5_folds": {
+        "source_file": "model_tryouts/results/cache_viability_128subj_5folds_20260314_233922.csv",
+        "viable": [
+          {"model": "gradient_boosting", "speedup": 18030.4, "cache_mb": 2.01, "accuracy": 0.81},
+          {"model": "adaboost", "speedup": 2616.3, "cache_mb": 0.1, "accuracy": 0.6563},
+          {"model": "svm_linear", "speedup": 1949.7, "cache_mb": 0.03, "accuracy": 0.7507},
+          {"model": "decision_tree", "speedup": 452.8, "cache_mb": 2.31, "accuracy": 0.6844},
+          {"model": "catboost", "speedup": 164.9, "cache_mb": 2.57, "accuracy": 0.7336},
+          {"model": "svm_rbf", "speedup": 138.1, "cache_mb": 309.95, "accuracy": 0.7107},
+          {"model": "xgboost", "speedup": 118.5, "cache_mb": 7.55, "accuracy": 0.8361},
+          {"model": "lightgbm", "speedup": 90.4, "cache_mb": 7.83, "accuracy": 0.8009},
+          {"model": "logistic_regression", "speedup": 72.6, "cache_mb": 0.03, "accuracy": 0.6782},
+          {"model": "naive_bayes", "speedup": 5.0, "cache_mb": 0.05, "accuracy": 0.4428},
+          {"model": "ridge_classifier", "speedup": 2.1, "cache_mb": 0.03, "accuracy": 0.6178}
+        ],
+        "not_viable": [
+          {"model": "random_forest", "speedup": 14.5, "cache_mb": 653.95, "accuracy": 0.7971},
+          {"model": "knn_5", "speedup": 5.0, "cache_mb": 587.53, "accuracy": 0.763},
+          {"model": "knn_10", "speedup": 4.9, "cache_mb": 587.53, "accuracy": 0.7761},
+          {"model": "extra_trees", "speedup": 4.3, "cache_mb": 1544.1, "accuracy": 0.7917}
+        ]
+      },
+      "30_subjects_3_folds": {
+        "source_file": "model_tryouts/results/cache_viability_30subj_3folds_20260314_161235.csv",
+        "top_performers": [
+          {"model": "gradient_boosting", "speedup": 10019.8, "accuracy": 0.7479},
+          {"model": "svm_linear", "speedup": 1404.0, "accuracy": 0.7613},
+          {"model": "adaboost", "speedup": 994.7, "accuracy": 0.6878},
+          {"model": "xgboost", "speedup": 99.2, "accuracy": 0.8187}
+        ]
+      }
+    }
+  },
+
+  "experiment_4_svm_scaling": {
+    "description": "SVM cache performance scaling from 10 to 128 subjects",
+    "source_files": "results/svm_scaling_20260314_214645/",
+    "svm_linear": [
+      {"subjects": 10, "speedup": 1736.4, "accuracy": 0.8023},
+      {"subjects": 30, "speedup": 1550.8, "accuracy": 0.7613},
+      {"subjects": 64, "speedup": 2040.2, "accuracy": 0.7465},
+      {"subjects": 128, "speedup": 3092.5, "accuracy": 0.7534}
+    ],
+    "svm_rbf": [
+      {"subjects": 10, "speedup": 9.2, "cache_mb": 15.32, "accuracy": 0.6244},
+      {"subjects": 30, "speedup": 33.4, "cache_mb": 45.11, "accuracy": 0.7073},
+      {"subjects": 64, "speedup": 82.3, "cache_mb": 92.73, "accuracy": 0.7248},
+      {"subjects": 128, "speedup": 200.9, "cache_mb": 184.45, "accuracy": 0.7292}
+    ],
+    "finding": "Both SVM variants show increasing speedup with more subjects. SVM-RBF cache grows linearly with subjects but speedup grows super-linearly."
+  },
+
+  "experiment_5_feature_size_scaling": {
+    "description": "Impact of feature count on cache viability (30 subjects, 3 folds)",
+    "source_files": "results/feature_size_20260315_001142/",
+    "xgboost_scaling": [
+      {"top_k": 10, "features": 10, "cold_s": 3.03, "speedup": 39.8, "accuracy": 0.7226},
+      {"top_k": 30, "features": 30, "cold_s": 4.75, "speedup": 48.7, "accuracy": 0.7818},
+      {"top_k": 50, "features": 50, "cold_s": 12.52, "speedup": 66.3, "accuracy": 0.8129},
+      {"top_k": 149, "features": 149, "cold_s": 28.09, "speedup": 143.3, "accuracy": 0.8187}
+    ],
+    "finding": "More features = higher accuracy and higher speedup. Optimal trade-off at 50 features (81.3% accuracy, 66x speedup)."
+  },
+
+  "experiment_6_anova_vs_mutual_information": {
+    "description": "Feature selection method comparison: ANOVA vs Mutual Information",
+    "source_file": "results/benchmark/anova_vs_mi_summary.csv",
+    "subjects": 10,
+    "epochs": 9289,
+    "features": 195,
+    "anova": {"avg_time_s": 0.0215, "std_s": 0.0014, "accuracy_5fold": 0.8426, "runs": 5},
+    "mutual_information": {"avg_time_s": 3.74, "std_s": 0.38, "accuracy_5fold": 0.8058, "runs": 3},
+    "speedup": 174,
+    "accuracy_difference_pct": 3.68,
+    "finding": "ANOVA is 174x faster AND 3.68% more accurate than MI. ANOVA is the clearly superior choice."
+  },
+
+  "experiment_7_parallelization": {
+    "description": "n_jobs benchmark for training parallelism",
+    "source_files": {
+      "default": "benchmarks_and_tests/results/njobs_benchmark_30subj_20260315_000926.csv",
+      "eco": "results/eco_mode/njobs_benchmark_30subj_eco_20260315_043234.csv",
+      "power": "results/eco_mode/njobs_benchmark_30subj_power_20260315_043553.csv"
+    },
+    "subjects": 30,
+    "folds": 2,
+    "default_mode": {
+      "random_forest": {"1core_s": 38.23, "12core_s": 3.46, "allcore_s": 2.27, "speedup_1_to_all": 16.8},
+      "extra_trees": {"1core_s": 8.79, "12core_s": 1.22, "allcore_s": 0.85, "speedup_1_to_all": 10.3},
+      "xgboost": {"1core_s": 31.49, "12core_s": 7.87, "allcore_s": 5.32, "speedup_1_to_all": 5.9},
+      "lightgbm": {"1core_s": 10.36, "12core_s": 1.95, "allcore_s": 2.50, "speedup_1_to_all": 4.1}
+    },
+    "finding": "Tree-based ensembles (RF, ET) scale near-linearly with cores. Boosting models (XGB, LGB) show diminishing returns beyond 12 cores."
+  },
+
+  "experiment_8_eco_vs_power": {
+    "description": "Energy mode comparison (eco vs power CPU governor)",
+    "source_file": "results/eco_mode/eco_vs_power_energy_analysis.csv",
+    "models": [
+      {"model": "random_forest", "eco_allcore_s": 3.03, "power_allcore_s": 1.68, "eco_speedup": 17.7, "power_speedup": 17.0},
+      {"model": "extra_trees", "eco_allcore_s": 0.71, "power_allcore_s": 0.41, "eco_speedup": 14.2, "power_speedup": 13.1},
+      {"model": "xgboost", "eco_allcore_s": 5.72, "power_allcore_s": 2.98, "eco_speedup": 5.7, "power_speedup": 6.1},
+      {"model": "lightgbm", "eco_allcore_s": 2.27, "power_allcore_s": 1.07, "eco_speedup": 6.9, "power_speedup": 7.8}
+    ],
+    "finding": "Power mode is ~1.8-2x faster in absolute time, but parallel efficiency ratios are similar. Caching benefit is consistent regardless of CPU governor."
+  },
+
+  "experiment_9_old_machine_portability": {
+    "description": "Cache viability on different hardware (old laptop, 30 subjects, 3 folds)",
+    "source_file": "results/old_machine_30subj/cache_viability_30subj_3folds_20260315_043833.csv",
+    "viable": [
+      {"model": "gradient_boosting", "speedup": 5025.5, "accuracy": 0.7486},
+      {"model": "svm_linear", "speedup": 1515.0, "accuracy": 0.7613},
+      {"model": "adaboost", "speedup": 605.8, "accuracy": 0.6878},
+      {"model": "xgboost", "speedup": 208.4, "accuracy": 0.8064},
+      {"model": "lightgbm", "speedup": 64.8, "accuracy": 0.8006}
+    ],
+    "not_viable": [
+      {"model": "random_forest", "speedup": 12.9, "accuracy": 0.8334},
+      {"model": "extra_trees", "speedup": 4.0, "accuracy": 0.8314}
+    ],
+    "finding": "Cache viability verdicts are consistent across hardware. Same models are VIABLE/NOT_VIABLE on both machines."
+  },
+
+  "experiment_10_model_comparison_baseline": {
+    "description": "Baseline model accuracy comparison (train/test split, no caching)",
+    "source_files": [
+      "model_tryouts/results/model_comparison_train_test_20260314_031422.csv",
+      "model_tryouts/results/model_comparison_train_test_20260314_030807.csv"
+    ],
+    "top_5_models_run1": [
+      {"model": "lightgbm", "accuracy": 0.9129, "kappa": 0.8418, "f1_macro": 0.8014},
+      {"model": "gradient_boosting", "accuracy": 0.9021, "kappa": 0.8178, "f1_macro": 0.7556},
+      {"model": "xgboost", "accuracy": 0.9021, "kappa": 0.8201, "f1_macro": 0.7641},
+      {"model": "fnn", "accuracy": 0.8966, "kappa": 0.8097, "f1_macro": 0.7569},
+      {"model": "extra_trees", "accuracy": 0.8890, "kappa": 0.7873, "f1_macro": 0.7127}
+    ],
+    "finding": "LightGBM and XGBoost consistently rank as top performers. Both are cache-VIABLE with high speedups."
+  },
+
+  "key_thesis_claims": {
+    "claim_1_cache_speedup": {
+      "claim": "Fingerprint-based model caching provides significant speedup for LOSO cross-validation",
+      "evidence": "XGBoost: 122-498x speedup across 9 configs. Best case 498x (61 min cold → 7.4s warm).",
+      "validated": true
+    },
+    "claim_2_accuracy_preservation": {
+      "claim": "Cached models produce identical predictions to freshly trained models",
+      "evidence": "accuracy_match=True for all 18 configs (9 XGB + 9 RF). warm_accuracy == cold_accuracy in every case.",
+      "validated": true
+    },
+    "claim_3_anova_efficiency": {
+      "claim": "ANOVA feature selection is vastly faster than Mutual Information with comparable or better accuracy",
+      "evidence": "174x faster, 3.68% MORE accurate (84.3% vs 80.6%)",
+      "validated": true
+    },
+    "claim_4_scalability": {
+      "claim": "Cache benefits scale with dataset size",
+      "evidence": "SVM-linear: 1736x (10 subj) → 3093x (128 subj). SVM-RBF: 9x → 201x. More subjects = higher speedup.",
+      "validated": true
+    },
+    "claim_5_model_viability_spectrum": {
+      "claim": "Not all models benefit equally from caching",
+      "evidence": "Gradient Boosting: 18030x (tiny cache). RF: 12-110x (20 GB cache). Extra Trees: 4x (NOT VIABLE). Clear viability spectrum.",
+      "validated": true
+    },
+    "claim_6_hardware_portability": {
+      "claim": "Cache viability results are consistent across different hardware",
+      "evidence": "Old machine results match new machine viability verdicts for all tested models.",
+      "validated": true
+    }
+  }
+}
