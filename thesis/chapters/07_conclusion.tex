@@ -110,6 +110,26 @@ Several directions for future research:
     \item \textbf{Multi-modal fusion:} Combine EEG with other signals (EOG, EMG, ECG)
 \end{itemize}
 
+\subsection{Neural Network Caching}
+\label{subsec:future_fnn_caching}
+
+A particularly promising direction is extending the caching framework to neural network models such as feedforward neural networks (FNNs). Our baseline evaluation showed FNN achieving 89.66\% accuracy (4th overall), making it a competitive classifier. However, neural network caching introduces a fundamentally different challenge: \textbf{non-deterministic training}.
+
+Unlike sklearn models where identical inputs and random seeds produce bit-identical outputs, PyTorch training is non-deterministic due to GPU floating-point operation ordering, cuDNN algorithm selection, and parallel reduction non-associativity. This means the fingerprint-based caching contract changes from ``deterministic reproduction'' to ``checkpoint preservation'':
+
+\begin{itemize}
+    \item The cached model is a \emph{specific trained instance}, not a reproducible result
+    \item Retraining with identical configuration will produce a \emph{different} model with similar but not identical performance
+    \item Cache validity depends on configuration matching, not output determinism
+\end{itemize}
+
+Despite this conceptual difference, FNN caching remains practical: model sizes are small ($\sim$5~MB per fold), training time is significant ($\sim$60--90s per fold), and cached inference is fully deterministic. Investigating the viability and appropriate caching semantics for non-deterministic models is a natural extension of this work.
+
+\subsection{Extended Scaling Analysis}
+\label{subsec:future_scaling}
+
+Our scaling experiments covered SVM models (subject scaling: 10$\rightarrow$128) and XGBoost (feature scaling: k=10$\rightarrow$149). Extending these experiments to additional models would reveal whether the observed scaling patterns (quadratic training cost vs.\ constant cache loading) generalize across model families. Of particular interest is whether tree ensembles (Random Forest, Extra Trees) show different scaling regimes than boosting models, and whether combined subject$\times$feature scaling produces non-additive interactions. Such a two-dimensional viability analysis could transform the current binary VIABLE/NOT VIABLE classification into continuous viability curves parameterized by dataset size and dimensionality.
+
 \subsection{System Enhancements}
 \label{subsec:future_system}
 
