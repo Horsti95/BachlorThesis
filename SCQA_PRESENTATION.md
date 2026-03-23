@@ -1,6 +1,87 @@
-# SCQA Presentation – 2-3 Minutes
+# Minto Pyramid – Full Structure
 ## "ML Experiment Optimization with Intelligent Caching"
 ### Lennart Gorzel | IMC FH Krems
+
+---
+
+## The Full Minto Pyramid (Visual Scheme)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     SCQA = THE TOP                          │
+│              (Introduction / Story Setup)                    │
+│                                                             │
+│  S: Sleep EEG classification, 128 subjects, 2304 runs      │
+│  C: Takes 9-12h, 80% is redundant recomputation            │
+│  Q: How to cache without risking wrong results?             │
+│  A: Fingerprint-based 4-stage caching → 80%+ speedup       │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+              ┌────────────┼────────────────┐
+              │            │                │
+              ▼            ▼                ▼
+┌──────────────────┐ ┌──────────────┐ ┌──────────────────┐
+│  KEY ARGUMENT 1  │ │ KEY ARGUMENT │ │  KEY ARGUMENT 3  │
+│                  │ │      2       │ │                  │
+│  WHY is there    │ │ HOW does the │ │ DOES it actually │
+│  so much waste?  │ │ caching work?│ │ work?            │
+└────────┬─────────┘ └──────┬───────┘ └────────┬─────────┘
+         │                  │                   │
+    ┌────┴────┐        ┌────┴────┐         ┌────┴────┐
+    ▼         ▼        ▼         ▼         ▼         ▼
+┌───────┐┌───────┐┌───────┐┌───────┐┌───────┐┌───────┐
+│Support││Support││Support││Support││Support││Support│
+│ 1.1   ││ 1.2   ││ 2.1   ││ 2.2   ││ 3.1   ││ 3.2   │
+└───────┘└───────┘└───────┘└───────┘└───────┘└───────┘
+```
+
+### Filled in for your thesis:
+
+```
+                    ┌─────────────────────────────┐
+                    │         MAIN MESSAGE         │
+                    │  "Fingerprint-based caching  │
+                    │   cuts ML experiment time    │
+                    │   by 80%+ safely"            │
+                    └──────────────┬──────────────-┘
+                                   │
+            ┌──────────────────────┼──────────────────────┐
+            │                      │                      │
+            ▼                      ▼                      ▼
+   ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+   │ 1. THE PROBLEM  │  │ 2. THE SOLUTION  │  │  3. THE PROOF    │
+   │                 │  │                  │  │                  │
+   │ Iterative ML    │  │ 4-stage SHA-256  │  │ 100% hit rate    │
+   │ experiments     │  │ fingerprint      │  │ 4.5× speedup     │
+   │ waste 80%+      │  │ cache            │  │ 0 data leakage   │
+   │ compute time    │  │                  │  │                  │
+   └───────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+           │                     │                      │
+     ┌─────┴─────┐        ┌─────┴──────┐         ┌─────┴─────┐
+     │           │        │            │         │           │
+     ▼           ▼        ▼            ▼         ▼           ▼
+┌─────────┐┌─────────┐┌────────┐┌──────────┐┌────────┐┌─────────┐
+│ 128×18  ││ Same    ││Stage 1 ││Subject   ││Cold:9h ││Feature  │
+│ = 2304  ││features ││Preproc ││ID in     ││Warm:1h ││cache:   │
+│ runs per││ recalc- ││→ Stage4││finger-   ││        ││224×     │
+│ experi- ││ ulated  ││Models  ││print =   ││        ││faster   │
+│ ment    ││ every   ││        ││no leak   ││        ││         │
+│         ││ time    ││        ││          ││        ││         │
+└─────────┘└─────────┘└────────┘└──────────┘└────────┘└─────────┘
+```
+
+### How to read the pyramid:
+
+```
+LEVEL 0 (Top):     SCQA → delivers the MAIN MESSAGE (your thesis in 1 sentence)
+                          ↓ "Why should I believe you?"
+LEVEL 1 (Middle):  3 KEY ARGUMENTS that support the main message
+                          ↓ "Show me the details"
+LEVEL 2 (Bottom):  SUPPORTING EVIDENCE for each argument (data, examples, proof)
+```
+
+> **SCQA is only the ENTRY POINT** — it sets up the story so the audience
+> asks the right question. The pyramid below it is where you *prove* your answer.
 
 ---
 
