@@ -283,14 +283,6 @@ def parse_arguments():
         help='Use pure Mutual Information (slower, default is hybrid f_classif->MI)'
     )
     
-    # Parallelism
-    parser.add_argument(
-        '--n-jobs', '-j',
-        type=int,
-        default=1,
-        help='Number of parallel jobs for fold training (e.g., 6)'
-    )
-    
     # Output options
     parser.add_argument(
         '--no-viz',
@@ -340,8 +332,7 @@ def run_training_experiment(
     output_dir: Path,
     experiment_name: str,
     generate_viz: bool = True,
-    use_hybrid: bool = True,
-    n_jobs: int = 1
+    use_hybrid: bool = True
 ) -> Dict:
     """
     Run the complete training experiment.
@@ -355,8 +346,6 @@ def run_training_experiment(
         experiment_name: Experiment identifier
         generate_viz: Whether to generate visualizations
         use_hybrid: Use hybrid feature selection
-        n_jobs: Number of parallel jobs
-        
     Returns:
         Dictionary with experiment results
     """
@@ -427,8 +416,7 @@ def run_training_experiment(
         subject_ids=subject_ids,
         output_dir=exp_dir,
         experiment_name=experiment_name,
-        formatter=formatter,
-        n_jobs=n_jobs
+        formatter=formatter
     )
     
     # Print cache status using formatter
@@ -651,7 +639,7 @@ def main():
     print(f"Correlation thresholds: {correlation_thresholds}")
     print(f"Top-K features: {top_k_features}")
     print(f"Feature selection: {selection_method}")
-    print(f"Parallel jobs: {args.n_jobs}")
+    print(f"Execution: sequential (deterministic, cache-compatible)")
     print(f"Total runs: {total_runs}")
     print(f"Estimated time: {estimated_minutes:.1f} minutes")
     print(f"Output: {args.output_dir}/{exp_name}")
@@ -683,8 +671,7 @@ def main():
             output_dir=output_dir,
             experiment_name=exp_name,
             generate_viz=not args.no_viz,
-            use_hybrid=not args.pure_mi,
-            n_jobs=args.n_jobs
+            use_hybrid=not args.pure_mi
         )
         
         # Generate cache-focused outputs (THESIS FOCUS)

@@ -38,7 +38,6 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from config import ExperimentConfig
 from models import create_model, evaluate_model, BaseModel
@@ -198,59 +197,6 @@ class ExperimentResult:
 # Training Functions
 # =============================================================================
 
-def _run_fold_parallel(
-    fold_idx: int,
-    fold: CVFold,
-    features_df: pd.DataFrame,
-    labels: np.ndarray,
-    config: TrainingConfig,
-    selected_features: Optional[List[str]] = None
-) -> FoldResult:
-    """
-    Helper function for parallel fold training.
-    
-    This function is standalone to allow pickling for ProcessPoolExecutor.
-    
-    Args:
-        fold_idx: Fold index
-        fold: CV fold object
-        features_df: All features
-        labels: All labels
-        config: Training configuration
-        selected_features: Pre-selected features for GLOBAL scope (skip fit)
-                          If None, performs per-fold feature selection
-    """
-    # Get train/test split
-    X_train, y_train, X_test, y_test = get_train_test_data(
-        features_df, labels, fold
-    )
-    
-    # Apply feature selection
-    if selected_features is not None:
-        # GLOBAL scope: Use pre-selected features (no fitting)
-        X_train_selected = X_train[selected_features]
-        X_test_selected = X_test[selected_features]
-    else:
-        # PER_FOLD scope: Fit feature selection on this fold's training data
-        fs_pipeline = FeatureSelectionPipeline(config.feature_selection)
-        X_train_selected = fs_pipeline.fit_transform(X_train, y_train)
-        X_test_selected = fs_pipeline.transform(X_test)
-    
-    # Create model
-    model = create_model(
-        config.model_type,
-        config.model_params,
-        config.random_state
-    )
-    
-    # Train and evaluate
-    return train_single_fold(
-        X_train_selected, y_train,
-        X_test_selected, y_test,
-        model, fold
-    )
-
-
 def train_single_fold(
     X_train: pd.DataFrame,
     y_train: np.ndarray,
@@ -394,7 +340,6 @@ class TrainingPipeline:
         output_dir: Path,
         experiment_name: str = "training_experiment",
         formatter: Optional[TrainingOutputFormatter] = None,
-        n_jobs: int = 1,
         enable_model_cache: bool = True,
         model_cache_dir: Optional[str] = None
     ):
@@ -408,7 +353,6 @@ class TrainingPipeline:
             output_dir: Directory for results
             experiment_name: Experiment identifier
             formatter: Optional output formatter for human-readable output
-            n_jobs: Number of parallel jobs for fold training
             enable_model_cache: Enable LOSO model caching (Layer 2)
             model_cache_dir: Directory for model cache (default: results/loso_model_cache)
         """
@@ -418,7 +362,6 @@ class TrainingPipeline:
         self.output_dir = Path(output_dir)
         self.experiment_name = experiment_name
         self.formatter = formatter or get_formatter()
-        self.n_jobs = n_jobs
         
         # Create output directories
         self.results_dir = self.output_dir / "training_results"
@@ -535,62 +478,7 @@ class TrainingPipeline:
                 f"  Selected {len(selected_features)} features in {fs_time:.2f}s (will reuse for all folds)"
             )
         
-        if self.n_jobs > 1:
-            # Parallel execution
-            self.formatter.print_substep(f"Training {n_folds} folds in parallel using {self.n_jobs} cores...")
-            
-            with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
-                # Submit all folds (with pre-selected features if global scope)
-                future_to_fold = {
-                    executor.submit(
-                        _run_fold_parallel, 
-                        idx, fold, self.features_df, self.labels, config, selected_features
-                    ): idx 
-                    for idx, fold in enumerate(folds, 1)
-                }
-                
-                # Process as they complete
-                fold_iter = as_completed(future_to_fold)
-                if use_tqdm:
-                    fold_iter = tqdm(
-                        fold_iter,
-                        desc=f"  {config.get_config_id()}",
-                        unit="fold",
-                        total=n_folds
-                    )
-                
-                for future in fold_iter:
-                    try:
-                        fold_result = future.result()
-                        fold_results.append(fold_result)
-                        
-                        # Update formatter's internal state for summary
-                        # We use print_fold_result to store the data, but it will also print
-                        # if not in QUIET mode. In parallel, this might be out of order.
-                        self.formatter.print_fold_result(
-                            fold_result.fold_id, fold_result.test_subject,
-                            fold_result.accuracy, fold_result.kappa, fold_result.f1_macro,
-                            fold_result.train_time_seconds + fold_result.predict_time_seconds,
-                            fold_result.n_features
-                        )
-                        
-                        # Update progress bar
-                        if use_tqdm:
-                            fold_iter.set_postfix({
-                                'acc': f"{fold_result.accuracy:.3f}",
-                                'kappa': f"{fold_result.kappa:.3f}"
-                            })
-                    except Exception as e:
-                        logger.error(f"Fold failed: {e}")
-                        self.formatter.print_error(f"Fold failed: {e}")
-            
-            # Sort results by fold_id to maintain order
-            fold_results.sort(key=lambda x: x.fold_id)
-            self.formatter._fold_results.sort(key=lambda x: x['fold'])
-            
-        else:
-            # Sequential execution (original logic)
-            # Progress bar (only in quiet mode)
+        # Sequential execution — deterministic, supports model caching
             fold_iter = tqdm(
                 enumerate(folds, 1),
                 desc=f"  {config.get_config_id()}",
