@@ -75,12 +75,16 @@ This implementation focuses on **intelligent caching via cryptographic fingerpri
 
 ### Benchmark Results (50 Subjects, Validated)
 
-| Model | Cold -> Warm SSD | SSD -> RAM |
-|-------|-----------------|------------|
-| **XGBoost** | **14.6x** | 1.8x |
-| **Random Forest** | **5.4x** | 3.7x |
+| Subjects | Model | Cold -> SSD Speedup | SSD -> RAM Speedup |
+|---:|---|---:|---:|
+| 50 | XGBoost | **14.6x** | 1.8x |
+| 50 | Random Forest | **5.4x** | 3.7x |
 
-> *Note: RAM caching (preloading models into memory) showed marginal improvement over SSD at small scale and degraded at 128 subjects due to memory pressure. The thesis focuses on Cold vs Warm SSD as the primary caching comparison — this is where the fingerprint-based invalidation provides the clearest benefit.*
+**Implications:**
+
+- **Cold -> SSD is the dominant speedup.** Fingerprint-based disk caching eliminates redundant model training entirely. XGBoost benefits more (14.6x) because its training is compute-heavy relative to serialization cost, so cache hits save proportionally more time.
+- **SSD -> RAM adds marginal benefit.** At 50 subjects the RAM advantage is 1.8-3.7x over SSD, but at 128 subjects it degraded due to memory pressure (GC overhead exceeding disk I/O savings). Modern NVMe SSDs already deliver near-RAM read speeds for the small model files (~1 MB each), so preloading to RAM provides diminishing returns.
+- **Thesis focus: Cold vs Warm SSD.** This is where fingerprint-based invalidation provides the clearest, most reproducible benefit. RAM caching is noted as a potential optimization but not recommended as a default strategy for this workload scale.
 
 ### Why This Matters
 
