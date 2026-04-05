@@ -212,8 +212,8 @@ class LOSOModelCache:
         if enable_registry:
             self._load_registry()
         
-        logger.info(f"LOSOModelCache initialized at {self.cache_dir}")
-        logger.info(f"  Existing cached models: {len(list(self.cache_dir.glob('*.joblib')))}")
+        logger.debug(f"LOSOModelCache initialized at {self.cache_dir}")
+        logger.debug(f"  Existing cached models: {len(list(self.cache_dir.glob('*.joblib')))}")
     
     def _get_cache_path(self, fingerprint: str, held_out_subject: str) -> Path:
         """

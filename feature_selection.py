@@ -134,40 +134,40 @@ class CorrelationFilter:
         Returns:
             Self for method chaining
         """
-        logger.info(f"Fitting CorrelationFilter with threshold={self.threshold}")
-        
+        logger.debug(f"Fitting CorrelationFilter with threshold={self.threshold}")
+
         # Compute correlation matrix
         self.correlation_matrix_ = X.corr().abs()
-        
+
         # Get upper triangle (avoid duplicates)
         upper_tri = self.correlation_matrix_.where(
             np.triu(np.ones(self.correlation_matrix_.shape), k=1).astype(bool)
         )
-        
+
         # Find features with correlation above threshold
         features_to_remove = set()
         highly_correlated_pairs = []
-        
+
         for col in upper_tri.columns:
             correlated_features = upper_tri.index[upper_tri[col] > self.threshold].tolist()
-            
+
             for corr_feature in correlated_features:
                 corr_value = self.correlation_matrix_.loc[corr_feature, col]
                 highly_correlated_pairs.append((corr_feature, col, corr_value))
-                
+
                 # Remove the one with lower variance
                 if X[corr_feature].var() < X[col].var():
                     features_to_remove.add(corr_feature)
                 else:
                     features_to_remove.add(col)
-        
+
         self.features_to_remove_ = list(features_to_remove)
         self.is_fitted_ = True
-        
+
         n_removed = len(self.features_to_remove_)
         n_pairs = len(highly_correlated_pairs)
-        logger.info(f"Found {n_pairs} highly correlated pairs")
-        logger.info(f"Will remove {n_removed} features: {self.features_to_remove_[:5]}...")
+        logger.debug(f"Found {n_pairs} highly correlated pairs")
+        logger.debug(f"Will remove {n_removed} features: {self.features_to_remove_[:5]}...")
         
         return self
     
@@ -348,7 +348,7 @@ class ANOVATopKSelector:
             Self for method chaining
         """
         start_time = time.time()
-        logger.info(f"Fitting ANOVATopKSelector with k={self.k}")
+        logger.debug(f"Fitting ANOVATopKSelector with k={self.k}")
         
         # Ensure k doesn't exceed available features
         actual_k = min(self.k, X.shape[1])
@@ -372,8 +372,8 @@ class ANOVATopKSelector:
         
         # Log top features
         sorted_features = sorted(self.feature_scores_.items(), key=lambda x: x[1], reverse=True)
-        logger.info(f"ANOVA selection complete in {self.selection_time_:.2f}s")
-        logger.info(f"Top 5 features by F-score: {sorted_features[:5]}")
+        logger.debug(f"ANOVA selection complete in {self.selection_time_:.2f}s")
+        logger.debug(f"Top 5 features by F-score: {sorted_features[:5]}")
         
         return self
     
@@ -627,7 +627,7 @@ class FeatureSelectionPipeline:
         
         method_str = f" ({self._selection_method.upper()})"
         scope_str = f" [scope={config.scope}]"
-        logger.info(f"Initialized FeatureSelectionPipeline: {config.get_config_id()}{method_str}{scope_str}")
+        logger.debug(f"Initialized FeatureSelectionPipeline: {config.get_config_id()}{method_str}{scope_str}")
     
     def fit(self, X: pd.DataFrame, y: np.ndarray) -> 'FeatureSelectionPipeline':
         """
@@ -643,8 +643,8 @@ class FeatureSelectionPipeline:
         start_time = time.time()
         self.n_features_input_ = X.shape[1]
         self.feature_names_input_ = list(X.columns)  # Store input feature names
-        logger.info(f"Fitting FeatureSelectionPipeline on {X.shape[0]} samples, {X.shape[1]} features")
-        logger.info(f"  Method: {self._selection_method}, Scope: {self.config.scope}")
+        logger.debug(f"Fitting FeatureSelectionPipeline on {X.shape[0]} samples, {X.shape[1]} features")
+        logger.debug(f"  Method: {self._selection_method}, Scope: {self.config.scope}")
         
         X_current = X.copy()
         
@@ -654,11 +654,11 @@ class FeatureSelectionPipeline:
             X_current = self.correlation_filter_.fit_transform(X_current)
             self.n_features_after_corr_ = X_current.shape[1]
             self.feature_names_after_corr_ = list(X_current.columns)  # Store names for kAll
-            logger.info(f"After correlation filter: {X_current.shape[1]} features")
+            logger.debug(f"After correlation filter: {X_current.shape[1]} features")
         else:
             self.n_features_after_corr_ = X_current.shape[1]
             self.feature_names_after_corr_ = list(X_current.columns)  # All features
-            logger.info("Correlation filtering: SKIPPED (threshold=None)")
+            logger.debug("Correlation filtering: SKIPPED (threshold=None)")
         
         # Step 2: Top-K selection (if configured)
         if self.config.top_k_features is not None:
@@ -669,7 +669,7 @@ class FeatureSelectionPipeline:
                     random_state=self.config.random_state
                 )
                 self.anova_selector_.fit(X_current, y)
-                logger.info(f"Top-K selection (ANOVA): selected {min(self.config.top_k_features, X_current.shape[1])} features")
+                logger.debug(f"Top-K selection (ANOVA): selected {min(self.config.top_k_features, X_current.shape[1])} features")
             elif self._selection_method == 'hybrid':
                 # Use fast hybrid f_classif -> MI selection
                 self.hybrid_selector_ = HybridTopKSelector(
@@ -677,7 +677,7 @@ class FeatureSelectionPipeline:
                     random_state=self.config.random_state
                 )
                 self.hybrid_selector_.fit(X_current, y)
-                logger.info(f"Top-K selection (HYBRID): selected {min(self.config.top_k_features, X_current.shape[1])} features")
+                logger.debug(f"Top-K selection (HYBRID): selected {min(self.config.top_k_features, X_current.shape[1])} features")
             elif self._selection_method == 'mi':
                 # Use pure MI (SLOWEST but captures all non-linear relationships)
                 self.top_k_selector_ = TopKSelector(
@@ -685,15 +685,15 @@ class FeatureSelectionPipeline:
                     random_state=self.config.random_state
                 )
                 self.top_k_selector_.fit(X_current, y)
-                logger.info(f"Top-K selection (MI): selected {min(self.config.top_k_features, X_current.shape[1])} features")
+                logger.debug(f"Top-K selection (MI): selected {min(self.config.top_k_features, X_current.shape[1])} features")
         else:
-            logger.info("Top-K selection: SKIPPED (top_k=None)")
+            logger.debug("Top-K selection: SKIPPED (top_k=None)")
         
         self.n_features_output_ = self._count_output_features(X_current)
         self.selection_time_ = time.time() - start_time
         self.is_fitted_ = True
         
-        logger.info(f"Feature selection summary: {self.n_features_input_} -> {self.n_features_output_} in {self.selection_time_:.2f}s")
+        logger.debug(f"Feature selection summary: {self.n_features_input_} -> {self.n_features_output_} in {self.selection_time_:.2f}s")
         return self
     
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:

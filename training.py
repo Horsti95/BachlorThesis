@@ -383,21 +383,21 @@ class TrainingPipeline:
                 enable_registry=True,
                 estimated_training_time=120.0  # 2 minutes default estimate
             )
-            logger.info(f"  Model cache: ENABLED at {cache_dir}")
+            logger.debug(f"  Model cache: ENABLED at {cache_dir}")
         else:
             self.model_cache = None
-            logger.info(f"  Model cache: DISABLED")
-        
+            logger.debug(f"  Model cache: DISABLED")
+
         # Subject info for formatter
         self._subject_epochs: Dict[str, int] = {}
         for subj in np.unique(subject_ids):
             self._subject_epochs[str(subj)] = int(np.sum(subject_ids == subj))
-        
-        logger.info(f"Initialized TrainingPipeline")
-        logger.info(f"  Features: {features_df.shape}")
-        logger.info(f"  Subjects: {len(np.unique(subject_ids))}")
-        logger.info(f"  LOSO folds: {self.n_folds}")
-        logger.info(f"  Output: {self.results_dir}")
+
+        logger.debug(f"Initialized TrainingPipeline")
+        logger.debug(f"  Features: {features_df.shape}")
+        logger.debug(f"  Subjects: {len(np.unique(subject_ids))}")
+        logger.debug(f"  LOSO folds: {self.n_folds}")
+        logger.debug(f"  Output: {self.results_dir}")
     
     def run_single_config(
         self,
@@ -424,7 +424,7 @@ class TrainingPipeline:
         Returns:
             ExperimentResult with aggregated metrics
         """
-        logger.info(f"Running config: {config.get_config_id()}")
+        logger.debug(f"Running config: {config.get_config_id()}")
         
         # Print config header using formatter
         config_dict = {
@@ -461,7 +461,7 @@ class TrainingPipeline:
              config.feature_selection.correlation_threshold is not None)
         )
         if use_global_fs:
-            logger.info("GLOBAL feature selection: fitting on all data (once)")
+            logger.debug("GLOBAL feature selection: fitting on all data (once)")
             self.formatter.print_substep(
                 f"Global feature selection ({config.feature_selection.selection_method.upper()}): "
                 f"fitting on {len(self.features_df)} samples..."
@@ -473,7 +473,7 @@ class TrainingPipeline:
             selected_features = global_fs_pipeline.get_selected_features()
             fs_time = time.time() - fs_start
 
-            logger.info(f"  Selected {len(selected_features)} features in {fs_time:.2f}s")
+            logger.debug(f"  Selected {len(selected_features)} features in {fs_time:.2f}s")
             self.formatter.print_substep(
                 f"  Selected {len(selected_features)} features in {fs_time:.2f}s (will reuse for all folds)"
             )
@@ -660,7 +660,7 @@ class TrainingPipeline:
             n_folds, n_folds  # All from cache
         )
         
-        logger.info(
+        logger.debug(
             f"  Result: acc={result.accuracy_mean:.3f}±{result.accuracy_std:.3f}, "
             f"kappa={result.kappa_mean:.3f}, f1={result.f1_macro_mean:.3f}"
         )
@@ -682,23 +682,8 @@ class TrainingPipeline:
         Returns:
             List of ExperimentResult objects
         """
-        logger.info(f"Running training grid: {len(configs)} configurations")
-        logger.info(f"Total training runs: {len(configs) * self.n_folds}")
-        
-        # Print experiment header using formatter
-        self.formatter.print_experiment_header(
-            self.experiment_name,
-            len(np.unique(self.subject_ids)),
-            len(configs),
-            self.n_folds
-        )
-        
-        # Print LOSO setup
-        self.formatter.print_loso_setup(
-            len(np.unique(self.subject_ids)),
-            self._subject_epochs,
-            len(self.labels)
-        )
+        logger.debug(f"Running training grid: {len(configs)} configurations")
+        logger.debug(f"Total training runs: {len(configs) * self.n_folds}")
         
         results = []
         grid_start_time = time.time()
@@ -929,7 +914,7 @@ def create_training_grid(
                 )
                 configs.append(config)
     
-    logger.info(f"Created training grid: {len(configs)} configurations (method={selection_method}, scope={scope})")
+    logger.debug(f"Created training grid: {len(configs)} configurations (method={selection_method}, scope={scope})")
     return configs
 
 
