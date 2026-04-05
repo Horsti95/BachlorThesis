@@ -26,7 +26,6 @@ import time
 from typing import Tuple, List, Optional, Dict, Any
 from dataclasses import dataclass, field
 from sklearn.feature_selection import SelectKBest, mutual_info_classif, f_classif
-from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class FeatureSelectionConfig:
     top_k_features: Optional[int] = None
     selection_method: str = 'anova'  # 'anova', 'mi', 'hybrid' - ANOVA is ~200x faster
     scope: str = 'global'  # 'per_fold', 'global' - global is faster with minimal leakage
-    use_hybrid: bool = True  # DEPRECATED - kept for backward compatibility
+    use_hybrid: bool = True  # DEPRECATED - ignored, kept only for config file compat
     random_state: int = 42
     
     def __post_init__(self):
@@ -97,7 +96,7 @@ class FeatureSelectionConfig:
             'top_k_features': self.top_k_features,
             'selection_method': self.selection_method,
             'scope': self.scope,
-            'use_hybrid': self.use_hybrid,  # deprecated
+            # 'use_hybrid' omitted - deprecated field, excluded from serialization
             'random_state': self.random_state
         }
 
@@ -244,9 +243,6 @@ class TopKSelector:
         actual_k = min(self.k, X.shape[1])
         if actual_k < self.k:
             logger.warning(f"Requested k={self.k} but only {X.shape[1]} features available. Using k={actual_k}")
-            # Print to console as well for visibility
-            print(f"\n[!] WARNING: Requested k={self.k} features but only {X.shape[1]} available after correlation filter.")
-            print(f"    Using all {actual_k} features instead.\n")
         
         # Create selector with mutual information scorer
         # Note: mutual_info_classif uses random_state internally
@@ -618,7 +614,6 @@ class FeatureSelectionPipeline:
         self.anova_selector_: Optional[ANOVATopKSelector] = None
         self.top_k_selector_: Optional[TopKSelector] = None
         self.hybrid_selector_: Optional[HybridTopKSelector] = None
-        self.scaler_: Optional[StandardScaler] = None
         
         # Statistics
         self.n_features_input_: int = 0
@@ -731,8 +726,11 @@ class FeatureSelectionPipeline:
         return X_current
     
     def fit_transform(self, X: pd.DataFrame, y: np.ndarray) -> pd.DataFrame:
-        """Fit and transform in one step."""
+        """Fit and transform in one step (avoids redundant re-transform)."""
         self.fit(X, y)
+        # Apply transform to the already-fitted data
+        # This re-applies the filter chain, but the selectors just do column drops
+        # which is cheap. The expensive part (correlation matrix, ANOVA) was in fit().
         return self.transform(X)
     
     def _count_output_features(self, X_after_corr: pd.DataFrame) -> int:

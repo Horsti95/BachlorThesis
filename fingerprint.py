@@ -28,7 +28,7 @@ Status: IMPLEMENTED
 import hashlib
 import json
 from typing import Dict, Any, Optional, List, Union
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 import logging
 
 logger = logging.getLogger(__name__)
@@ -274,10 +274,14 @@ class LOSOFingerprint:
         Returns:
             32-character hex string fingerprint
         """
+        model_name = config_dict.get('model_type') or config_dict.get('model_name')
+        if not model_name:
+            raise ValueError("config_dict must contain 'model_type' or 'model_name'")
+
         return cls.generate(
             random_seed=config_dict.get('random_seed', config_dict.get('random_state', 42)),
             code_version=config_dict.get('code_version', __version__),
-            model_name=config_dict.get('model_type', config_dict.get('model_name', 'unknown')),
+            model_name=model_name,
             model_params=config_dict.get('model_params', {}),
             feature_config=config_dict.get('feature_config', {}),
             held_out_subject=held_out_subject,

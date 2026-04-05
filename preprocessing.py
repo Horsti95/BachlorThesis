@@ -63,9 +63,10 @@ class SignalPreprocessor:
         self.epoch_duration = epoch_duration
         
         # Validation
-        assert target_sfreq >= 2 * bandpass_high, (
-            f"Nyquist violation: {target_sfreq} Hz < 2 × {bandpass_high} Hz"
-        )
+        if target_sfreq < 2 * bandpass_high:
+            raise ValueError(
+                f"Nyquist violation: {target_sfreq} Hz < 2 × {bandpass_high} Hz"
+            )
         
         logger.info(f"Initialized SignalPreprocessor:")
         logger.info(f"  Bandpass: {bandpass_low}-{bandpass_high} Hz")
@@ -299,16 +300,16 @@ class EpochExtractor:
     def validate_epoch_quality(
         self,
         epochs: np.ndarray,
-        max_amplitude: float = 1000.0,  # µV - increased for BOAS data
-        min_amplitude: float = 0.1  # µV - decreased threshold
+        max_amplitude: float = 1000e-6,  # 1000 µV in Volts (MNE default unit)
+        min_amplitude: float = 0.1e-6  # 0.1 µV in Volts (MNE default unit)
     ) -> np.ndarray:
         """
         Validate epoch quality based on amplitude criteria.
         
         Args:
             epochs: Epoch data (n_epochs, n_channels, n_samples)
-            max_amplitude: Maximum allowed amplitude (µV)
-            min_amplitude: Minimum required amplitude (µV)
+            max_amplitude: Maximum allowed amplitude in Volts (MNE default)
+            min_amplitude: Minimum required peak-to-peak amplitude in Volts
             
         Returns:
             Boolean mask (n_epochs,) - True = valid
@@ -326,8 +327,11 @@ class EpochExtractor:
                 valid_mask[i] = False
                 continue
             
-            # Check for flat signal (disconnection)
-            peak_to_peak = epoch.max() - epoch.min()
+            # Check for flat signal (disconnection) - per-channel check
+            if epoch.ndim > 1:
+                peak_to_peak = (epoch.max(axis=1) - epoch.min(axis=1)).min()
+            else:
+                peak_to_peak = epoch.max() - epoch.min()
             if peak_to_peak < min_amplitude:
                 logger.debug(f"Epoch {i} rejected: peak-to-peak {peak_to_peak:.2f} < {min_amplitude}")
                 valid_mask[i] = False

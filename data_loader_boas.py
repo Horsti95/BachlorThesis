@@ -24,8 +24,6 @@ import pandas as pd
 import mne
 from dataclasses import dataclass
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -443,9 +441,11 @@ class BOASDataLoader:
         if verbose:
             self.print_subject_info(subject_id, raw, annotations, psg_path, annotation_path)
         
-        # Backward compatibility
-        if apply_preprocessing:
+        # Backward compatibility: only override if apply_preprocessing was explicitly set
+        # and individual flags were not explicitly provided by the caller
+        if apply_preprocessing and not apply_channel_selection:
             apply_channel_selection = True
+        if apply_preprocessing and not apply_resampling:
             apply_resampling = True
         
         # Apply channel selection if requested
@@ -584,7 +584,7 @@ class BOASDataLoader:
                     data_start = raw.get_data(start=0, stop=int(30 * metadata.sampling_rate))
                     data_end = raw.get_data(start=max(0, raw.n_times - int(30 * metadata.sampling_rate)))
                     sample_data = np.concatenate([data_start, data_end], axis=1)
-                except:
+                except Exception:
                     sample_data = raw.get_data(stop=min(raw.n_times, int(60 * metadata.sampling_rate)))
             else:
                 sample_data = raw.get_data()

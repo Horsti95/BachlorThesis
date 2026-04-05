@@ -258,18 +258,22 @@ class LOSOModelCache:
         except Exception as e:
             logger.warning(f"Failed to save cache registry: {e}")
     
-    def exists(self, fingerprint: str, held_out_subject: str) -> bool:
+    def exists(self, fingerprint: str, held_out_subject: str, model_type: str = "unknown") -> bool:
         """
         Check if a cached model exists.
-        
+
         Args:
             fingerprint: Configuration fingerprint
             held_out_subject: Subject ID held out for testing
-            
+            model_type: Model type string (e.g., 'fnn') to check correct file extension
+
         Returns:
             True if cached model exists, False otherwise
         """
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
+        if model_type == "fnn":
+            # FNN models are stored as .pt files, not .joblib
+            return Path(str(cache_path) + ".pt").exists()
         return cache_path.exists()
     
     def get(
@@ -296,7 +300,7 @@ class LOSOModelCache:
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
         if not cache_path.exists():
             if record_metrics:
-                pass
+                self.metrics.record_miss()
             logger.debug(f"Cache MISS: {fingerprint[:16]}..._{held_out_subject}")
             return None
         try:
@@ -324,6 +328,8 @@ class LOSOModelCache:
                 return model
         except Exception as e:
             logger.warning(f"Failed to load cached model: {e}")
+            if record_metrics:
+                self.metrics.record_miss()
             return None
     
     def put(
@@ -424,7 +430,14 @@ class LOSOModelCache:
                 try:
                     cache_file.unlink()
                     count += 1
-                    
+                    # Also clean up FNN-specific files (.pt and _scaler.joblib)
+                    pt_file = Path(str(cache_file) + ".pt")
+                    scaler_file = Path(str(cache_file) + "_scaler.joblib")
+                    if pt_file.exists():
+                        pt_file.unlink()
+                    if scaler_file.exists():
+                        scaler_file.unlink()
+
                     # Remove from registry
                     cache_key = f"{file_fp}_{file_subject}"
                     if cache_key in self._registry:

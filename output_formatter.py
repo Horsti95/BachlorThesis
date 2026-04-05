@@ -17,7 +17,6 @@ Date: December 2025
 """
 
 import sys
-import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -181,7 +180,7 @@ class TrainingOutputFormatter:
         print(f"{status_icon} Feature Cache: {'ACTIVE' if n_cached > 0 else 'EMPTY'}")
         print(f"   * Location: {cache_path}")
         print(f"   * Subjects cached: {n_cached}/{n_subjects} ({hit_rate:.0f}%)")
-        print(f"   * Features per subject: 149")
+        print(f"   * Features per subject: extracted from cache")
         if load_time > 0:
             print(f"   * Cache load time: {load_time:.2f}s (vs ~25s cold extraction)")
         print()
@@ -451,7 +450,7 @@ class TrainingOutputFormatter:
         
         # Cache performance
         if cache_total > 0:
-            time_saved = cache_total * 25  # ~25s per subject cold extraction
+            time_saved = cache_hits * 25  # ~25s per subject cold extraction
             print("CACHE PERFORMANCE THIS CONFIG:")
             print(f"  * Feature loads: {cache_hits} (all from cache)")
             print(f"  * Cache hit rate: {cache_hits/cache_total*100:.0f}%")

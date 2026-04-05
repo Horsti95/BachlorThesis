@@ -23,9 +23,8 @@ Date: December 2025
 
 import logging
 import numpy as np
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
-import warnings
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -233,9 +232,8 @@ class FNNModel(BaseModel):
             logger.warning("PyTorch not installed. FNN model will not work.")
             return
         
-        # Set seeds for reproducibility
+        # Set seeds for reproducibility (torch only, avoid global numpy seed)
         torch.manual_seed(random_seed)
-        np.random.seed(random_seed)
         
         # Detect device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -309,8 +307,10 @@ class FNNModel(BaseModel):
         )
         
         # Training loop
+        import copy
         epochs = self.params['epochs']
         best_loss = float('inf')
+        best_state = None
         patience_counter = 0
         patience = self.params.get('early_stopping_patience', 5)
         
@@ -340,9 +340,10 @@ class FNNModel(BaseModel):
             # Update progress bar with loss
             pbar.set_postfix({'loss': f'{avg_loss:.4f}', 'best': f'{best_loss:.4f}'})
             
-            # Early stopping
+            # Early stopping with best model checkpoint
             if avg_loss < best_loss:
                 best_loss = avg_loss
+                best_state = copy.deepcopy(self.model.state_dict())
                 patience_counter = 0
             else:
                 patience_counter += 1
@@ -350,9 +351,12 @@ class FNNModel(BaseModel):
                     pbar.close()
                     logger.info(f"Early stopping at epoch {epoch+1}")
                     break
-        
+
+        # Restore best model weights
+        if best_state is not None:
+            self.model.load_state_dict(best_state)
         self.is_fitted = True
-        logger.info(f"FNN training complete (final loss: {best_loss:.4f})")
+        logger.info(f"FNN training complete (best loss: {best_loss:.4f})")
         return self
     
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -491,12 +495,11 @@ def evaluate_model(
         'f1_weighted': f1_score(y_true, y_pred, average='weighted'),
     }
     
-    # Per-class F1
+    # Per-class F1 — force all 5 classes to ensure correct index-to-name mapping
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    f1_per_class = f1_score(y_true, y_pred, average=None)
+    f1_per_class = f1_score(y_true, y_pred, average=None, labels=[0, 1, 2, 3, 4], zero_division=0)
     for i, name in enumerate(class_names):
-        if i < len(f1_per_class):
-            metrics[f'f1_{name}'] = f1_per_class[i]
+        metrics[f'f1_{name}'] = f1_per_class[i]
     
     # Clinical target checks
     metrics['meets_accuracy_target'] = metrics['accuracy'] >= 0.85

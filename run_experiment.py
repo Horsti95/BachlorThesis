@@ -323,7 +323,7 @@ def main():
         
         # Run
         save_intermediate = not args.no_save_intermediate
-        stats = pipeline.run()
+        stats = pipeline.run(save_intermediate=save_intermediate)
         
         # Update leaderboard
         leaderboard.finalize_run(

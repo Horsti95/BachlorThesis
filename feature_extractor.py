@@ -19,7 +19,6 @@ Date: December 2025
 import numpy as np
 import pandas as pd
 from scipy import signal, stats
-from scipy.fft import fft, fftfreq
 from typing import Dict, Tuple, List, Optional
 import logging
 from tqdm import tqdm
@@ -292,14 +291,8 @@ class ComplexityFeatures:
         Returns:
             Hurst exponent (0.5 = random, >0.5 = persistent, <0.5 = anti-persistent)
         """
-        if ANTROPY_AVAILABLE:
-            try:
-                # antropy computes Hurst via DFA (standard method in EEG research)
-                return ant.detrended_fluctuation(epoch)
-            except:
-                return 0.5
-        
-        # Fallback: R/S analysis (slower)
+        # Always use R/S analysis for Hurst exponent to avoid duplicating DFA
+        # (ant.detrended_fluctuation is used by detrended_fluctuation_analysis instead)
         lags = range(2, min(max_lag, len(epoch) // 2))
         tau = []
         
@@ -330,7 +323,7 @@ class ComplexityFeatures:
         try:
             poly = np.polyfit(np.log(lags[:len(tau)]), np.log(tau), 1)
             return poly[0]
-        except:
+        except Exception:
             return 0.5
     
     @staticmethod
@@ -349,7 +342,7 @@ class ComplexityFeatures:
         if ANTROPY_AVAILABLE:
             try:
                 return ant.detrended_fluctuation(epoch)
-            except:
+            except Exception:
                 return 1.0
         
         # Fallback: Pure Python (slower)
@@ -393,7 +386,7 @@ class ComplexityFeatures:
         try:
             poly = np.polyfit(np.log(scales[:len(fluctuations)]), np.log(fluctuations), 1)
             return poly[0]
-        except:
+        except Exception:
             return 1.0
     
     def extract(self, epoch: np.ndarray) -> Dict[str, float]:

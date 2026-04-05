@@ -7,7 +7,7 @@ Orchestrates the complete ML pipeline from raw data to extracted features.
 Pipeline Stages:
 1. Load raw EEG data
 2. Preprocess (filter, downsample, epoch)
-3. Extract features (149 features)
+3. Extract features
 4. Save results
 
 NOTE: This version does NOT include caching or fingerprinting.
@@ -560,10 +560,13 @@ class DataPipeline:
         print(f"\n  ALL FILES SAVED TO: {self.output_dir / 'features'}")
         print(f"{'='*60}\n")
     
-    def run(self) -> Dict:
+    def run(self, save_intermediate: bool = True) -> Dict:
         """
         Run complete pipeline.
-        
+
+        Args:
+            save_intermediate: Whether to save intermediate files to disk
+
         Returns:
             Dictionary with pipeline results and statistics
         """
@@ -579,7 +582,7 @@ class DataPipeline:
         print("="*60 + "\n")
         
         # Process all subjects
-        results = self.process_all_subjects(save_intermediate=True)
+        results = self.process_all_subjects(save_intermediate=save_intermediate)
         
         # Aggregate
         features_df, labels, subject_ids = self.aggregate_features(results)
@@ -603,8 +606,8 @@ class DataPipeline:
             'cache_hits': self.cache_hits,
             'cache_misses': self.cache_misses,
             'cache_hit_rate': (self.cache_hits / (self.cache_hits + self.cache_misses) * 100) if (self.cache_hits + self.cache_misses) > 0 else 0,
-            # Estimated cold time (for comparison)
-            'estimated_cold_time': elapsed * 2 if self.cache_hits > 0 else elapsed
+            # Estimated cold time based on measured miss times (~25s per subject)
+            'estimated_cold_time': (self.cache_hits + self.cache_misses) * 25.0 if self.cache_hits > 0 else elapsed
         }
         
         # Final summary

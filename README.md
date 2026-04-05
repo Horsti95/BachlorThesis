@@ -173,17 +173,38 @@ pip install -r requirements.txt
 - `xgboost >= 1.7.0` - Gradient boosting (for future stages)
 - `pyyaml >= 6.0` - Configuration files
 
-### Step 2: Verify Data Path
+### Step 2: Set Up Data Path
 
-Ensure your BOAS dataset is accessible:
+The BOAS dataset (~20 GB) is **not included in the repository** and must be provided separately (e.g., via USB stick).
+
+Place the dataset on your machine and note the path. The expected directory structure is:
+
+```
+<your-data-path>/
+├── sub-1/eeg/sub-1_task-Sleep_acq-psg_eeg.edf
+├── sub-1/eeg/sub-1_task-Sleep_acq-psg_events.txt
+├── sub-2/eeg/...
+└── ...
+```
+
+**Configure the data path** using one of these methods:
 
 ```bash
-# Windows
-dir "C:\Users\DerHo\Desktop\Data\sub-1"
+# Option 1: Pass via command line (recommended)
+python run_experiment.py --quick-test --data-path "/path/to/your/data"
+python run_training.py --quick --data-path "/path/to/your/data"
 
-# Should show:
-#   sub-1/eeg/sub-1_task-Sleep_acq-psg_eeg.edf
-#   sub-1/eeg/sub-1_task-Sleep_acq-psg_events.txt
+# Option 2: Edit config.py default (line ~79) to your local path
+# base_path: str = "/path/to/your/data"
+```
+
+Verify access:
+```bash
+# Windows
+dir "C:\Users\YourName\Desktop\Data\sub-1"
+
+# Linux/Mac
+ls /path/to/your/data/sub-1/eeg/
 ```
 
 ### Step 3: Test Installation
