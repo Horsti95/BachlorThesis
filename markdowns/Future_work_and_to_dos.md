@@ -893,7 +893,9 @@ class ModelRegistry:
 >
 > **Deep Learning Integration**: The modular caching architecture could be adapted for deep learning pipelines by caching preprocessed epoch tensors rather than extracted features. This would enable automatic feature learning through convolutional or recurrent networks while maintaining the computational efficiency benefits of intelligent caching.
 >
-> **Multi-Modal Analysis**: The BOAS dataset provides EOG and EMG channels in addition to EEG. Future experiments could investigate whether physiological signals beyond EEG improve specific sleep stage classifications, particularly REM detection (EOG) and wake detection (EMG).
+> **8-Channel Feature Extraction (195 features)**: The current thesis uses 6 EEG channels (149 features). The codebase already supports 8-channel extraction (adding EOG and EMG, producing 195 features), which could improve REM detection (EOG) and wake detection (EMG). This was not included in the thesis experiments to maintain a consistent feature set across all configurations, but the implementation is ready for future evaluation, particularly with deep learning models that may benefit from the additional physiological signals.
+>
+> **Production-Grade Error Handling**: The current error handling is sufficient for research use (per-subject try/catch in the main pipeline loop, graceful degradation on cache misses). A production deployment would benefit from a consistent error handling strategy across all modules, structured logging with error codes, and automatic retry logic for transient failures (e.g., disk I/O errors during cache operations).
 >
 > **Advanced Caching Strategies**: The current SHA-256 fingerprinting approach provides deterministic cache invalidation. Future work could explore ML-based cache access prediction, partial feature loading, and distributed caching for multi-machine environments.
 >
