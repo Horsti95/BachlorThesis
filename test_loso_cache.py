@@ -228,7 +228,7 @@ def test_fingerprint_sensitivity():
             print(f"✗ FAIL: Changing {change_name} produced collision!", flush=True)
             all_pass = False
         else:
-            print(f"✓ Changed {change_name:20s} → {fp}", flush=True)
+            print(f"✓ Changed {change_name:20s} -> {fp}", flush=True)
             unique_fps.add(fp)
     
     if all_pass:
@@ -266,7 +266,7 @@ def test_fingerprint_held_out_uniqueness():
         print("✗ FAIL: Some fingerprints are not unique!", flush=True)
         return False
     
-    print(f"\n✓ PASS: {len(subjects)} subjects → {len(unique_fps)} unique fingerprints", flush=True)
+    print(f"\n✓ PASS: {len(subjects)} subjects -> {len(unique_fps)} unique fingerprints", flush=True)
     return True
 
 
@@ -464,7 +464,7 @@ def test_cache_with_synthetic_loso():
             
             # Evaluate
             acc = model.score(X_test, y_test)
-            print(f"        → Accuracy: {acc:.4f}, Train time: {train_time:.4f}s", flush=True)
+            print(f"        -> Accuracy: {acc:.4f}, Train time: {train_time:.4f}s", flush=True)
             run1_times.append(train_time)
         
         print(f"\n    Run 1 total training time: {sum(run1_times):.4f}s", flush=True)
@@ -500,7 +500,7 @@ def test_cache_with_synthetic_loso():
                 model = cached
             
             acc = model.score(X_test, y_test)
-            print(f"        → Accuracy: {acc:.4f}", flush=True)
+            print(f"        -> Accuracy: {acc:.4f}", flush=True)
             run2_times.append(load_time)
         
         print(f"\n    Run 2 total load time: {sum(run2_times):.4f}s", flush=True)
@@ -661,7 +661,7 @@ def test_real_data_10_subjects():
             acc = np.mean(y_pred == y_test)
             run1_results.append(acc)
             run1_times.append(train_time)
-            print(f"        → Accuracy: {acc:.4f}", flush=True)
+            print(f"        -> Accuracy: {acc:.4f}", flush=True)
         
         print(f"\n    Run 1 Summary:", flush=True)
         print(f"      Mean Accuracy: {np.mean(run1_results):.4f} ± {np.std(run1_results):.4f}", flush=True)
@@ -700,7 +700,7 @@ def test_real_data_10_subjects():
             acc = np.mean(y_pred == y_test)
             run2_results.append(acc)
             run2_times.append(load_time)
-            print(f"        → Accuracy: {acc:.4f}", flush=True)
+            print(f"        -> Accuracy: {acc:.4f}", flush=True)
         
         print(f"\n    Run 2 Summary:", flush=True)
         print(f"      Mean Accuracy: {np.mean(run2_results):.4f} ± {np.std(run2_results):.4f}", flush=True)

@@ -233,7 +233,7 @@ def print_experiment_summary(config: ExperimentConfig):
     print(f"\nPreprocessing:")
     print(f"  Bandpass: {config.preprocessing.bandpass_low}-{config.preprocessing.bandpass_high} Hz")
     print(f"  Notch: {config.preprocessing.notch_frequency} Hz")
-    print(f"  Sampling: {config.preprocessing.original_sfreq} → {config.preprocessing.target_sfreq} Hz")
+    print(f"  Sampling: {config.preprocessing.original_sfreq} -> {config.preprocessing.target_sfreq} Hz")
     print(f"  Epoch duration: {config.preprocessing.epoch_duration} s")
     print(f"\nFeatures:")
     expected_features = config.data.get_expected_features()
@@ -249,6 +249,11 @@ def print_experiment_summary(config: ExperimentConfig):
 
 def main():
     """Main entry point."""
+    # Ensure UTF-8 output on Windows (avoids UnicodeEncodeError when piping)
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
     # Parse arguments
     args = parse_arguments()
     

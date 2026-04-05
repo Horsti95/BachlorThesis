@@ -536,8 +536,13 @@ def run_training_experiment(
 
 def main():
     """Main entry point."""
+    # Ensure UTF-8 output on Windows (avoids UnicodeEncodeError when piping)
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
     args = parse_arguments()
-    
+
     # Setup logging
     setup_logging(args.log_level)
     
@@ -625,7 +630,7 @@ def main():
         selection_method = "Pure MI (slow)"
     else:
         time_per_run = 8   # Hybrid is fast
-        selection_method = "Hybrid f_classif→MI (fast)"
+        selection_method = "Hybrid f_classif->MI (fast)"
     estimated_minutes = (total_runs * time_per_run) / 60
     
     # Configuration summary

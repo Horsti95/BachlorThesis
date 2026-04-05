@@ -150,7 +150,7 @@ class SignalPreprocessor:
             logger.info(f"Already at target sampling rate: {current_sfreq} Hz")
             return raw
         
-        logger.info(f"Resampling: {current_sfreq} Hz → {self.target_sfreq} Hz")
+        logger.info(f"Resampling: {current_sfreq} Hz -> {self.target_sfreq} Hz")
         
         raw_resampled = raw.copy().resample(
             sfreq=self.target_sfreq,
