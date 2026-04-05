@@ -590,14 +590,14 @@ def main():
     
     # Determine grid configuration based on --grid option
     if args.grid == 'thesis':
-        # Full thesis grid: 3 models × 4 corr × 4 topK = 48 configs
-        correlation_thresholds = [0.75, 0.85, 0.90, None]
-        top_k_features = [30, 50, 105, None]
+        # Full thesis grid: 2 models × 3 corr × 3 topK = 18 configs
+        correlation_thresholds = [0.75, 0.90, None]
+        top_k_features = [30, 50, None]
         grid_name = "thesis"
     elif args.grid == 'pilot':
         # Pilot uses full thesis grid but fewer subjects
-        correlation_thresholds = [0.75, 0.85, 0.90, None]
-        top_k_features = [30, 50, 105, None]
+        correlation_thresholds = [0.75, 0.90, None]
+        top_k_features = [30, 50, None]
         grid_name = "thesis"
     elif args.grid == 'quick':
         # Quick test: minimal grid (3 models × 1 config = 3)
