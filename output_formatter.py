@@ -448,15 +448,20 @@ class TrainingOutputFormatter:
                   LIGHT_BOX['h'] * 10 + LIGHT_BOX['br'])
             print()
         
-        # Cache performance
+        # LOSO Model Cache performance (thesis focus)
         if cache_total > 0:
-            time_saved = cache_hits * 25  # ~25s per subject cold extraction
-            print("CACHE PERFORMANCE THIS CONFIG:")
-            print(f"  * Feature loads: {cache_hits} (all from cache)")
-            print(f"  * Cache hit rate: {cache_hits/cache_total*100:.0f}%")
-            print(f"  * Time saved: ~{time_saved//60}min {time_saved%60}s (vs cold extraction)")
-            print()
-        
+            cache_misses = cache_total - cache_hits
+            hit_rate = (cache_hits / cache_total * 100) if cache_total > 0 else 0
+            if cache_hits > 0:
+                print("MODEL CACHE (LOSO):")
+                print(f"  * Hits: {cache_hits}/{cache_total} folds ({hit_rate:.0f}%)")
+                print(f"  * Misses: {cache_misses} (trained from scratch)")
+                print()
+            else:
+                print("MODEL CACHE (LOSO):")
+                print(f"  * Cold run: all {cache_total} folds trained from scratch")
+                print()
+
         print(f"Total config time: {total_time/60:.0f}m {total_time%60:.0f}s")
         print("=" * w)
         print()

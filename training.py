@@ -444,6 +444,8 @@ class TrainingPipeline:
         folds = list(self.cv.split(self.features_df, self.labels, self.subject_ids))
         n_folds = len(folds)
         config_start_time = time.time()
+        model_cache_hits = 0
+        model_cache_misses = 0
         
         # Use formatter's verbosity to decide on progress display
         use_tqdm = show_progress and self.formatter.verbosity == Verbosity.QUIET
@@ -581,6 +583,7 @@ class TrainingPipeline:
                     # CACHE HIT - use cached model
                     model = cached_model
                     cache_hit = True
+                    model_cache_hits += 1
                     self.formatter.print_training_progress(
                         config.model_type, n_train_epochs, n_final,
                         cache_status="HIT"
@@ -592,6 +595,7 @@ class TrainingPipeline:
                         config.model_params,
                         config.random_state
                     )
+                    model_cache_misses += 1
                     self.formatter.print_training_progress(
                         config.model_type, n_train_epochs, n_final,
                         cache_status="MISS"
@@ -603,6 +607,7 @@ class TrainingPipeline:
                     config.model_params,
                     config.random_state
                 )
+                model_cache_misses += 1
                 self.formatter.print_training_progress(
                     config.model_type, n_train_epochs, n_final
                 )
@@ -657,7 +662,7 @@ class TrainingPipeline:
             result.kappa_mean, result.kappa_std,
             result.f1_macro_mean, result.f1_macro_std,
             config_total_time,
-            n_folds, n_folds  # All from cache
+            model_cache_hits, n_folds
         )
         
         logger.debug(
