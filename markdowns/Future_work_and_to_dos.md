@@ -73,6 +73,15 @@ This implementation focuses on **intelligent caching via cryptographic fingerpri
 | **Speedup Factor** | Cold vs warm runtime ratio | > 100× |
 | **Fingerprint Determinism** | Reproducibility validation | 100% |
 
+### Benchmark Results (50 Subjects, Validated)
+
+| Model | Cold -> Warm SSD | SSD -> RAM |
+|-------|-----------------|------------|
+| **XGBoost** | **14.6x** | 1.8x |
+| **Random Forest** | **5.4x** | 3.7x |
+
+> *Note: RAM caching (preloading models into memory) showed marginal improvement over SSD at small scale and degraded at 128 subjects due to memory pressure. The thesis focuses on Cold vs Warm SSD as the primary caching comparison — this is where the fingerprint-based invalidation provides the clearest benefit.*
+
 ### Why This Matters
 
 > *"The primary contribution of this thesis is not achieving state-of-the-art sleep classification accuracy, but demonstrating that intelligent caching with fingerprint-based invalidation can dramatically reduce ML experimentation costs while ensuring reproducibility. The sleep stage classification task serves as a validation case study."*
