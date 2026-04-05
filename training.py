@@ -456,8 +456,8 @@ class TrainingPipeline:
         # =====================================================================
         selected_features = None
         use_global_fs = (
-            config.feature_selection.scope == 'global' and 
-            (config.feature_selection.top_k_features is not None or 
+            config.feature_selection.scope == 'global' and
+            (config.feature_selection.top_k_features is not None or
              config.feature_selection.correlation_threshold is not None)
         )
         if use_global_fs:
@@ -466,16 +466,22 @@ class TrainingPipeline:
                 f"Global feature selection ({config.feature_selection.selection_method.upper()}): "
                 f"fitting on {len(self.features_df)} samples..."
             )
-            
+
             fs_start = time.time()
             global_fs_pipeline = FeatureSelectionPipeline(config.feature_selection)
             global_fs_pipeline.fit(self.features_df, self.labels)
             selected_features = global_fs_pipeline.get_selected_features()
             fs_time = time.time() - fs_start
-            
+
             logger.info(f"  Selected {len(selected_features)} features in {fs_time:.2f}s")
             self.formatter.print_substep(
                 f"  Selected {len(selected_features)} features in {fs_time:.2f}s (will reuse for all folds)"
+            )
+        elif config.feature_selection.scope == 'global':
+            # corrNone + kAll: no selection needed, use all features
+            selected_features = list(self.features_df.columns)
+            self.formatter.print_substep(
+                f"No feature selection configured — using all {len(selected_features)} features"
             )
         
         # Sequential execution — deterministic, supports model caching
