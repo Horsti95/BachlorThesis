@@ -120,7 +120,9 @@ class FoldResult:
     # Timing
     train_time_seconds: float = 0.0
     predict_time_seconds: float = 0.0
-    
+    fold_wall_time_seconds: float = 0.0  # Total wall-clock time (cache load + predict + overhead)
+    cache_hit: bool = False  # Whether this fold was served from cache
+
     # Data info
     n_train: int = 0
     n_test: int = 0
@@ -163,10 +165,15 @@ class ExperimentResult:
     # Timing
     total_train_time: float = 0.0
     total_predict_time: float = 0.0
-    
+    total_wall_time: float = 0.0  # Total wall-clock time across all folds
+
+    # Cache stats
+    model_cache_hits: int = 0
+    model_cache_misses: int = 0
+
     # Per-fold results
     fold_results: List[FoldResult] = field(default_factory=list)
-    
+
     # Clinical targets
     meets_accuracy_target: bool = False  # >= 0.85
     meets_kappa_target: bool = False     # >= 0.75
@@ -186,6 +193,9 @@ class ExperimentResult:
             'f1_per_class_mean': self.f1_per_class_mean,
             'total_train_time': self.total_train_time,
             'total_predict_time': self.total_predict_time,
+            'total_wall_time': self.total_wall_time,
+            'model_cache_hits': self.model_cache_hits,
+            'model_cache_misses': self.model_cache_misses,
             'meets_accuracy_target': self.meets_accuracy_target,
             'meets_kappa_target': self.meets_kappa_target,
             'meets_f1_target': self.meets_f1_target,
@@ -303,6 +313,9 @@ def aggregate_fold_results(
         f1_per_class_mean=f1_per_class_mean,
         total_train_time=sum(r.train_time_seconds for r in fold_results),
         total_predict_time=sum(r.predict_time_seconds for r in fold_results),
+        total_wall_time=sum(r.fold_wall_time_seconds for r in fold_results),
+        model_cache_hits=sum(1 for r in fold_results if r.cache_hit),
+        model_cache_misses=sum(1 for r in fold_results if not r.cache_hit),
         fold_results=fold_results,
         meets_accuracy_target=np.mean(accuracies) >= 0.85,
         meets_kappa_target=np.mean(kappas) >= 0.75,
@@ -632,9 +645,11 @@ class TrainingPipeline:
                     training_time=train_elapsed
                 )
 
-            fold_results.append(fold_result)
-
             fold_elapsed = time.time() - fold_start
+            fold_result.fold_wall_time_seconds = fold_elapsed
+            fold_result.cache_hit = cache_hit
+
+            fold_results.append(fold_result)
 
             # Print fold result
             self.formatter.print_fold_result(
