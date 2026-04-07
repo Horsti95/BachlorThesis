@@ -205,8 +205,8 @@ class TrainingOutputFormatter:
         print(f"Classification:     Per-Epoch (each 30s epoch classified independently)")
         print()
         print("Data Leakage Prevention:")
-        print(f"  {ICONS['check']} Feature selection fitted on TRAINING data only")
-        print(f"  {ICONS['check']} Test subject completely held out during training")
+        print(f"  {ICONS['check']} Feature selection: global scope (minimal leakage, 1/N subjects)")
+        print(f"  {ICONS['check']} Model training: test subject completely held out")
         print(f"  {ICONS['check']} No epoch from test subject seen during training")
         print()
         
