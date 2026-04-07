@@ -519,6 +519,10 @@ def main():
 
     args = parse_arguments()
 
+    # Suppress harmless sklearn parallel warning (fires thousands of times with RF)
+    import warnings
+    warnings.filterwarnings("ignore", message=".*sklearn.utils.parallel.delayed.*")
+
     # Setup logging
     setup_logging(args.log_level)
     
