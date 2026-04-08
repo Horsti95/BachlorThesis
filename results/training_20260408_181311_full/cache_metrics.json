@@ -1,0 +1,15 @@
+{
+  "n_cached_subjects": 128,
+  "n_total_subjects": 128,
+  "hit_rate": 1.0,
+  "n_hits": 128,
+  "n_total": 128,
+  "cold_time_seconds": 3200.0,
+  "warm_time_seconds": 2743.7820587158203,
+  "speedup_factor": 125.0,
+  "time_saved_seconds": 3174.4,
+  "storage_mb": 146.53055572509766,
+  "storage_per_subject_mb": 1.1447699666023254,
+  "cache_dir": "results\\features_cache_global",
+  "total_runs": 1
+}

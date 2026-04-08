@@ -1,0 +1,35 @@
+{
+  "config_id": "random_forest_corrNone_kAll_anova_glo",
+  "config": {
+    "model_type": "random_forest",
+    "model_params": {},
+    "feature_selection": {
+      "correlation_threshold": null,
+      "top_k_features": null,
+      "selection_method": "anova",
+      "scope": "global",
+      "random_state": 42
+    },
+    "random_state": 42,
+    "config_id": "random_forest_corrNone_kAll_anova_glo"
+  },
+  "accuracy_mean": 0.8145071475753779,
+  "accuracy_std": 0.07280168658706228,
+  "kappa_mean": 0.6431881185930257,
+  "kappa_std": 0.14238918387531202,
+  "f1_macro_mean": 0.551035628058467,
+  "f1_macro_std": 0.09778624441681952,
+  "f1_per_class_mean": {
+    "Wake": 0.8226737112694,
+    "N1": 0.0600474117059713,
+    "N2": 0.8729534625624213,
+    "N3": 0.23789791267087843,
+    "REM": 0.6186986023301365
+  },
+  "total_train_time": 0.0,
+  "total_predict_time": 11.489266395568848,
+  "meets_accuracy_target": "False",
+  "meets_kappa_target": "False",
+  "meets_f1_target": "False",
+  "n_folds": 128
+}
