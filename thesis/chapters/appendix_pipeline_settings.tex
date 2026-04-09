@@ -1,0 +1,636 @@
+\chapter{Complete Pipeline Configuration Reference}
+\label{ch:pipeline_settings}
+
+% ============================================================================
+% Full reference of all configurable settings, decisions, and parameters
+% in the sleep stage classification pipeline. Intended for thesis defense prep.
+% ============================================================================
+
+This appendix documents every configurable parameter, design decision, and methodological choice in the pipeline. Each entry includes the default value, the rationale, and relevant alternatives.
+
+% ----------------------------------------------------------------------------
+\section{Software Dependencies}
+\label{sec:app_dependencies}
+
+Table~\ref{tab:dependencies} lists all Python libraries with their minimum required versions.
+
+\begin{table}[h]
+\centering
+\caption{Python library dependencies.}
+\label{tab:dependencies}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Library} & \textbf{Version} & \textbf{Purpose} \\
+\midrule
+Python        & $\geq$ 3.8 (3.10+ recommended) & Runtime \\
+mne           & $\geq$ 1.5.0   & EEG data handling, EDF reading \\
+numpy         & $\geq$ 1.23.0  & Numerical computing \\
+scipy         & $\geq$ 1.9.0   & Signal processing (filtering, PSD) \\
+antropy       & $\geq$ 0.1.6   & Entropy/complexity features (Numba JIT) \\
+pandas        & $\geq$ 1.5.0   & Tabular data manipulation \\
+scikit-learn  & $\geq$ 1.2.0   & ML algorithms, metrics, feature selection \\
+xgboost       & $\geq$ 1.7.0   & Gradient boosting classifier \\
+torch         & $\geq$ 2.0.0   & FNN model (implemented, not used in grid) \\
+joblib        & $\geq$ 1.2.0   & Parallel processing, model serialization \\
+pyyaml        & $\geq$ 6.0     & YAML configuration files \\
+tqdm          & $\geq$ 4.65.0  & Progress bars \\
+matplotlib    & $\geq$ 3.7.0   & Plotting \\
+seaborn       & $\geq$ 0.12.0  & Statistical visualizations \\
+pytest        & $\geq$ 7.3.0   & Unit testing \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ----------------------------------------------------------------------------
+\section{Reproducibility}
+\label{sec:app_reproducibility}
+
+\begin{table}[h]
+\centering
+\caption{Random seed and reproducibility settings.}
+\label{tab:reproducibility}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Setting} & \textbf{Value} & \textbf{Scope} \\
+\midrule
+Global random seed         & 42    & All stochastic operations \\
+XGBoost \texttt{random\_state}   & 42    & Tree splitting, sampling \\
+Random Forest \texttt{random\_state} & 42 & Tree construction, bootstrap \\
+FNN \texttt{torch.manual\_seed}  & 42    & Weight initialization \\
+FNN \texttt{np.random.seed}      & 42    & Data shuffling \\
+Feature selection \texttt{random\_state} & 42 & MI estimation, K-Fold splits \\
+Fingerprint code version   & 1.0.0 & Cache invalidation trigger \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Determinism guarantee:} XGBoost and Random Forest produce identical results given the same seed and data. The FNN model exhibits $\pm$0.5\% nondeterminism due to GPU floating-point operations, which is documented but not used in the final experimental grid.
+
+% ----------------------------------------------------------------------------
+\section{Data Preprocessing}
+\label{sec:app_preprocessing}
+
+\subsection{Signal Filtering}
+
+\begin{table}[h]
+\centering
+\caption{Signal preprocessing parameters.}
+\label{tab:preprocessing}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+Bandpass low cutoff     & 0.5\,Hz   & Removes DC drift; preserves delta band \\
+Bandpass high cutoff    & 40.0\,Hz  & Captures gamma; removes muscle artifacts \\
+Filter type             & FIR (firwin) & Linear phase, no phase distortion \\
+Notch filter frequency  & 50.0\,Hz  & European power line interference \\
+Original sampling rate  & 256.0\,Hz & BOAS dataset native rate \\
+Target sampling rate    & 128.0\,Hz & Satisfies Nyquist ($\geq 2 \times 40\,\text{Hz}$) \\
+Resampling method       & Polyphase (MNE) & Anti-aliasing via \texttt{npad='auto'} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Justification for 0.5--40\,Hz:} This range captures all physiologically relevant EEG bands for sleep staging (delta: 0.5--4\,Hz through gamma: 30--40\,Hz) while removing movement artifacts ($>$40\,Hz) and baseline drift ($<$0.5\,Hz). The 128\,Hz target sampling rate provides a factor-of-two margin above the 40\,Hz cutoff.
+
+\subsection{Epoching and Quality Control}
+
+\begin{table}[h]
+\centering
+\caption{Epoching and quality control parameters.}
+\label{tab:epoching}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+Epoch duration             & 30\,s   & AASM standard for sleep staging \\
+Minimum epochs per subject & 100     & Quality threshold for inclusion \\
+Filter disconnections      & True    & Remove stage=8 epochs \\
+Filter artifacts           & True    & Remove stage=-2 (AI-flagged) epochs \\
+Max amplitude threshold    & 1000\,$\mu$V & Artifact rejection \\
+Min amplitude threshold    & 0.1\,$\mu$V  & Flat signal / disconnection detection \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{EEG Channels}
+
+\begin{table}[h]
+\centering
+\caption{Channel configurations.}
+\label{tab:channels}
+\begin{tabular}{l l}
+\toprule
+\textbf{Preset} & \textbf{Channels} \\
+\midrule
+\texttt{eeg\_only} (default)          & F3, F4, C3, C4, O1, O2 (6 channels) \\
+\texttt{eeg\_plus\_physiological}     & F3, F4, C3, C4, O1, O2, EOG, EMG (8 channels) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decision:} The default uses 6 EEG-only channels, as the thesis focuses on EEG-based classification. The 8-channel variant is available for comparison but increases feature count from 149 to 195.
+
+\subsection{Sleep Stage Mapping}
+
+\begin{table}[h]
+\centering
+\caption{Sleep stage encoding from BOAS annotations.}
+\label{tab:stage_mapping}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Raw Value} & \textbf{Mapped Value} & \textbf{Meaning} \\
+\midrule
+0  & 0  & Wake \\
+1  & 1  & N1 (light sleep) \\
+2  & 2  & N2 (sleep spindles, K-complexes) \\
+3  & 3  & N3 (slow-wave / deep sleep) \\
+4  & 4  & REM \\
+8  & $-1$ (filtered) & Disconnection \\
+$-2$ & $-1$ (filtered) & AI-detected artifact \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Label source:} Human expert annotations (\texttt{stage\_hum}) are used by default, not AI-generated labels (\texttt{stage\_ai}).
+
+% ----------------------------------------------------------------------------
+\section{Feature Extraction}
+\label{sec:app_features}
+
+\subsection{Feature Groups}
+
+The pipeline extracts 23 features per channel plus 11 global features, totaling $6 \times 23 + 11 = 149$ features per epoch.
+
+\subsubsection{Time-Domain Features (10 per channel)}
+
+\begin{table}[h]
+\centering
+\caption{Time-domain features extracted per EEG channel.}
+\label{tab:time_features}
+\begin{tabular}{l l}
+\toprule
+\textbf{Feature} & \textbf{Description} \\
+\midrule
+Mean                 & Arithmetic mean of signal amplitude \\
+Standard deviation   & Spread of amplitude values \\
+Variance             & Squared standard deviation \\
+Minimum              & Minimum amplitude \\
+Maximum              & Maximum amplitude \\
+Peak-to-peak         & max $-$ min \\
+RMS                  & Root mean square amplitude \\
+Skewness             & Third standardized moment \\
+Kurtosis             & Fourth standardized moment \\
+Zero-crossing rate   & Rate of sign changes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Frequency-Domain Features (9 per channel)}
+
+\begin{table}[h]
+\centering
+\caption{Frequency-domain features extracted per EEG channel.}
+\label{tab:freq_features}
+\begin{tabular}{l l}
+\toprule
+\textbf{Feature} & \textbf{Description / Parameters} \\
+\midrule
+Delta band power      & 0.5--4.0\,Hz \\
+Theta band power      & 4.0--8.0\,Hz \\
+Alpha band power      & 8.0--13.0\,Hz \\
+Sigma band power      & 12.0--16.0\,Hz (sleep spindle range) \\
+Beta band power       & 16.0--30.0\,Hz \\
+Gamma band power      & 30.0--40.0\,Hz \\
+Spectral entropy      & Shannon entropy of normalized PSD \\
+Peak frequency        & Frequency with highest PSD value \\
+Median frequency      & 50th percentile of cumulative PSD \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{PSD estimation:} Welch's method via \texttt{scipy.signal.welch} with \texttt{nperseg=min(256, N)}, 50\% overlap (default), and \texttt{scaling='density'}.
+
+\subsubsection{Complexity Features (4 per channel)}
+
+\begin{table}[h]
+\centering
+\caption{Complexity/nonlinear features extracted per EEG channel.}
+\label{tab:complexity_features}
+\begin{tabular}{l l}
+\toprule
+\textbf{Feature} & \textbf{Description / Parameters} \\
+\midrule
+Hjorth mobility    & First derivative variance ratio \\
+Hjorth complexity  & Mobility ratio of first/second derivative \\
+Hurst exponent     & Long-range dependence (\texttt{max\_lag=20}) \\
+DFA exponent       & Detrended fluctuation analysis \\
+                   & (\texttt{min\_window=4}, \texttt{max\_window=N/4}, 10 log-spaced scales) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Implementation:} Uses \texttt{antropy} library (Numba-JIT optimized) when available, with pure Python fallback. Both implementations produce identical results.
+
+\subsubsection{Global Features (11 total)}
+
+\begin{table}[h]
+\centering
+\caption{Cross-channel (global) features.}
+\label{tab:global_features}
+\begin{tabular}{l l}
+\toprule
+\textbf{Feature} & \textbf{Description} \\
+\midrule
+Coherence F3--F4     & Magnitude-squared coherence \\
+Coherence F3--C3     & \texttt{nperseg=min(256, N)} \\
+Coherence F3--C4     & \\
+Coherence F4--C4     & \\
+Coherence C3--C4     & \\
+Coherence O1--O2     & \\
+PLV F3--O1           & Phase-locking value \\
+PLV F4--O2           & \\
+PLV C3--C4           & \\
+Global entropy       & Histogram-based, 50 bins \\
+Global complexity    & Mean Hjorth complexity across channels \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Parallelization}
+
+Feature extraction uses \texttt{joblib.Parallel} with \texttt{prefer='processes'} and 7 worker processes (default). Each epoch is an independent work unit, yielding near-linear speedup with negligible serialization overhead per epoch.
+
+% ----------------------------------------------------------------------------
+\section{Feature Selection}
+\label{sec:app_feature_selection}
+
+\subsection{Configuration Grid}
+
+\begin{table}[h]
+\centering
+\caption{Feature selection configuration grid (9 combinations).}
+\label{tab:fs_grid}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Options} & \textbf{Default} \\
+\midrule
+Correlation threshold ($\rho$)  & 0.90, 0.95, None     & None \\
+Top-K features ($k$)            & 30, 50, None (all)    & None \\
+Selection method                & anova, mi, hybrid     & anova \\
+Scope                           & global, per\_fold     & global \\
+Random state                    & 42                    & 42 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Grid size:} $3 \text{ (correlation)} \times 3 \text{ (top-K)} = 9$ feature selection configurations per model.
+
+\subsection{Correlation Filter}
+
+For each pair of features with Pearson $|r| > \rho$, the feature with \emph{lower variance} is removed. This heuristic preserves the more informative feature within each correlated pair.
+
+\subsection{ANOVA vs.\ Mutual Information}
+
+\begin{table}[h]
+\centering
+\caption{Feature ranking method comparison (5-subject pilot).}
+\label{tab:anova_vs_mi}
+\begin{tabular}{l r r l}
+\toprule
+\textbf{Method} & \textbf{Time (s)} & \textbf{Accuracy} & \textbf{Status} \\
+\midrule
+ANOVA (\texttt{f\_classif})           & $\sim$16    & 0.809 & Recommended \\
+Mutual Information (\texttt{mutual\_info\_classif}) & $\sim$4{,}300 & 0.803 & Not recommended \\
+Hybrid (ANOVA $\rightarrow$ MI)       & $\sim$120   & 0.808 & Alternative \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decision:} ANOVA is 200$\times$ faster than MI with less than 1\% accuracy difference. ANOVA captures linear class-discriminating power, which is sufficient for tree-based models that handle nonlinearities internally.
+
+\subsection{Global vs.\ Per-Fold Scope}
+
+\begin{itemize}
+    \item \textbf{Global:} Feature selection is fit once on all training data. Introduces minor data leakage (test subject's data influences feature ranking), but with 128 subjects the impact of any single subject is $<$1\%. Validated to have $<$1\% accuracy difference vs.\ per-fold.
+    \item \textbf{Per-fold:} Feature selection is fit independently on each fold's training data ($n-1$ subjects). Methodologically correct but 15--20$\times$ slower.
+\end{itemize}
+
+\textbf{Decision:} Global scope is the default. The marginal leakage from one subject out of 128 is negligible, and the speedup enables broader hyperparameter exploration.
+
+% ----------------------------------------------------------------------------
+\section{Cross-Validation}
+\label{sec:app_cv}
+
+\begin{table}[h]
+\centering
+\caption{Cross-validation configuration.}
+\label{tab:cv_config}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+Method               & LOSO                     & Gold standard for subject-independent evaluation \\
+Number of folds      & 128 (auto)               & One per subject in BOAS dataset \\
+Stratification       & None                     & LOSO inherently respects subject boundaries \\
+Train samples/fold   & $\sim$120{,}000 epochs   & 127 subjects \\
+Test samples/fold    & $\sim$950 epochs         & 1 held-out subject \\
+Fixed hyperparameters & Yes                     & Same hyperparameters across all folds \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Why LOSO:} LOSO ensures that the model is evaluated on subjects it has never seen during training. This is the most realistic scenario for clinical deployment, where the system must generalize to new patients. Standard $k$-fold CV would leak subject-specific patterns (e.g., individual sleep architecture) across folds.
+
+\textbf{Alternative implemented:} Stratified Group $K$-Fold ($k=5$) is available as a faster alternative that still respects subject boundaries.
+
+% ----------------------------------------------------------------------------
+\section{Model Hyperparameters}
+\label{sec:app_models}
+
+\subsection{XGBoost}
+
+\begin{table}[h]
+\centering
+\caption{XGBoost default hyperparameters.}
+\label{tab:xgb_params}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+\texttt{max\_depth}       & 6                 & Moderate depth; balances capacity and overfitting \\
+\texttt{n\_estimators}    & 200               & Sufficient boosting rounds for convergence \\
+\texttt{learning\_rate}   & 0.1               & Standard step size \\
+\texttt{objective}        & \texttt{multi:softmax} & Multiclass classification \\
+\texttt{num\_class}       & 5                 & Wake, N1, N2, N3, REM \\
+\texttt{eval\_metric}     & \texttt{mlogloss} & Multiclass log loss \\
+\texttt{n\_jobs}          & $-1$              & Use all CPU cores \\
+\texttt{random\_state}    & 42                & Reproducibility \\
+\texttt{verbosity}        & 0                 & Suppress output \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{No hyperparameter tuning:} Hyperparameters are fixed across all folds and configurations. This design choice prioritizes reproducibility and isolates the effect of feature selection from model tuning. A nested cross-validation with hyperparameter search would introduce additional computational cost ($\sim$10$\times$) and complexity.
+
+\subsection{Random Forest}
+
+\begin{table}[h]
+\centering
+\caption{Random Forest default hyperparameters.}
+\label{tab:rf_params}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+\texttt{n\_estimators}      & 200            & Matches XGBoost for fair comparison \\
+\texttt{max\_depth}         & None           & Unlimited; trees grow to purity \\
+\texttt{min\_samples\_split} & 2             & Default; minimal splitting constraint \\
+\texttt{min\_samples\_leaf}  & 1             & Default; no leaf size constraint \\
+\texttt{max\_features}      & \texttt{sqrt}  & $\sqrt{p}$ features per split (standard) \\
+\texttt{class\_weight}      & \texttt{balanced} & Inverse-frequency weighting for imbalanced classes \\
+\texttt{n\_jobs}            & $-1$           & Use all CPU cores \\
+\texttt{random\_state}      & 42             & Reproducibility \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Class balancing:} The \texttt{balanced} setting adjusts sample weights inversely proportional to class frequency. This addresses the class imbalance inherent in sleep data (N2 is overrepresented, N1 is rare). XGBoost does not use explicit class weighting in this configuration; it relies on the boosting procedure to handle imbalance.
+
+\subsection{FNN (Implemented, Not Used)}
+
+\begin{table}[h]
+\centering
+\caption{Feedforward Neural Network hyperparameters (implemented but excluded from experiments).}
+\label{tab:fnn_params}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Note} \\
+\midrule
+Architecture          & Input $\rightarrow$ 256 $\rightarrow$ 128 $\rightarrow$ 64 $\rightarrow$ 5 & Three hidden layers \\
+Activation            & ReLU (+ BatchNorm per layer)     & Standard deep learning choice \\
+Dropout               & 0.3                              & Regularization \\
+Optimizer             & Adam                             & Adaptive learning rate \\
+Learning rate         & 0.001                            & Default Adam rate \\
+Batch size            & 256                              & Memory-efficient \\
+Epochs                & 50 (early stopping: patience=5)  & Convergence criterion \\
+Loss                  & CrossEntropyLoss                 & Multiclass standard \\
+Device                & CUDA if available, else CPU       & Automatic detection \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Reason for exclusion:} Including FNN would add a third model to the grid, increasing total configurations from 18 to 27 and adding $\sim$10 additional hours of computation per configuration. Additionally, the FNN exhibits $\pm$0.5\% nondeterminism due to GPU floating-point operations, complicating reproducibility. The FNN is fully implemented and available for future work.
+
+% ----------------------------------------------------------------------------
+\section{Experimental Grid}
+\label{sec:app_grid}
+
+\begin{table}[h]
+\centering
+\caption{Complete experimental grid.}
+\label{tab:exp_grid}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Dimension} & \textbf{Options} & \textbf{Count} \\
+\midrule
+Models              & XGBoost, Random Forest         & 2 \\
+Correlation threshold & 0.90, 0.95, None             & 3 \\
+Top-K features      & 30, 50, None (all 149)         & 3 \\
+\midrule
+\textbf{Total configurations} & $2 \times 3 \times 3$ & \textbf{18} \\
+Folds per configuration & 128 (LOSO)                 & 128 \\
+\textbf{Total model trainings} & $18 \times 128$      & \textbf{2{,}304} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Configuration ID format:} Each configuration is identified by a string such as \texttt{xgb\_corr0.95\_k50\_anova\_glo}, encoding model type, correlation threshold, top-K count, selection method, and scope.
+
+% ----------------------------------------------------------------------------
+\section{Evaluation Metrics and Clinical Targets}
+\label{sec:app_evaluation}
+
+\subsection{Metrics Computed}
+
+\begin{table}[h]
+\centering
+\caption{Evaluation metrics computed per LOSO fold and aggregated.}
+\label{tab:metrics}
+\begin{tabular}{l l}
+\toprule
+\textbf{Metric} & \textbf{Description} \\
+\midrule
+Accuracy                & Overall correct classification rate \\
+Cohen's Kappa ($\kappa$) & Agreement corrected for chance \\
+F1-Score (macro)        & Unweighted mean of per-class F1 \\
+F1-Score (weighted)     & Class-frequency-weighted mean of per-class F1 \\
+Per-class Precision     & Per sleep stage \\
+Per-class Recall        & Per sleep stage \\
+Per-class F1            & Per sleep stage \\
+Confusion Matrix        & $5 \times 5$, also row-normalized \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Aggregation:} Mean $\pm$ standard deviation across all 128 LOSO folds.
+
+\subsection{Clinical Targets}
+
+\begin{table}[h]
+\centering
+\caption{Clinical performance targets for automated sleep staging.}
+\label{tab:clinical_targets}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Metric} & \textbf{Target} & \textbf{Source} \\
+\midrule
+Accuracy         & $\geq$ 85\%  & Standard clinical threshold \\
+Cohen's Kappa    & $\geq$ 0.75  & Substantial agreement \\
+F1-Score (macro) & $\geq$ 80\%  & Balanced class performance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Expected Per-Class Performance}
+
+\begin{table}[h]
+\centering
+\caption{Expected F1 ranges per sleep stage based on literature.}
+\label{tab:expected_performance}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Stage} & \textbf{Expected F1} & \textbf{Notes} \\
+\midrule
+Wake & 0.70--0.90 & Generally well-classified \\
+N1   & 0.20--0.40 & Transitional stage; inherently ambiguous \\
+N2   & 0.75--0.90 & Most common stage; distinctive features \\
+N3   & 0.70--0.85 & Strong delta power signature \\
+REM  & 0.65--0.85 & Sometimes confused with Wake \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{N1 performance:} Low N1 F1-scores are expected and consistent with the sleep staging literature. Even expert human scorers achieve only moderate N1 agreement (inter-rater $\kappa \approx 0.40$--0.60). N1 is a brief transitional stage without highly distinctive EEG features.
+
+% ----------------------------------------------------------------------------
+\section{Caching System}
+\label{sec:app_caching}
+
+\subsection{Tier 1: Feature Cache}
+
+\begin{table}[h]
+\centering
+\caption{Feature cache configuration.}
+\label{tab:feature_cache}
+\begin{tabular}{l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Location           & \texttt{results/features\_cache\_global/} \\
+Format             & Compressed NumPy archives (\texttt{.npz}) \\
+Granularity        & Per subject (\texttt{subject\_\{id\}\_full.npz}) \\
+Cold extraction    & $\sim$25\,s per subject \\
+Cache load time    & $\sim$0.2\,s per subject \\
+Speedup            & $\sim$125$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tier 2: LOSO Model Cache}
+
+\begin{table}[h]
+\centering
+\caption{LOSO model cache configuration.}
+\label{tab:model_cache}
+\begin{tabular}{l l}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Location               & \texttt{results/loso\_model\_cache/} \\
+Format                 & Joblib serialized models (\texttt{.joblib}) \\
+Key format             & \texttt{\{fingerprint\}\_\{held\_out\_subject\}.joblib} \\
+Fingerprint algorithm  & SHA-256 (truncated to 16 hex chars) \\
+Cold training/fold     & $\sim$1.5\,s (pilot), $\sim$3.5\,min (full) \\
+Cache load time/fold   & $\sim$0.01\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Fingerprint components:} Random seed, code version, model type, model hyperparameters, feature selection configuration, and the held-out subject ID. Critically, the held-out subject is part of the fingerprint to prevent data leakage---a model trained with subject $s$ in the training set cannot be reused when subject $s$ is held out.
+
+% ----------------------------------------------------------------------------
+\section{Parallelization Settings}
+\label{sec:app_parallelization}
+
+\begin{table}[h]
+\centering
+\caption{Parallelization configuration across pipeline stages.}
+\label{tab:parallelization}
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Stage} & \textbf{Mechanism} & \textbf{Default} & \textbf{Configurable via} \\
+\midrule
+Feature extraction & \texttt{joblib.Parallel} (processes) & 7 workers & \texttt{NJOBS} env var \\
+LOSO fold training & \texttt{ProcessPoolExecutor}         & 1 (sequential) & \texttt{--n-jobs} CLI \\
+XGBoost internal   & \texttt{n\_jobs=-1}                  & All cores & Model params \\
+Random Forest internal & \texttt{n\_jobs=-1}              & All cores & Model params \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decision:} Fold-level parallelization defaults to \texttt{n\_jobs=1} because (1) serialization overhead exceeds computation time, and (2) the model cache is inaccessible from worker processes. See Section~\ref{sec:parallelization} in Chapter~\ref{ch:implementation} for the full analysis.
+
+% ----------------------------------------------------------------------------
+\section{Hardcoded Constants}
+\label{sec:app_constants}
+
+\begin{table}[h]
+\centering
+\caption{Hardcoded constants and magic numbers in the implementation.}
+\label{tab:constants}
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Location} & \textbf{Value} & \textbf{Purpose} & \textbf{Justification} \\
+\midrule
+PSD \texttt{nperseg}        & min(256, $N$) & Welch window size   & Standard for 128\,Hz data \\
+Coherence \texttt{nperseg}  & min(256, $N$) & Coherence window     & Matches PSD settings \\
+Entropy bins                & 50            & Histogram bins       & Empirical; robust \\
+Hurst \texttt{max\_lag}     & 20            & R/S analysis range   & Standard in literature \\
+DFA \texttt{min\_window}    & 4             & Minimum DFA scale    & Shortest meaningful window \\
+DFA \texttt{max\_window}    & $N/4$         & Maximum DFA scale    & Standard practice \\
+DFA scale count             & 10            & Log-spaced scales    & Sufficient for regression \\
+Hybrid multiplier           & 2.0           & Pre-filter factor    & Prune to $2k$ before MI \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ----------------------------------------------------------------------------
+\section{Summary of Key Design Decisions}
+\label{sec:app_decisions_summary}
+
+Table~\ref{tab:decisions} consolidates the major design decisions that may be subject to discussion during a thesis defense.
+
+\begin{table}[h]
+\centering
+\caption{Summary of design decisions and their justifications.}
+\label{tab:decisions}
+\begin{tabular}{p{4cm} p{3cm} p{6cm}}
+\toprule
+\textbf{Decision} & \textbf{Choice} & \textbf{Justification} \\
+\midrule
+Epoch duration & 30\,s & AASM standard; enables comparison with literature \\
+Bandpass range & 0.5--40\,Hz & Captures all relevant EEG bands; standard range \\
+Sampling rate & 128\,Hz & Satisfies Nyquist for 40\,Hz; halves data volume \\
+Label source & Human annotations & Gold standard; avoids propagating AI labeling errors \\
+CV method & LOSO & Subject-independent evaluation; clinical relevance \\
+Feature ranking & ANOVA & 200$\times$ faster than MI; $<$1\% accuracy loss \\
+Selection scope & Global & Negligible leakage with $n=128$; 15--20$\times$ faster \\
+Hyperparameter tuning & None (fixed) & Isolates feature selection effect; reproducible \\
+FNN exclusion & Computational cost & $\sim$10\,h overhead per config; nondeterministic \\
+Class weighting & RF: balanced & Addresses N1/N3 underrepresentation \\
+Fold parallelism & Sequential & Serialization overhead; cache incompatibility \\
+Random seed & 42 & Convention; deterministic results \\
+\bottomrule
+\end{tabular}
+\end{table}

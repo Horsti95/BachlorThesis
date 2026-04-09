@@ -1,0 +1,115 @@
+\documentclass{imc-inf}
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Code listings configuration
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red}
+}
+
+% Bibliography
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\addbibresource{references.bib}
+
+% ============================================================================
+% METADATA (Update these fields with your information)
+% ============================================================================
+\title{Sleep Stage Classification Using Machine Learning}
+\subtitle{A LOSO Cross-Validation Study with Two-Tier Caching}
+\author{Your Name}  % UPDATE THIS
+\supervisor{Supervisor Name}  % UPDATE THIS
+\thesistype{Bachelor Thesis}
+\submissiondate{Month Year}  % UPDATE THIS (e.g., "February 2026")
+\copyrightyear{2026}
+\keywords{Sleep Stage Classification, EEG, Machine Learning, XGBoost, Random Forest, LOSO Cross-Validation, Feature Extraction, Caching}
+
+% ============================================================================
+% DOCUMENT
+% ============================================================================
+\begin{document}
+
+% ----------------------------------------------------------------------------
+% FRONT MATTER
+% ----------------------------------------------------------------------------
+\frontmatter
+
+% Title page (automatically generated)
+\maketitle
+
+% Declaration of honour (required by IMC)
+\begin{declarations}
+\end{declarations}
+
+% Abstract
+\begin{abstract}
+Sleep stage classification is a critical task in sleep medicine and neuroscience research. This thesis presents an automated sleep stage classification pipeline using machine learning models trained on EEG data from the BOAS dataset. We implement and compare two models---XGBoost and Random Forest---using Leave-One-Subject-Out (LOSO) cross-validation to ensure subject-independent generalization.
+
+A key contribution of this work is the implementation of a two-tier caching system consisting of feature-level and model-level caches with SHA-256 fingerprint-based cache invalidation. This approach significantly reduces computational overhead for iterative experimentation while maintaining full reproducibility.
+
+Our pipeline extracts 149 time-domain and frequency-domain features from 6 EEG channels per 30-second epoch, applies ANOVA-based feature selection, and trains models on 128 subjects (approximately 119,763 epochs total). The LOSO cross-validation ensures robust evaluation of subject-independent performance.
+
+Results demonstrate that [ADD RESULTS HERE AFTER EXPERIMENTS], with XGBoost achieving [X\%] accuracy and Random Forest achieving [Y\%] accuracy. The two-tier caching system reduced total experiment time by [Z\%] compared to a naive implementation without caching.
+
+This thesis provides a complete, reproducible pipeline for sleep stage classification with practical considerations for computational efficiency in machine learning research.
+\end{abstract}
+
+% Acknowledgements (optional)
+\begin{acknowledgements}
+I would like to thank my supervisor, [Supervisor Name], for their guidance and support throughout this project. I also acknowledge the developers of the BOAS dataset for making their data publicly available for research purposes.
+
+[ADD YOUR ACKNOWLEDGEMENTS HERE]
+\end{acknowledgements}
+
+% Table of Contents
+\tableofcontents
+\listoffigures
+\listoftables
+
+% ----------------------------------------------------------------------------
+% MAIN MATTER
+% ----------------------------------------------------------------------------
+\mainmatter
+
+% Chapters
+\include{chapters/01_introduction}
+\include{chapters/02_related_work}
+\include{chapters/03_methodology}
+\include{chapters/04_implementation}
+\include{chapters/05_results}
+\include{chapters/06_discussion}
+\include{chapters/07_conclusion}
+
+% ----------------------------------------------------------------------------
+% BACK MATTER
+% ----------------------------------------------------------------------------
+\backmatter
+
+% Bibliography
+\printbibliography[heading=bibintoc,title={References}]
+
+% Appendices (optional)
+\begin{appendices}
+\include{chapters/appendix_a}
+\include{chapters/appendix_pipeline_settings}
+\end{appendices}
+
+\end{document}

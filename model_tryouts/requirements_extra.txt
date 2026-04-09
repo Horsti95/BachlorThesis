@@ -1,0 +1,19 @@
+# Extra dependencies for model tryouts (beyond thesis requirements)
+# Install with: pip install -r requirements_extra.txt
+
+# Already needed by thesis:
+# scikit-learn
+# xgboost
+# numpy
+# pandas
+# scipy
+# tqdm
+# torch (for FNN)
+
+# Additional models:
+lightgbm
+catboost
+
+# Optional (for raw signal deep learning, already in thesis):
+# torch
+# mne

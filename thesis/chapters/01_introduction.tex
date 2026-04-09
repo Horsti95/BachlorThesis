@@ -1,0 +1,96 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+% ============================================================================
+% This chapter introduces the research problem, motivation, and objectives
+% ============================================================================
+
+\section{Motivation}
+\label{sec:motivation}
+
+Sleep is a fundamental physiological process essential for human health and well-being. Sleep stage classification---the task of automatically identifying different stages of sleep from physiological signals---is critical for diagnosing sleep disorders, monitoring sleep quality, and advancing sleep research. Traditional manual sleep staging by trained experts is time-consuming, subjective, and expensive, making automated classification systems highly desirable.
+
+Electroencephalography (EEG) provides rich information about brain activity during sleep and is the gold standard for sleep stage classification. However, the high dimensionality of EEG data, inter-subject variability, and class imbalance present significant challenges for machine learning models.
+
+% TODO: Add more motivation - why is this important?
+% - Clinical applications (sleep disorder diagnosis)
+% - Research applications (large-scale sleep studies)
+% - Cost and scalability benefits of automation
+
+\section{Research Problem}
+\label{sec:research_problem}
+
+The primary research problem addressed in this thesis is:
+
+\begin{quote}
+\textit{How can we build an efficient, reproducible, and subject-independent sleep stage classification pipeline using machine learning models trained on EEG data?}
+\end{quote}
+
+This problem encompasses several key challenges:
+
+\begin{enumerate}
+    \item \textbf{Subject Independence:} Models must generalize to new subjects not seen during training, as evaluated by Leave-One-Subject-Out (LOSO) cross-validation.
+
+    \item \textbf{Feature Engineering:} Extracting informative features from raw EEG signals that capture sleep stage characteristics across time and frequency domains.
+
+    \item \textbf{Model Selection:} Comparing different machine learning models (XGBoost, Random Forest) for sleep stage classification.
+
+    \item \textbf{Computational Efficiency:} The LOSO cross-validation with 128 subjects requires training 128 models per configuration, making computational efficiency critical.
+
+    \item \textbf{Reproducibility:} Ensuring experiments are fully reproducible with proper cache invalidation when parameters change.
+\end{enumerate}
+
+\section{Research Objectives}
+\label{sec:objectives}
+
+The specific objectives of this thesis are:
+
+\begin{enumerate}
+    \item Implement a complete sleep stage classification pipeline from raw EEG data to predictions.
+
+    \item Extract 149 time-domain and frequency-domain features from 6 EEG channels per 30-second epoch.
+
+    \item Apply ANOVA-based feature selection to reduce dimensionality and improve model performance.
+
+    \item Train and evaluate XGBoost and Random Forest models using LOSO cross-validation on 128 subjects from the BOAS dataset.
+
+    \item Implement a two-tier caching system (feature cache + model cache) with SHA-256 fingerprint-based cache invalidation to accelerate iterative experimentation.
+
+    \item Compare model performance across different feature selection configurations.
+
+    \item Analyze the computational efficiency gains from the caching system.
+\end{enumerate}
+
+\section{Contributions}
+\label{sec:contributions}
+
+The main contributions of this thesis are:
+
+\begin{enumerate}
+    \item A complete, reproducible sleep stage classification pipeline implemented in Python with modular architecture.
+
+    \item A two-tier caching system with fingerprint-based cache invalidation that reduces experiment time while ensuring reproducibility.
+
+    \item Empirical comparison of XGBoost and Random Forest for subject-independent sleep stage classification on the BOAS dataset.
+
+    \item Open-source implementation with comprehensive documentation for future research.
+\end{enumerate}
+
+\section{Thesis Structure}
+\label{sec:structure}
+
+The remainder of this thesis is organized as follows:
+
+\begin{itemize}
+    \item \textbf{Chapter 2} reviews related work in sleep stage classification, feature extraction, and machine learning models.
+
+    \item \textbf{Chapter 3} describes the methodology, including the BOAS dataset, preprocessing pipeline, feature extraction, feature selection, and machine learning models.
+
+    \item \textbf{Chapter 4} details the implementation of the pipeline, including the two-tier caching system and LOSO cross-validation framework.
+
+    \item \textbf{Chapter 5} presents the experimental results, including model performance and caching efficiency.
+
+    \item \textbf{Chapter 6} discusses the results, limitations, and implications.
+
+    \item \textbf{Chapter 7} concludes the thesis and outlines directions for future work.
+\end{itemize}

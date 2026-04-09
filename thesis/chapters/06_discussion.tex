@@ -1,0 +1,221 @@
+\chapter{Discussion}
+\label{ch:discussion}
+
+% ============================================================================
+% This chapter discusses results, limitations, and implications
+% ============================================================================
+
+\section{Overview}
+\label{sec:discussion_overview}
+
+This chapter discusses the experimental results, compares findings with prior work, analyzes limitations, and discusses implications for sleep stage classification research.
+
+\section{Model Performance}
+\label{sec:performance_discussion}
+
+\subsection{XGBoost vs Random Forest}
+\label{subsec:xgb_vs_rf}
+
+% TODO: After results, discuss:
+% - Which model performed better and why?
+% - Are differences statistically significant?
+% - What are trade-offs (accuracy vs training time, interpretability)?
+
+Our results show that [XGBoost/Random Forest] achieved superior performance with [X\%] accuracy compared to [Y\%] for [other model]. This [is/is not] consistent with prior work in sleep stage classification \cite{TODO_ADD_REF}.
+
+Possible explanations for these results include:
+
+\begin{itemize}
+    \item \textbf{Gradient boosting:} XGBoost's sequential error correction may be better suited for class imbalance in sleep data
+    \item \textbf{Regularization:} XGBoost's built-in L1/L2 regularization may prevent overfitting on minority classes (N1)
+    \item \textbf{Feature interactions:} [Discuss which model captures feature interactions better]
+\end{itemize}
+
+\subsection{Subject-Independent Generalization}
+\label{subsec:loso_generalization}
+
+The LOSO cross-validation results demonstrate [good/moderate/poor] subject-independent generalization. [Discuss variability across subjects - some subjects much easier/harder than others?]
+
+% TODO: Add figure showing per-subject accuracy distribution (box plot or histogram)
+
+Factors affecting inter-subject variability may include:
+
+\begin{itemize}
+    \item Age and gender differences
+    \item Sleep quality and architecture
+    \item Individual EEG signal characteristics
+    \item Recording quality and artifacts
+\end{itemize}
+
+\subsection{Per-Class Performance}
+\label{subsec:perclass_discussion}
+
+% TODO: Discuss confusion patterns
+% - Which stages are most confused with each other?
+% - Is N1 (rare class) poorly classified as expected?
+% - Are transitions (W→N1, N1→N2) harder than stable periods?
+
+Common confusion patterns observed:
+
+\begin{itemize}
+    \item \textbf{N1 vs Wake:} N1 is often confused with Wake due to similar EEG characteristics during drowsiness
+    \item \textbf{N1 vs N2:} Transition between light sleep stages is ambiguous
+    \item \textbf{REM vs Wake:} Paradoxical sleep has EEG similar to wakefulness
+\end{itemize}
+
+These patterns are consistent with clinical sleep scoring challenges \cite{TODO_ADD_REF}.
+
+\section{Feature Selection Analysis}
+\label{sec:feature_discussion}
+
+\subsection{Impact of Feature Count}
+\label{subsec:feature_count}
+
+% TODO: Discuss top-K = 30 vs 50 vs 75
+% - Does performance plateau?
+% - Optimal trade-off between dimensionality and information?
+
+Our results [show/do not show] diminishing returns with increasing feature count. Top-K = [VALUE] provides the best balance between dimensionality and performance.
+
+\subsection{Important Features}
+\label{subsec:important_features_discussion}
+
+% TODO: Analyze which features were most selected
+% - Are frequency-domain features more important than time-domain? (Expected for sleep)
+% - Which EEG channels are most informative? (Central channels? Frontal?)
+% - Are delta and theta bands dominant? (Expected for deep sleep and REM)
+
+The most frequently selected features include [list top features]. This suggests that [discuss what this tells us about sleep stage signatures].
+
+Frequency-domain features [dominate/complement] time-domain features, consistent with the understanding that sleep stages are characterized by distinct spectral patterns \cite{TODO_ADD_REF}.
+
+\section{Computational Efficiency}
+\label{sec:efficiency_discussion}
+
+\subsection{Caching System Impact}
+\label{subsec:caching_impact}
+
+The two-tier caching system achieved [X\%] feature cache hit rate and [Y\%] LOSO model cache hit rate, reducing total experiment time by [Z hours/days].
+
+% TODO: Compare with naive implementation
+% - Without caching: X hours for full experiment
+% - With caching (after initial run): Y hours for parameter sweep
+% - Speedup factor: X/Y
+
+This demonstrates the practical value of fingerprint-based caching for iterative machine learning experimentation.
+
+\subsection{Parallelization}
+\label{subsec:parallelization}
+
+Epoch-level parallelization in feature extraction provided [X×] speedup on [N-core] CPU. Subject-level parallelization was not implemented to avoid memory overhead and cache contention, as caching already makes subject processing nearly instant on cache hits.
+
+\section{Comparison with Prior Work}
+\label{sec:comparison}
+
+% TODO: Compare with literature
+% - How does our accuracy/kappa compare to other BOAS studies?
+% - How does our accuracy compare to other sleep staging methods?
+% - Is LOSO evaluation more stringent than random K-fold?
+
+Table~\ref{tab:literature_comparison} compares our results with prior work.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison with Prior Sleep Stage Classification Studies}
+    \label{tab:literature_comparison}
+    \begin{tabular}{llccc}
+        \toprule
+        \textbf{Study} & \textbf{Method} & \textbf{Dataset} & \textbf{CV} & \textbf{Accuracy} \\
+        \midrule
+        % TODO: Fill in literature comparison
+        Author 2023 \cite{TODO} & CNN & Sleep-EDF & 10-fold & XX.X\% \\
+        Author 2022 \cite{TODO} & LSTM & MASS & Random & XX.X\% \\
+        Author 2021 \cite{TODO} & Random Forest & Custom & LOSO & XX.X\% \\
+        \midrule
+        \textbf{This work} & XGBoost & BOAS & LOSO & XX.X\% \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Our results [are comparable to / exceed / fall short of] state-of-the-art methods, considering that:
+
+\begin{itemize}
+    \item LOSO is more stringent than random K-fold cross-validation
+    \item Different datasets have different difficulty levels
+    \item Feature-based methods are more interpretable than deep learning
+\end{itemize}
+
+\section{Limitations}
+\label{sec:limitations}
+
+This work has several limitations:
+
+\subsection{Dataset Limitations}
+\label{subsec:dataset_limitations}
+
+\begin{itemize}
+    \item \textbf{Single dataset:} Results are specific to BOAS; generalization to other datasets is uncertain
+    \item \textbf{Healthy subjects:} BOAS contains only healthy sleepers; clinical populations (sleep disorders) may have different characteristics
+    \item \textbf{Age range:} [Check BOAS demographics - limited age range?]
+\end{itemize}
+
+\subsection{Methodological Limitations}
+\label{subsec:method_limitations}
+
+\begin{itemize}
+    \item \textbf{Handcrafted features:} Feature engineering requires domain expertise; deep learning may discover better representations
+    \item \textbf{Hyperparameter tuning:} Limited hyperparameter search due to computational constraints
+    \item \textbf{Class imbalance:} No special handling (e.g., SMOTE, class weights) for rare stages like N1
+    \item \textbf{Single-epoch classification:} No temporal context from neighboring epochs (sequence models could help)
+\end{itemize}
+
+\subsection{Implementation Limitations}
+\label{subsec:impl_limitations}
+
+\begin{itemize}
+    \item \textbf{Sequential LOSO:} Folds are processed sequentially; could parallelize across folds (but cache makes this less critical)
+    \item \textbf{Memory constraints:} Feature extraction batch size limited by RAM
+    \item \textbf{Storage overhead:} Cache requires [X GB] storage for 128 subjects
+\end{itemize}
+
+\section{Implications}
+\label{sec:implications}
+
+\subsection{For Sleep Research}
+\label{subsec:research_implications}
+
+This work demonstrates that:
+
+\begin{itemize}
+    \item Feature-based machine learning remains competitive for sleep stage classification
+    \item LOSO cross-validation is essential for honest subject-independent evaluation
+    \item Computational efficiency (via caching) enables extensive experimentation
+\end{itemize}
+
+\subsection{For Clinical Applications}
+\label{subsec:clinical_implications}
+
+The pipeline could be adapted for:
+
+\begin{itemize}
+    \item Automated sleep stage scoring in clinical sleep labs
+    \item Home sleep monitoring with portable EEG devices
+    \item Large-scale epidemiological sleep studies
+\end{itemize}
+
+However, clinical deployment requires:
+\begin{itemize}
+    \item Validation on clinical populations (sleep disorders)
+    \item Regulatory approval (medical device certification)
+    \item Integration with clinical workflows
+\end{itemize}
+
+\subsection{For Machine Learning}
+\label{subsec:ml_implications}
+
+The two-tier caching system with fingerprint-based invalidation is a general pattern applicable to other machine learning domains with expensive preprocessing and iterative experimentation.
+
+\section{Summary}
+\label{sec:discussion_summary}
+
+This chapter discussed model performance, feature selection, computational efficiency, comparison with prior work, limitations, and implications. [Summarize key takeaways after results are available.]

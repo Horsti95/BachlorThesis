@@ -1,0 +1,11 @@
+metric,anova,mutual_information,comparison
+avg_selection_time_s,0.0215,3.74,ANOVA 174x faster
+time_std_s,0.0014,0.38,
+accuracy_5fold_cv,0.8426,0.8058,ANOVA +3.68%
+accuracy_std,0.0087,0.0071,
+speedup_factor,174,,
+accuracy_difference_pct,3.68,,ANOVA higher
+classifier,RandomForest,RandomForest,
+k_features_selected,50,50,
+dataset,9289 epochs x 195 features (10 subjects),same,
+thesis_claim,~200x faster with <1% accuracy difference,,NOT VALIDATED - accuracy gap 3.68%
