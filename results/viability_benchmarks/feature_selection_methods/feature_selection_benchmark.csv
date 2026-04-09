@@ -1,0 +1,12 @@
+method,status,runtime_seconds,n_features,n_samples,top_k,error
+variance_unsupervised,ok,0.003362,195,914,30,
+chi2,ok,0.007656,195,914,30,
+anova_f_classif,ok,0.01597,195,914,30,
+kruskal_h,ok,0.239898,195,914,30,
+hybrid_anova_then_mi,ok,0.630944,195,914,30,
+random_forest_importance,ok,1.331804,195,914,30,
+rfe_logreg,ok,1.959295,195,914,30,
+mutual_info,ok,1.998563,195,914,30,
+xgboost_importance,ok,9.052536,195,914,30,
+l1_logreg_ovr,ok,18.508941,195,914,30,
+sfs_forward_logreg,ok,323.11912,195,914,30,

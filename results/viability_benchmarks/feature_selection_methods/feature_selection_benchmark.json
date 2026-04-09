@@ -1,0 +1,65 @@
+{
+  "prepare_timing": {
+    "cache_load_seconds": 0.023328999988734722,
+    "feature_extraction_seconds": 0.0,
+    "mode": "cache"
+  },
+  "n_epochs": 914,
+  "n_features": 195,
+  "n_classes": 5,
+  "class_distribution": {
+    "0": 200,
+    "1": 57,
+    "2": 398,
+    "3": 172,
+    "4": 87
+  },
+  "summary": [
+    {"method": "variance_unsupervised", "status": "ok", "runtime_seconds": 0.003362, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "chi2", "status": "ok", "runtime_seconds": 0.007656, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "anova_f_classif", "status": "ok", "runtime_seconds": 0.01597, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "kruskal_h", "status": "ok", "runtime_seconds": 0.239898, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "hybrid_anova_then_mi", "status": "ok", "runtime_seconds": 0.630944, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "random_forest_importance", "status": "ok", "runtime_seconds": 1.331804, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "rfe_logreg", "status": "ok", "runtime_seconds": 1.959295, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "mutual_info", "status": "ok", "runtime_seconds": 1.998563, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "xgboost_importance", "status": "ok", "runtime_seconds": 9.052536, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "l1_logreg_ovr", "status": "ok", "runtime_seconds": 18.508941, "n_features": 195, "n_samples": 914, "top_k": 30},
+    {"method": "sfs_forward_logreg", "status": "ok", "runtime_seconds": 323.11912, "n_features": 195, "n_samples": 914, "top_k": 30}
+  ],
+  "details": {
+    "anova_f_classif": {
+      "top_features": ["O2_alpha_power", "O1_alpha_power", "O1_zcr", "O2_zcr", "O1_hjorth_mobility", "O2_hurst", "O2_dfa", "O2_hjorth_mobility", "O1_dfa", "O1_hurst", "F4_zcr", "O1_spectral_entropy", "F3_zcr", "O1_hjorth_complexity", "O2_hjorth_complexity", "O2_spectral_entropy", "F4_hjorth_mobility", "O2_median_frequency", "O1_median_frequency", "F4_hurst", "F4_dfa", "F4_spectral_entropy", "F3_hjorth_mobility", "global_complexity", "O2_peak_frequency", "F4_hjorth_complexity", "O1_peak_frequency", "F3_hjorth_complexity", "C3_spectral_entropy", "EMG_zcr"]
+    },
+    "mutual_info": {
+      "top_features": ["O1_hjorth_mobility", "O2_hjorth_complexity", "O2_dfa", "O2_hurst", "O2_hjorth_mobility", "O1_zcr", "O1_hjorth_complexity", "O1_dfa", "O1_hurst", "O2_zcr", "C3_beta_power", "C3_delta_power", "O2_beta_power", "O1_beta_power", "O2_gamma_power", "F4_zcr", "EOG_beta_power", "O1_gamma_power", "O1_delta_power", "O2_var", "O2_std", "O2_rms", "O2_median_frequency", "O1_median_frequency", "F4_hjorth_mobility", "C3_zcr", "O2_delta_power", "C3_hjorth_mobility", "EOG_gamma_power", "F3_zcr"]
+    },
+    "hybrid_anova_then_mi": {
+      "top_features": ["O1_hjorth_mobility", "O2_hjorth_complexity", "O2_dfa", "O2_hurst", "O2_hjorth_mobility", "O1_hjorth_complexity", "O1_zcr", "O1_dfa", "O1_hurst", "O2_zcr", "F4_zcr", "O2_std", "O2_rms", "F4_hjorth_mobility", "C3_zcr", "O2_median_frequency", "O1_median_frequency", "C3_hjorth_mobility", "F3_zcr", "O1_std", "O1_rms", "O1_spectral_entropy", "C3_hjorth_complexity", "F3_hjorth_mobility", "F4_spectral_entropy", "C3_spectral_entropy", "C3_hurst", "C3_dfa", "O2_alpha_power", "F4_hjorth_complexity"]
+    },
+    "chi2": {
+      "top_features": ["O2_peak_frequency", "O1_peak_frequency", "O2_alpha_power", "O1_alpha_power", "O1_median_frequency", "O2_median_frequency", "EMG_median_frequency", "EMG_peak_frequency", "EOG_peak_frequency", "EMG_zcr", "F4_hjorth_mobility", "F4_zcr", "F3_zcr", "EMG_hjorth_mobility", "F3_peak_frequency", "C3_peak_frequency", "F3_hjorth_mobility", "F4_median_frequency", "C3_hjorth_mobility", "O2_hurst", "O2_dfa", "O1_zcr", "C4_ptp", "O1_hurst", "O1_dfa", "O1_hjorth_mobility", "O2_hjorth_mobility", "O2_hjorth_complexity", "O2_zcr", "C4_max"]
+    },
+    "kruskal_h": {
+      "top_features": ["O2_beta_power", "O1_beta_power", "O1_zcr", "EOG_beta_power", "F3_zcr", "O2_zcr", "F4_zcr", "O2_std", "O2_var", "O2_rms", "F4_hjorth_mobility", "O1_hjorth_mobility", "O2_hjorth_complexity", "O1_var", "O1_std", "O1_rms", "O2_hjorth_mobility", "O1_hjorth_complexity", "EOG_gamma_power", "O2_sigma_power", "F3_hjorth_mobility", "O2_hurst", "O2_dfa", "O1_dfa", "O1_hurst", "F4_hjorth_complexity", "O1_gamma_power", "O2_gamma_power", "F4_spectral_entropy", "O2_alpha_power"]
+    },
+    "variance_unsupervised": {
+      "top_features": ["EMG_median_frequency", "C4_peak_frequency", "EMG_kurtosis", "C3_peak_frequency", "C4_median_frequency", "EMG_peak_frequency", "F4_kurtosis", "F3_kurtosis", "C4_kurtosis", "C3_kurtosis", "O2_peak_frequency", "O1_peak_frequency", "C3_median_frequency", "EOG_kurtosis", "O2_median_frequency", "O1_median_frequency", "C4_hjorth_complexity", "O2_kurtosis", "O1_kurtosis", "EOG_hjorth_complexity", "EMG_hjorth_complexity", "F4_hjorth_complexity", "F4_median_frequency", "F3_hjorth_complexity", "O2_hjorth_complexity", "O1_hjorth_complexity", "C3_hjorth_complexity", "F3_median_frequency", "EOG_median_frequency", "global_complexity"]
+    },
+    "random_forest_importance": {
+      "top_features": ["O2_zcr", "O2_hjorth_mobility", "O2_hjorth_complexity", "O2_rms", "O1_zcr", "O1_hjorth_mobility", "O2_std", "O1_hurst", "O1_rms", "F4_hjorth_mobility", "O1_std", "F4_zcr", "O1_hjorth_complexity", "EMG_zcr", "O1_dfa", "C3_zcr", "O2_hurst", "O2_spectral_entropy", "O1_spectral_entropy", "F4_skew", "O2_dfa", "C3_hjorth_mobility", "F3_zcr", "EMG_hjorth_complexity", "EMG_hurst", "EMG_hjorth_mobility", "EMG_spectral_entropy", "C3_hurst", "F3_hjorth_mobility", "O2_median_frequency"]
+    },
+    "xgboost_importance": {
+      "top_features": ["O1_zcr", "O2_std", "O2_alpha_power", "C3_theta_power", "C3_delta_power", "EOG_median_frequency", "EMG_hjorth_mobility", "C3_zcr", "EMG_zcr", "coherence_O1_O2", "O1_theta_power", "O1_std", "EOG_gamma_power", "O2_sigma_power", "C3_hjorth_complexity", "O2_beta_power", "O2_hjorth_complexity", "F4_zcr", "C3_gamma_power", "F4_gamma_power", "O2_hurst", "F4_hjorth_mobility", "C4_beta_power", "C4_skew", "C3_hurst", "coherence_F3_C4", "C4_min", "F4_skew", "O2_median_frequency", "F3_skew"]
+    },
+    "l1_logreg_ovr": {
+      "top_features": ["O1_alpha_power", "O2_alpha_power", "EMG_zcr", "global_entropy", "C4_hjorth_complexity", "plv_C3_C4", "C3_spectral_entropy", "C3_skew", "EOG_sigma_power", "C4_kurtosis", "C3_hjorth_complexity", "EMG_median_frequency", "O1_spectral_entropy", "O2_peak_frequency", "O1_median_frequency", "F3_peak_frequency", "coherence_O1_O2", "C3_peak_frequency", "O1_hjorth_complexity", "O1_kurtosis", "EMG_hjorth_mobility", "C3_kurtosis", "coherence_F3_F4", "C3_median_frequency", "C4_hjorth_mobility", "C4_zcr", "O2_median_frequency", "O2_hjorth_complexity", "O1_std", "O1_rms"]
+    },
+    "rfe_logreg": {
+      "top_features": ["global_entropy", "plv_C3_C4", "EMG_hjorth_complexity", "EOG_max", "EMG_hjorth_mobility", "EMG_zcr", "O2_median_frequency", "EOG_hjorth_mobility", "EOG_sigma_power", "EOG_hjorth_complexity", "O1_zcr", "O1_median_frequency", "O1_spectral_entropy", "O1_sigma_power", "O1_alpha_power", "F4_alpha_power", "F3_zcr", "F3_alpha_power", "F4_peak_frequency", "C3_spectral_entropy", "C3_kurtosis", "F4_zcr", "C3_hjorth_complexity", "O1_min", "C4_hjorth_mobility", "C4_hjorth_complexity", "O2_alpha_power", "O2_kurtosis", "O2_zcr", "O2_theta_power"]
+    },
+    "sfs_forward_logreg": {
+      "top_features": ["EOG_beta_power", "EMG_hjorth_complexity", "plv_F3_O1", "EOG_var", "O2_hurst", "EOG_gamma_power", "O2_median_frequency", "F4_peak_frequency", "F3_std", "C4_sigma_power", "C4_skew", "O1_var", "F3_gamma_power", "F3_delta_power", "F3_ptp", "F3_var", "F3_beta_power", "F3_mean", "F3_peak_frequency", "F4_gamma_power", "F4_beta_power", "F4_delta_power", "F4_theta_power", "O1_median_frequency", "O1_hjorth_complexity", "O2_var", "O2_delta_power", "O1_rms", "O1_std", "O1_delta_power"]
+    }
+  }
+}
