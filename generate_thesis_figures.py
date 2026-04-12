@@ -172,9 +172,83 @@ def tab2_performance(show: bool):
 
 
 # ===================================================================
-# 3. Compute-to-I/O Crossover — RF vs XGBoost (averaged per feature count)
+# 3. Cache Efficiency: Compute Savings vs. Storage Cost (all 15 models)
 # ===================================================================
-def fig3_crossover(show: bool):
+def fig3_efficiency(show: bool):
+    import matplotlib.pyplot as plt
+
+    df = pd.read_csv(VIABILITY_CSV)
+
+    # Compute time saved per fold (cold - warm)
+    df["time_saved_per_fold"] = df["cold_per_fold_time_s"] - df["warm_per_fold_time_s"]
+
+    colors = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for verdict in ["VIABLE", "NOT_VIABLE"]:
+        subset = df[df["cache_verdict"] == verdict]
+        ax.scatter(
+            subset["cache_size_per_fold_mb"],
+            subset["time_saved_per_fold"],
+            c=colors[verdict],
+            s=120,
+            edgecolors="black",
+            linewidth=0.5,
+            label=f"{verdict.replace('_', ' ').title()}  (MB/s < 0.5)" if verdict == "VIABLE"
+                  else f"{verdict.replace('_', ' ').title()}  (MB/s > 2.0)",
+            zorder=5,
+        )
+
+    # Label each point
+    for _, row in df.iterrows():
+        name = row["model_name"]
+        # Offset to avoid overlap
+        x_off, y_off = 8, 0
+        if name == "knn_10":
+            y_off = -15
+        elif name == "svm_rbf":
+            y_off = -15
+        elif name == "ridge_classifier":
+            y_off = 10
+        elif name == "naive_bayes":
+            y_off = 10
+        ax.annotate(
+            name, (row["cache_size_per_fold_mb"], row["time_saved_per_fold"]),
+            textcoords="offset points", xytext=(x_off, y_off), fontsize=7.5,
+            color="#333333",
+        )
+
+    # Draw viability boundary: MB/s-saved = 0.5 means time_saved = cache_size / 0.5
+    # i.e., time_saved = 2 * cache_size
+    x_line = np.logspace(-3, 3, 100)
+    ax.plot(x_line, x_line / 0.5, "--", color="#888888", linewidth=1.5, alpha=0.6,
+            label="Viability boundary (0.5 MB/s)")
+    ax.plot(x_line, x_line / 2.0, ":", color="#cc0000", linewidth=1.2, alpha=0.5,
+            label="Not-viable boundary (2.0 MB/s)")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Cache size per fold (MB)", fontsize=11)
+    ax.set_ylabel("Time saved per fold (seconds)", fontsize=11)
+    ax.set_title("Cache Efficiency: Compute Savings vs. Storage Cost\n"
+                 "Above the line = viable (saves more time per MB stored)",
+                 fontsize=12)
+    ax.legend(fontsize=8, loc="upper left")
+    ax.grid(True, alpha=0.2, which="both")
+
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "fig3_efficiency.pdf", bbox_inches="tight")
+    print(f"  [3/10] Saved fig3_efficiency.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
+# 3b. Compute-to-I/O Crossover — RF vs XGBoost (averaged per feature count)
+# ===================================================================
+def fig3b_crossover(show: bool):
     import matplotlib.pyplot as plt
 
     xgb = pd.read_csv(XGB_CSV)
@@ -211,17 +285,23 @@ def fig3_crossover(show: bool):
              color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
     ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
                      rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
-                     label="Small gap = I/O-bound")
+                     label="Small gap = I/O bottleneck")
+    # Annotate the warm line with cache size info
+    ax2.annotate("~131 MB/fold\n(serialized trees)",
+                 xy=(rf_avg["n_features"].iloc[-1], rf_avg["warm_per_fold_s"].iloc[-1]),
+                 xytext=(-60, 25), textcoords="offset points", fontsize=8,
+                 arrowprops=dict(arrowstyle="->", color="#888"),
+                 color="#d9534f")
     ax2.set_xlabel("Number of features")
     ax2.set_ylabel("Time per fold (seconds)")
-    ax2.set_title("Random Forest — cache load ≈ re-train (I/O-bound)")
+    ax2.set_title("Random Forest — cache load ~2.5s (131 MB I/O)")
     ax2.legend(fontsize=8)
 
-    fig.suptitle("Compute vs. I/O: Why Caching Works for Boosting but Not Tree Ensembles",
+    fig.suptitle("XGBoost vs. Random Forest: Why Model Size Determines Cache Viability",
                  fontsize=12, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.93])
-    fig.savefig(FIG_DIR / "fig3_crossover.pdf", bbox_inches="tight")
-    print(f"  [3/10] Saved fig3_crossover.pdf")
+    fig.savefig(FIG_DIR / "fig3b_crossover.pdf", bbox_inches="tight")
+    print(f"  [3b/10] Saved fig3b_crossover.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -265,59 +345,43 @@ def tab4_viability(show: bool):
 
 
 # ===================================================================
-# 4b. Cache Viability Scatter — speedup vs cache size with threshold
+# 4b. Cache Viability Scatter — MB/s-saved metric with defined thresholds
 # ===================================================================
 def fig4b_viability_scatter(show: bool):
     import matplotlib.pyplot as plt
 
     df = pd.read_csv(VIABILITY_CSV)
+    df = df.sort_values("mb_per_second_saved")
 
-    # Color and marker by verdict
-    colors = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
-    markers = {"VIABLE": "o", "NOT_VIABLE": "X", "BORDERLINE": "D"}
+    # Horizontal bar chart: MB/s-saved per model, colored by verdict
+    colors_map = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+    bar_colors = [colors_map.get(v, "#999") for v in df["cache_verdict"]]
 
-    fig, ax = plt.subplots(figsize=(9, 5.5))
+    fig, ax = plt.subplots(figsize=(10, 6))
+    y_pos = np.arange(len(df))
+    bars = ax.barh(y_pos, df["mb_per_second_saved"], color=bar_colors,
+                   edgecolor="white", linewidth=0.5)
 
-    for verdict in ["VIABLE", "NOT_VIABLE", "BORDERLINE"]:
-        subset = df[df["cache_verdict"] == verdict]
-        if subset.empty:
-            continue
-        ax.scatter(
-            subset["cache_size_per_fold_mb"],
-            subset["speedup_ratio"],
-            c=colors[verdict],
-            marker=markers[verdict],
-            s=100,
-            edgecolors="black",
-            linewidth=0.5,
-            label=verdict.replace("_", " ").title(),
-            zorder=5,
-        )
-        # Label each point
-        for _, row in subset.iterrows():
-            name = row["model_name"].replace("_", "\n")
-            offset_y = 0.15  # log scale offset
-            ax.annotate(
-                row["model_name"],
-                (row["cache_size_per_fold_mb"], row["speedup_ratio"]),
-                textcoords="offset points",
-                xytext=(6, 4),
-                fontsize=7,
-                color="#333333",
-            )
+    # Labels: model name + speedup
+    labels = [f"{row['model_name']}  ({row['speedup_ratio']:.0f}x, "
+              f"{row['cache_size_per_fold_mb']:.1f} MB)"
+              for _, row in df.iterrows()]
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=9)
 
-    # Viability threshold line: speedup > 10x is a reasonable cutoff
-    ax.axhline(y=10, color="#888888", linestyle="--", linewidth=1.5, alpha=0.7,
-               label="Viability threshold (10x)")
+    # Threshold lines
+    ax.axvline(x=0.5, color="#888888", linestyle="--", linewidth=2, alpha=0.8,
+               label="Viable threshold (< 0.5)")
+    ax.axvline(x=2.0, color="#cc0000", linestyle=":", linewidth=2, alpha=0.7,
+               label="Not-viable threshold (> 2.0)")
 
     ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Cache size per fold (MB)", fontsize=11)
-    ax.set_ylabel("Speedup factor (cold / warm)", fontsize=11)
-    ax.set_title("Cache Viability: Speedup vs. Storage Cost (15 Models, 128 Subjects)",
-                 fontsize=12)
-    ax.legend(fontsize=9, loc="upper right")
-    ax.grid(True, alpha=0.3, which="both")
+    ax.set_xlabel("MB per second saved (lower = more efficient cache)", fontsize=11)
+    ax.set_title("Cache Viability Metric: Storage Cost per Second of Compute Saved\n"
+                 "Green = viable, Red = not viable (I/O dominates)", fontsize=11)
+    ax.legend(fontsize=9, loc="lower right")
+    ax.grid(True, alpha=0.2, axis="x", which="both")
+    ax.invert_yaxis()
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig4b_viability_scatter.pdf", bbox_inches="tight")
@@ -578,7 +642,8 @@ def main():
 
     fig1_speedup_bar(args.show)
     tab2_performance(args.show)
-    fig3_crossover(args.show)
+    fig3_efficiency(args.show)
+    fig3b_crossover(args.show)
     tab4_viability(args.show)
     fig4b_viability_scatter(args.show)
     tab5_fingerprint(args.show)
@@ -588,7 +653,7 @@ def main():
     fig_bonus_svm_scaling(args.show)
 
     print()
-    print(f"Done! 6 figures + 4 tables generated.")
+    print(f"Done! 8 figures + 4 tables generated.")
     print(f"  PDF figures: {FIG_DIR}")
     print(f"  LaTeX tables: {TAB_DIR}")
 
