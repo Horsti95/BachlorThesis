@@ -1,0 +1,3 @@
+model_name,category,n_folds_run,n_subjects,cold_total_time_s,cold_per_fold_time_s,warm_total_time_s,warm_per_fold_time_s,cache_size_mb,cache_size_per_fold_mb,speedup_ratio,time_saved_s,mb_per_second_saved,cold_accuracy,warm_accuracy,accuracy_match,cache_verdict,error
+svm_linear,svm,3,128,3802.88,1267.627,1.23,0.41,0.02,0.006,3092.51,3801.65,0.0,0.7534,0.7534,True,VIABLE,
+svm_rbf,svm,3,128,5237.34,1745.78,26.07,8.691,184.45,61.483,200.87,5211.27,0.0354,0.7292,0.7292,True,VIABLE,

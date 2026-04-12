@@ -166,8 +166,7 @@ class CorrelationFilter:
 
         n_removed = len(self.features_to_remove_)
         n_pairs = len(highly_correlated_pairs)
-        logger.debug(f"Found {n_pairs} highly correlated pairs")
-        logger.debug(f"Will remove {n_removed} features: {self.features_to_remove_[:5]}...")
+        logger.debug(f"Found {n_pairs} highly correlated pairs, removing {n_removed} features")
         
         return self
     
@@ -237,7 +236,7 @@ class TopKSelector:
         Returns:
             Self for method chaining
         """
-        logger.info(f"Fitting TopKSelector with k={self.k}")
+        logger.debug(f"Fitting TopKSelector with k={self.k}")
         
         # Ensure k doesn't exceed available features
         actual_k = min(self.k, X.shape[1])
@@ -263,14 +262,14 @@ class TopKSelector:
         
         # Log top features
         sorted_features = sorted(self.feature_scores_.items(), key=lambda x: x[1], reverse=True)
-        logger.info(f"Top 5 features by MI: {sorted_features[:5]}")
-        
+        logger.debug(f"Top 5 features by MI: {sorted_features[:5]}")
+
         return self
-    
+
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Select top-K features.
-        
+
         Args:
             X: Feature DataFrame
             
@@ -483,7 +482,7 @@ class HybridTopKSelector:
         actual_intermediate_k = min(intermediate_k, X.shape[1])
         actual_final_k = min(self.k, actual_intermediate_k)
         
-        logger.info(f"Fitting HybridTopKSelector: {X.shape[1]} -> {actual_intermediate_k} -> {actual_final_k} features")
+        logger.debug(f"Fitting HybridTopKSelector: {X.shape[1]} -> {actual_intermediate_k} -> {actual_final_k} features")
         
         # ========== STAGE 1: Fast ANOVA F-test ==========
         stage1_start = time.time()
@@ -500,7 +499,7 @@ class HybridTopKSelector:
         X_intermediate = X[self.stage1_features_]
         
         self.stage1_time_ = time.time() - stage1_start
-        logger.info(f"Stage 1 (f_classif): {X.shape[1]} -> {len(self.stage1_features_)} features in {self.stage1_time_:.2f}s")
+        logger.debug(f"Stage 1 (f_classif): {X.shape[1]} -> {len(self.stage1_features_)} features in {self.stage1_time_:.2f}s")
         
         # ========== STAGE 2: Precise MI on reduced set ==========
         stage2_start = time.time()
@@ -519,13 +518,13 @@ class HybridTopKSelector:
         self.stage2_time_ = time.time() - stage2_start
         total_time = time.time() - start_total
         
-        logger.info(f"Stage 2 (MI): {len(self.stage1_features_)} -> {len(self.selected_features_)} features in {self.stage2_time_:.2f}s")
-        logger.info(f"Hybrid selection complete: {total_time:.2f}s total")
+        logger.debug(f"Stage 2 (MI): {len(self.stage1_features_)} -> {len(self.selected_features_)} features in {self.stage2_time_:.2f}s")
+        logger.debug(f"Hybrid selection complete: {total_time:.2f}s total")
         
         # Log top features
         sorted_features = sorted(self.feature_scores_.items(), key=lambda x: x[1], reverse=True)
-        logger.info(f"Top 5 features by MI: {sorted_features[:5]}")
-        
+        logger.debug(f"Top 5 features by MI: {sorted_features[:5]}")
+
         self.is_fitted_ = True
         return self
     

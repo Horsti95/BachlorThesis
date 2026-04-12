@@ -64,7 +64,10 @@ class FeatureConfig:
     correlation_threshold: Optional[float] = None
     
     def expected_feature_count(self, n_channels: int = 6) -> int:
-        """Calculate expected number of features."""
+        """Calculate expected number of features for the given channel count.
+
+        Returns total = n_channels * 23 (per-channel) + 11 (global).
+        """
         # Per channel: 10 time + 9 frequency + 4 complexity = 23
         per_channel = 23
         # Global: 11 features
@@ -83,7 +86,7 @@ class DataConfig:
     channels: Optional[List[str]] = None
     
     def get_channels(self) -> List[str]:
-        """Get list of channels based on preset."""
+        """Return channel names based on channel_preset or custom list."""
         if self.channel_preset == "eeg_only":
             return ['PSG_F3', 'PSG_F4', 'PSG_C3', 'PSG_C4', 'PSG_O1', 'PSG_O2']
         elif self.channel_preset == "eeg_plus_physiological":
@@ -108,7 +111,7 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
-    """Model configuration."""
+    """Model configuration (type, hyperparameters, random seed)."""
     
     model_type: str = "xgboost"
     random_seed: int = 42
@@ -123,7 +126,7 @@ class ModelConfig:
 
 @dataclass
 class CrossValidationConfig:
-    """Cross-validation configuration."""
+    """Cross-validation configuration (LOSO or k-fold)."""
     
     method: str = "loso"  # loso, kfold
     n_folds: Optional[int] = None
@@ -132,7 +135,7 @@ class CrossValidationConfig:
 
 @dataclass
 class ExperimentConfig:
-    """Complete experiment configuration."""
+    """Top-level experiment configuration aggregating all sub-configs."""
     
     experiment_name: str = "experiment"
     data: DataConfig = field(default_factory=DataConfig)
@@ -142,9 +145,13 @@ class ExperimentConfig:
     cross_validation: CrossValidationConfig = field(default_factory=CrossValidationConfig)
     output_dir: str = "./results"
     log_level: str = "INFO"
+
+    # Training grid (set by interactive menu for multi-config experiments)
+    training_models: Optional[List[str]] = None
+    training_feature_configs: Optional[List[tuple]] = None
     
     def get_output_dir(self) -> Path:
-        """Get the output directory as a Path object, creating timestamp-based subdir."""
+        """Build a timestamped output directory path (does not create it on disk)."""
         from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return Path(self.output_dir) / f"{self.experiment_name}_{timestamp}"
@@ -155,7 +162,10 @@ class ConfigManager:
     
     @staticmethod
     def from_yaml(yaml_path: str) -> ExperimentConfig:
-        """Load configuration from YAML file."""
+        """Load and parse a YAML file into an ExperimentConfig.
+
+        Raises FileNotFoundError if the file does not exist.
+        """
         path = Path(yaml_path)
         if not path.exists():
             raise FileNotFoundError(f"Config file not found: {yaml_path}")
@@ -167,7 +177,10 @@ class ConfigManager:
     
     @staticmethod
     def _dict_to_config(data: Dict) -> ExperimentConfig:
-        """Convert dictionary to ExperimentConfig."""
+        """Convert a nested dictionary (from YAML) into an ExperimentConfig.
+
+        Missing keys fall back to dataclass defaults.
+        """
         config = ExperimentConfig()
         
         if 'experiment_name' in data:
@@ -234,7 +247,7 @@ class ConfigManager:
     
     @staticmethod
     def to_yaml(config: ExperimentConfig, yaml_path: str):
-        """Save configuration to YAML file."""
+        """Serialize an ExperimentConfig to a YAML file, creating parent dirs if needed."""
         data = ConfigManager._config_to_dict(config)
         
         path = Path(yaml_path)
@@ -245,7 +258,7 @@ class ConfigManager:
     
     @staticmethod
     def _config_to_dict(config: ExperimentConfig) -> Dict:
-        """Convert ExperimentConfig to dictionary."""
+        """Flatten an ExperimentConfig into a nested dict suitable for YAML serialization."""
         return {
             'experiment_name': config.experiment_name,
             'data': {
@@ -294,7 +307,7 @@ class ConfigManager:
         data_path: str = r"C:\Users\DerHo\Desktop\Data",
         model_type: str = "xgboost"
     ) -> ExperimentConfig:
-        """Create a default configuration."""
+        """Create an ExperimentConfig with default values, overriding name/path/model."""
         config = ExperimentConfig()
         config.experiment_name = experiment_name
         config.data.base_path = data_path
@@ -303,7 +316,10 @@ class ConfigManager:
     
     @staticmethod
     def validate_config(config: ExperimentConfig) -> List[str]:
-        """Validate configuration and return list of issues."""
+        """Validate configuration and return a list of issue descriptions.
+
+        Returns an empty list if everything is valid.
+        """
         issues = []
         
         # Check data path

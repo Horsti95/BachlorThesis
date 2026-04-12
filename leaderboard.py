@@ -37,6 +37,7 @@ class CacheEvent:
     features_loaded: int
     
     def to_dict(self) -> Dict:
+        """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
 
@@ -74,6 +75,7 @@ class ExperimentRun:
         return (self.cache_hits / total) * 100
     
     def to_dict(self) -> Dict:
+        """Convert to dictionary, including computed cache hit rate."""
         d = asdict(self)
         d['cache_hit_rate_percent'] = self.cache_hit_rate()
         return d
@@ -159,6 +161,7 @@ class CacheLeaderboard:
     """
     
     def __init__(self, leaderboard_path: str = "results/cache_leaderboard.json"):
+        """Initialize leaderboard, loading existing data from disk if available."""
         self.leaderboard_path = Path(leaderboard_path)
         self.leaderboard_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -275,13 +278,13 @@ class CacheLeaderboard:
             self.total_cache_misses += 1
     
     def record_experiment_run(self, run: ExperimentRun):
-        """Record a complete experiment run."""
+        """Record a complete experiment run and persist to disk."""
         self.runs.append(run)
         self.total_time_saved += run.time_saved
         self._save()
     
     def start_run(self, experiment_name: str, config_summary: Dict = None) -> ExperimentRun:
-        """Start tracking a new experiment run."""
+        """Create a new ExperimentRun for tracking. Call finalize_run() when done."""
         run = ExperimentRun(
             experiment_name=experiment_name,
             timestamp=datetime.now().isoformat(),

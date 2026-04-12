@@ -1,0 +1,42 @@
+[
+  {
+    "model_name": "svm_linear",
+    "category": "svm",
+    "n_folds_run": 3,
+    "n_subjects": 128,
+    "cold_total_time_s": 3802.88,
+    "cold_per_fold_time_s": 1267.627,
+    "warm_total_time_s": 1.23,
+    "warm_per_fold_time_s": 0.41,
+    "cache_size_mb": 0.02,
+    "cache_size_per_fold_mb": 0.006,
+    "speedup_ratio": 3092.51,
+    "time_saved_s": 3801.65,
+    "mb_per_second_saved": 0.0,
+    "cold_accuracy": 0.7534,
+    "warm_accuracy": 0.7534,
+    "accuracy_match": true,
+    "cache_verdict": "VIABLE",
+    "error": null
+  },
+  {
+    "model_name": "svm_rbf",
+    "category": "svm",
+    "n_folds_run": 3,
+    "n_subjects": 128,
+    "cold_total_time_s": 5237.34,
+    "cold_per_fold_time_s": 1745.78,
+    "warm_total_time_s": 26.07,
+    "warm_per_fold_time_s": 8.691,
+    "cache_size_mb": 184.45,
+    "cache_size_per_fold_mb": 61.483,
+    "speedup_ratio": 200.87,
+    "time_saved_s": 5211.27,
+    "mb_per_second_saved": 0.0354,
+    "cold_accuracy": 0.7292,
+    "warm_accuracy": 0.7292,
+    "accuracy_match": true,
+    "cache_verdict": "VIABLE",
+    "error": null
+  }
+]

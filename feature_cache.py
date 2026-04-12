@@ -196,10 +196,9 @@ def load_features_from_cache(
 
 
 def get_cache_info(cache_path: Path) -> Optional[Dict[str, Any]]:
-    """
-    Get metadata about a cache file without loading full data.
-    
-    Useful for debugging and cache management.  
+    """Return metadata dict (epoch count, feature count, fingerprint, etc.) without loading full data.
+
+    Returns None if the cache file does not exist.
     """
     cache_path = Path(cache_path)
     if not cache_path.exists():
@@ -224,16 +223,20 @@ def select_channel_features(
     channels_to_keep: int = 6,
     standardize_names: bool = True
 ) -> pd.DataFrame:
-    """
-    Filter a full-feature DataFrame (per-channel prefixes + global features)
-    to only include the requested number of channels.
-    
-    Handles both naming conventions:
-    - Standard: F3_, F4_, C3_, C4_, O1_, O2_
-    - Generic: CH1_, CH2_, CH3_, CH4_, CH5_, CH6_
-    
-    If standardize_names=True, converts generic names to standard names for
-    consistent concatenation across subjects.
+    """Filter a feature DataFrame to keep only columns for the requested channel count.
+
+    Handles both naming conventions (standard F3_/F4_/... and generic CH1_/CH2_/...).
+    Global features (coherence_, plv_, global_) are kept unless they reference
+    excluded channels. If standardize_names=True, renames generic prefixes to
+    standard EEG channel names for consistent cross-subject concatenation.
+
+    Args:
+        features_df: Full feature DataFrame with per-channel and global columns.
+        channels_to_keep: Number of channels to retain (6=EEG only, 8=EEG+EOG+EMG).
+        standardize_names: Rename generic CH*_ prefixes to standard names.
+
+    Returns:
+        Filtered (and optionally renamed) DataFrame.
     """
     # Define canonical prefixes for the first 6 channels (both naming conventions)
     standard_prefixes = ['F3_', 'F4_', 'C3_', 'C4_', 'O1_', 'O2_']

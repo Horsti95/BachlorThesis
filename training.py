@@ -354,11 +354,13 @@ class TrainingPipeline:
         experiment_name: str = "training_experiment",
         formatter: Optional[TrainingOutputFormatter] = None,
         enable_model_cache: bool = True,
-        model_cache_dir: Optional[str] = None
+        model_cache_dir: Optional[str] = None,
+        cache_min_free_space_gb: float = 5.0,
+        cache_max_size_gb: Optional[float] = None
     ):
         """
         Initialize training pipeline.
-        
+
         Args:
             features_df: Pre-extracted features (from cache)
             labels: Sleep stage labels
@@ -368,6 +370,8 @@ class TrainingPipeline:
             formatter: Optional output formatter for human-readable output
             enable_model_cache: Enable LOSO model caching (Layer 2)
             model_cache_dir: Directory for model cache (default: results/loso_model_cache)
+            cache_min_free_space_gb: Min free disk space (GB) to allow caching (default: 5)
+            cache_max_size_gb: Max cache size (GB). Oldest models evicted when exceeded. None = unlimited.
         """
         self.features_df = features_df
         self.labels = labels
@@ -394,7 +398,9 @@ class TrainingPipeline:
             self.model_cache = LOSOModelCache(
                 cache_dir=cache_dir,
                 enable_registry=True,
-                estimated_training_time=120.0  # 2 minutes default estimate
+                estimated_training_time=120.0,  # 2 minutes default estimate
+                min_free_space_gb=cache_min_free_space_gb,
+                max_cache_size_gb=cache_max_size_gb
             )
             logger.debug(f"  Model cache: ENABLED at {cache_dir}")
         else:

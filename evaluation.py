@@ -80,6 +80,7 @@ class ClassMetrics:
     expected_range: Tuple[float, float] = (0.0, 1.0)
     
     def to_dict(self) -> Dict[str, Any]:
+        """Convert class metrics to a serializable dictionary."""
         return {
             'class_name': self.class_name,
             'precision': self.precision,
@@ -155,6 +156,7 @@ class AggregatedEvaluation:
     config_id: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
+        """Convert aggregated evaluation to a serializable dictionary."""
         return {
             'accuracy_mean': self.accuracy_mean,
             'accuracy_std': self.accuracy_std,

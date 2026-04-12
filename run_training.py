@@ -316,7 +316,21 @@ def parse_arguments():
         action='store_true',
         help='Skip confirmation prompt'
     )
-    
+
+    # Cache space management
+    parser.add_argument(
+        '--cache-min-free-gb',
+        type=float,
+        default=5.0,
+        help='Minimum free disk space (GB) to allow model caching. Caching is skipped below this.'
+    )
+    parser.add_argument(
+        '--cache-max-size-gb',
+        type=float,
+        default=None,
+        help='Maximum model cache size (GB). Oldest models evicted when exceeded. Default: unlimited.'
+    )
+
     return parser.parse_args()
 
 
@@ -332,7 +346,10 @@ def run_training_experiment(
     output_dir: Path,
     experiment_name: str,
     generate_viz: bool = True,
-    use_hybrid: bool = True
+    use_hybrid: bool = True,
+    n_jobs: int = 1,
+    cache_min_free_gb: float = 5.0,
+    cache_max_size_gb: Optional[float] = None
 ) -> Dict:
     """
     Run the complete training experiment.
@@ -400,7 +417,10 @@ def run_training_experiment(
         subject_ids=subject_ids,
         output_dir=exp_dir,
         experiment_name=experiment_name,
-        formatter=formatter
+        formatter=formatter,
+        n_jobs=n_jobs,
+        cache_min_free_space_gb=cache_min_free_gb,
+        cache_max_size_gb=cache_max_size_gb
     )
     
     results = pipeline.run_grid(configs, save_intermediate=True)
@@ -511,7 +531,7 @@ def run_training_experiment(
 
 
 def main():
-    """Main entry point."""
+    """Parse CLI args, verify cache, build training grid, run experiment, and generate outputs."""
     # Ensure UTF-8 output on Windows (avoids UnicodeEncodeError when piping)
     if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -673,7 +693,10 @@ def main():
             output_dir=output_dir,
             experiment_name=exp_name,
             generate_viz=not args.no_viz,
-            use_hybrid=not args.pure_mi
+            use_hybrid=not args.pure_mi,
+            n_jobs=args.n_jobs,
+            cache_min_free_gb=args.cache_min_free_gb,
+            cache_max_size_gb=args.cache_max_size_gb
         )
         
         # Generate cache-focused outputs (THESIS FOCUS)

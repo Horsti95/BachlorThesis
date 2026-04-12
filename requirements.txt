@@ -17,7 +17,7 @@ torch>=2.0.0                  # Neural networks (PyTorch)
 
 # Caching & Storage
 joblib>=1.2.0                 # Efficient serialization
-pickle5>=0.0.12               # Backward-compatible pickle (Python <3.8)
+# pickle5 is built into Python 3.8+, no separate install needed
 
 # Utilities
 pyyaml>=6.0                   # Configuration files
