@@ -298,16 +298,20 @@ def fig3b_crossover(show: bool):
     ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
                      rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
                      label="Small gap = I/O bottleneck")
-    # Annotate cold points with cache size (above the cold line, no overlap)
-    for _, row in rf_avg.iterrows():
-        ax2.annotate(f"{row['cache_per_fold_mb']:.0f} MB",
-                     (row["n_features"], row["cold_per_fold_s"]),
-                     textcoords="offset points", xytext=(0, 10),
-                     fontsize=7.5, ha="center", color="#555555",
-                     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7))
+    # Single summary annotation — RF cache size is ~131-154 MB/fold regardless of
+    # feature count because it serializes 200 full trees (tree structure dominates)
+    avg_cache = rf_avg["cache_per_fold_mb"].mean()
+    min_cache = rf_avg["cache_per_fold_mb"].min()
+    max_cache = rf_avg["cache_per_fold_mb"].max()
+    ax2.annotate(f"Cache: {min_cache:.0f}–{max_cache:.0f} MB/fold\n(200 trees, size ≈ const.)",
+                 xy=(rf_avg["n_features"].iloc[-1], rf_avg["cold_per_fold_s"].iloc[-1]),
+                 xytext=(0.97, 0.85), textcoords="axes fraction",
+                 fontsize=8, ha="right", color="#555555",
+                 bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#cccccc", alpha=0.9),
+                 arrowprops=dict(arrowstyle="->", color="#999999", lw=1))
     ax2.set_xlabel("Number of features")
     ax2.set_ylabel("Time per fold (seconds)")
-    ax2.set_title("Random Forest — ~131 MB/fold, loads in 2.5s")
+    ax2.set_title("Random Forest — ~{:.0f} MB/fold, loads in 2.5s".format(avg_cache))
     ax2.legend(fontsize=8, loc="upper left")
 
     fig.suptitle("XGBoost vs. Random Forest: Why Model Size Determines Cache Viability",
