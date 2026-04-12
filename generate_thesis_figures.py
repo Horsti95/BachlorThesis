@@ -6,14 +6,16 @@ Generates all figures (PDF) and LaTeX tables for the bachelor thesis
 from existing result data. No re-computation needed.
 
 Covers:
-  1. Speedup bar chart (cold vs warm, per model type)
-  2. Performance table (18 configs, Acc/Kappa/F1)
-  3. Compute-to-I/O crossover (RF vs XGBoost)
-  4. Cache viability table (15 models)
-  5. Fingerprint integrity example
-  6. Per-class F1 heatmap (best config, substitute for confusion matrix)
-  7. Feature importance top-15 (ANOVA)
-  8. Global vs fold-specific tradeoff note
+  1.  Speedup bar chart (cold vs warm, per model type)
+  2.  Performance table (18 configs, Acc/Kappa/F1)
+  3.  Compute-to-I/O crossover (RF vs XGBoost) — averaged per feature count
+  4.  Cache viability table (15 models)
+  4b. Cache viability scatter plot (speedup vs cache size, threshold line)
+  5.  Fingerprint integrity example
+  6.  Per-class F1 heatmap (all 18 configs)
+  7.  Feature importance top-15 (ANOVA)
+  8.  Global vs fold-specific tradeoff note
+  9.  SVM scaling plot (speedup grows with dataset size)
 
 Usage:
     python generate_thesis_figures.py              # save only
@@ -116,7 +118,7 @@ def fig1_speedup_bar(show: bool):
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig1_speedup_bar.pdf", bbox_inches="tight")
-    print(f"  [1/8] Saved fig1_speedup_bar.pdf")
+    print(f"  [1/10] Saved fig1_speedup_bar.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -161,7 +163,7 @@ def tab2_performance(show: bool):
         escape=False,
     )
     (TAB_DIR / "tab2_performance_18configs.tex").write_text(latex)
-    print(f"  [2/8] Saved tab2_performance_18configs.tex")
+    print(f"  [2/10] Saved tab2_performance_18configs.tex")
 
     if show:
         print("\n--- Table 2: Performance (18 configs) ---")
@@ -170,7 +172,7 @@ def tab2_performance(show: bool):
 
 
 # ===================================================================
-# 3. Compute-to-I/O Crossover — RF vs XGBoost
+# 3. Compute-to-I/O Crossover — RF vs XGBoost (averaged per feature count)
 # ===================================================================
 def fig3_crossover(show: bool):
     import matplotlib.pyplot as plt
@@ -178,34 +180,48 @@ def fig3_crossover(show: bool):
     xgb = pd.read_csv(XGB_CSV)
     rf = pd.read_csv(RF_CSV)
 
-    # Features counts as x-axis proxy for complexity
-    xgb_feat = xgb["n_features"].values
-    rf_feat = rf["n_features"].values
+    # Average per unique feature count (removes noise from different corr thresholds)
+    xgb_avg = xgb.groupby("n_features")[["cold_per_fold_s", "warm_per_fold_s"]].mean().reset_index()
+    rf_avg = rf.groupby("n_features")[["cold_per_fold_s", "warm_per_fold_s"]].mean().reset_index()
+    xgb_avg = xgb_avg.sort_values("n_features")
+    rf_avg = rf_avg.sort_values("n_features")
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5), sharey=False)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
 
     # --- XGBoost panel ---
-    ax1.plot(xgb_feat, xgb["cold_per_fold_s"], "o-", color="#d9534f", label="Cold (re-train)", linewidth=2)
-    ax1.plot(xgb_feat, xgb["warm_per_fold_s"], "s-", color="#5cb85c", label="Warm (cache load)", linewidth=2)
+    ax1.plot(xgb_avg["n_features"], xgb_avg["cold_per_fold_s"], "o-",
+             color="#d9534f", label="Cold (re-train)", linewidth=2, markersize=7)
+    ax1.plot(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"], "s-",
+             color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
+    ax1.fill_between(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"],
+                     xgb_avg["cold_per_fold_s"], alpha=0.15, color="#5cb85c",
+                     label="Time saved")
     ax1.set_xlabel("Number of features")
     ax1.set_ylabel("Time per fold (seconds)")
-    ax1.set_title("XGBoost")
-    ax1.legend()
+    ax1.set_title("XGBoost — large gap = caching very effective")
+    ax1.legend(fontsize=8)
     ax1.set_yscale("log")
-    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.2f}" if v < 1 else f"{v:.0f}"))
+    ax1.yaxis.set_major_formatter(plt.FuncFormatter(
+        lambda v, _: f"{v:.2f}" if v < 1 else f"{v:.0f}"))
 
     # --- RF panel ---
-    ax2.plot(rf_feat, rf["cold_per_fold_s"], "o-", color="#d9534f", label="Cold (re-train)", linewidth=2)
-    ax2.plot(rf_feat, rf["warm_per_fold_s"], "s-", color="#5cb85c", label="Warm (cache load)", linewidth=2)
+    ax2.plot(rf_avg["n_features"], rf_avg["cold_per_fold_s"], "o-",
+             color="#d9534f", label="Cold (re-train)", linewidth=2, markersize=7)
+    ax2.plot(rf_avg["n_features"], rf_avg["warm_per_fold_s"], "s-",
+             color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
+    ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
+                     rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
+                     label="Small gap = I/O-bound")
     ax2.set_xlabel("Number of features")
-    ax2.set_title("Random Forest")
-    ax2.legend()
     ax2.set_ylabel("Time per fold (seconds)")
+    ax2.set_title("Random Forest — cache load ≈ re-train (I/O-bound)")
+    ax2.legend(fontsize=8)
 
-    fig.suptitle("Compute vs. I/O: Why Caching Works for Boosting but Not Tree Ensembles", fontsize=12)
+    fig.suptitle("Compute vs. I/O: Why Caching Works for Boosting but Not Tree Ensembles",
+                 fontsize=12, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.93])
     fig.savefig(FIG_DIR / "fig3_crossover.pdf", bbox_inches="tight")
-    print(f"  [3/8] Saved fig3_crossover.pdf")
+    print(f"  [3/10] Saved fig3_crossover.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -240,12 +256,75 @@ def tab4_viability(show: bool):
         escape=False,
     )
     (TAB_DIR / "tab4_cache_viability.tex").write_text(latex)
-    print(f"  [4/8] Saved tab4_cache_viability.tex")
+    print(f"  [4/10] Saved tab4_cache_viability.tex")
 
     if show:
         print("\n--- Table 4: Cache Viability (15 models) ---")
         print(df_disp.to_string())
         print()
+
+
+# ===================================================================
+# 4b. Cache Viability Scatter — speedup vs cache size with threshold
+# ===================================================================
+def fig4b_viability_scatter(show: bool):
+    import matplotlib.pyplot as plt
+
+    df = pd.read_csv(VIABILITY_CSV)
+
+    # Color and marker by verdict
+    colors = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+    markers = {"VIABLE": "o", "NOT_VIABLE": "X", "BORDERLINE": "D"}
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+
+    for verdict in ["VIABLE", "NOT_VIABLE", "BORDERLINE"]:
+        subset = df[df["cache_verdict"] == verdict]
+        if subset.empty:
+            continue
+        ax.scatter(
+            subset["cache_size_per_fold_mb"],
+            subset["speedup_ratio"],
+            c=colors[verdict],
+            marker=markers[verdict],
+            s=100,
+            edgecolors="black",
+            linewidth=0.5,
+            label=verdict.replace("_", " ").title(),
+            zorder=5,
+        )
+        # Label each point
+        for _, row in subset.iterrows():
+            name = row["model_name"].replace("_", "\n")
+            offset_y = 0.15  # log scale offset
+            ax.annotate(
+                row["model_name"],
+                (row["cache_size_per_fold_mb"], row["speedup_ratio"]),
+                textcoords="offset points",
+                xytext=(6, 4),
+                fontsize=7,
+                color="#333333",
+            )
+
+    # Viability threshold line: speedup > 10x is a reasonable cutoff
+    ax.axhline(y=10, color="#888888", linestyle="--", linewidth=1.5, alpha=0.7,
+               label="Viability threshold (10x)")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Cache size per fold (MB)", fontsize=11)
+    ax.set_ylabel("Speedup factor (cold / warm)", fontsize=11)
+    ax.set_title("Cache Viability: Speedup vs. Storage Cost (15 Models, 128 Subjects)",
+                 fontsize=12)
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(True, alpha=0.3, which="both")
+
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "fig4b_viability_scatter.pdf", bbox_inches="tight")
+    print(f"  [4b/10] Saved fig4b_viability_scatter.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
 
 
 # ===================================================================
@@ -284,7 +363,7 @@ def tab5_fingerprint(show: bool):
         escape=False,
     )
     (TAB_DIR / "tab5_fingerprint_integrity.tex").write_text(latex)
-    print(f"  [5/8] Saved tab5_fingerprint_integrity.tex")
+    print(f"  [5/10] Saved tab5_fingerprint_integrity.tex")
 
     if show:
         print("\n--- Table 5: Fingerprint Integrity ---")
@@ -339,7 +418,7 @@ def fig6_per_class_f1(show: bool):
     fig.colorbar(im, ax=ax, label="F1 Score", shrink=0.8)
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig6_per_class_f1.pdf", bbox_inches="tight")
-    print(f"  [6/8] Saved fig6_per_class_f1.pdf")
+    print(f"  [6/10] Saved fig6_per_class_f1.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -393,7 +472,7 @@ def fig7_feature_importance(show: bool):
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig7_feature_importance.pdf", bbox_inches="tight")
-    print(f"  [7/8] Saved fig7_feature_importance.pdf")
+    print(f"  [7/10] Saved fig7_feature_importance.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -429,7 +508,7 @@ Thesis choice          & \checkmark           & --- \\
 \end{table}
 """
     (TAB_DIR / "tab8_global_vs_fold.tex").write_text(note)
-    print(f"  [8/8] Saved tab8_global_vs_fold.tex")
+    print(f"  [8/10] Saved tab8_global_vs_fold.tex")
 
     if show:
         print("\n--- Table 8: Global vs Fold-Specific ---")
@@ -477,7 +556,7 @@ def fig_bonus_svm_scaling(show: bool):
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig_bonus_svm_scaling.pdf", bbox_inches="tight")
-    print(f"  [bonus] Saved fig_bonus_svm_scaling.pdf")
+    print(f"  [9/10] Saved fig_bonus_svm_scaling.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -501,6 +580,7 @@ def main():
     tab2_performance(args.show)
     fig3_crossover(args.show)
     tab4_viability(args.show)
+    fig4b_viability_scatter(args.show)
     tab5_fingerprint(args.show)
     fig6_per_class_f1(args.show)
     fig7_feature_importance(args.show)
@@ -508,7 +588,7 @@ def main():
     fig_bonus_svm_scaling(args.show)
 
     print()
-    print(f"Done! {4} figures + {4} tables + 1 bonus figure generated.")
+    print(f"Done! 6 figures + 4 tables generated.")
     print(f"  PDF figures: {FIG_DIR}")
     print(f"  LaTeX tables: {TAB_DIR}")
 
