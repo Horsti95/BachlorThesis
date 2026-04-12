@@ -52,6 +52,7 @@ VIABILITY_CSV = VIABILITY / "5090_128subj" / "cache_viability_128subj.csv"
 FEATURE_SEL_JSON = VIABILITY / "feature_selection_methods" / "feature_selection_benchmark.json"
 WARM_RUN_DIR = RESULTS / "training_20260408_181311_full" / "training_results"
 SVM_SCALING_DIR = VIABILITY / "5090_svm_scaling"
+FEATURE_SIZE_DIR = RESULTS / "feature_size_20260315_001142"
 
 
 def ensure_dirs():
@@ -648,6 +649,190 @@ def fig_bonus_svm_scaling(show: bool):
 
 
 # ===================================================================
+# BONUS 2: Cache Size Scaling — does cache grow with features / model type?
+# ===================================================================
+def fig_bonus_cache_scaling(show: bool):
+    """Plot cache size and training time across feature counts for key models.
+
+    Uses the feature_size benchmark (30 subjects, 3 folds, topk = 10/30/50/149).
+    Shows that RF/Extra Trees cache is dominated by tree structure (flat),
+    while boosting models stay tiny regardless.
+    """
+    import matplotlib.pyplot as plt
+
+    topk_vals = [10, 30, 50, 149]
+    model_groups = {
+        "Random Forest":    ("random_forest",    "#e74c3c", "o-"),
+        "Extra Trees":      ("extra_trees",      "#e67e22", "D-"),
+        "XGBoost":          ("xgboost",          "#3498db", "s-"),
+        "Gradient Boosting": ("gradient_boosting", "#2ecc71", "^-"),
+        "LightGBM":         ("lightgbm",         "#9b59b6", "v-"),
+    }
+
+    # Collect data across feature counts
+    records = []
+    for k in topk_vals:
+        csv_dir = FEATURE_SIZE_DIR / f"topk_{k}"
+        csvs = list(csv_dir.glob("*.csv"))
+        if not csvs:
+            continue
+        df = pd.read_csv(csvs[0])
+        for _, row in df.iterrows():
+            records.append({
+                "n_features": k,
+                "model": row["model_name"],
+                "cache_per_fold_mb": row["cache_size_per_fold_mb"],
+                "cold_per_fold_s": row["cold_per_fold_time_s"],
+                "warm_per_fold_s": row["warm_per_fold_time_s"],
+                "time_saved_s": row["cold_per_fold_time_s"] - row["warm_per_fold_time_s"],
+            })
+    data = pd.DataFrame(records)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    # --- Left panel: Cache size per fold ---
+    for label, (model_key, color, style) in model_groups.items():
+        subset = data[data["model"] == model_key].sort_values("n_features")
+        if subset.empty:
+            continue
+        ax1.plot(subset["n_features"], subset["cache_per_fold_mb"],
+                 style, color=color, label=label, linewidth=2, markersize=7)
+
+    ax1.set_xlabel("Number of features", fontsize=11)
+    ax1.set_ylabel("Cache size per fold (MB)", fontsize=11)
+    ax1.set_title("Cache Size vs. Feature Count", fontsize=12)
+    ax1.legend(fontsize=9)
+    ax1.set_yscale("log")
+    ax1.grid(True, alpha=0.2)
+    ax1.set_xticks(topk_vals)
+
+    # --- Right panel: Cold training time per fold ---
+    for label, (model_key, color, style) in model_groups.items():
+        subset = data[data["model"] == model_key].sort_values("n_features")
+        if subset.empty:
+            continue
+        ax2.plot(subset["n_features"], subset["cold_per_fold_s"],
+                 style, color=color, label=label, linewidth=2, markersize=7)
+
+    ax2.set_xlabel("Number of features", fontsize=11)
+    ax2.set_ylabel("Cold training time per fold (s)", fontsize=11)
+    ax2.set_title("Training Time vs. Feature Count", fontsize=12)
+    ax2.legend(fontsize=9)
+    ax2.grid(True, alpha=0.2)
+    ax2.set_xticks(topk_vals)
+
+    fig.suptitle("Tree Ensembles: Cache Size is Flat, Training Time Grows\n"
+                 "(30 subjects, 3 LOSO folds, 200 trees for RF/ET)",
+                 fontsize=12, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    fig.savefig(FIG_DIR / "fig_bonus_cache_scaling.pdf", bbox_inches="tight")
+    print(f"  [10/12] Saved fig_bonus_cache_scaling.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
+# BONUS 3: Cache Efficiency — bigger models save more compute per MB
+# ===================================================================
+def fig_bonus_cache_efficiency(show: bool):
+    """Plot how cache efficiency (seconds saved per MB) changes with features.
+
+    Shows that as models get bigger (more features → more training time),
+    the compute saved per MB of cache improves — caching becomes more
+    'worth it' even for large models like RF.
+    """
+    import matplotlib.pyplot as plt
+
+    topk_vals = [10, 30, 50, 149]
+    model_groups = {
+        "Random Forest":    ("random_forest",    "#e74c3c", "o-"),
+        "Extra Trees":      ("extra_trees",      "#e67e22", "D-"),
+        "XGBoost":          ("xgboost",          "#3498db", "s-"),
+        "Gradient Boosting": ("gradient_boosting", "#2ecc71", "^-"),
+        "LightGBM":         ("lightgbm",         "#9b59b6", "v-"),
+    }
+
+    records = []
+    for k in topk_vals:
+        csv_dir = FEATURE_SIZE_DIR / f"topk_{k}"
+        csvs = list(csv_dir.glob("*.csv"))
+        if not csvs:
+            continue
+        df = pd.read_csv(csvs[0])
+        for _, row in df.iterrows():
+            time_saved = row["cold_per_fold_time_s"] - row["warm_per_fold_time_s"]
+            cache_mb = row["cache_size_per_fold_mb"]
+            # Efficiency: seconds saved per MB of cache (higher = better)
+            efficiency = time_saved / cache_mb if cache_mb > 0.001 else 0
+            records.append({
+                "n_features": k,
+                "model": row["model_name"],
+                "cache_per_fold_mb": cache_mb,
+                "cold_per_fold_s": row["cold_per_fold_time_s"],
+                "time_saved_s": time_saved,
+                "efficiency_s_per_mb": efficiency,
+                "mb_per_s_saved": row["mb_per_second_saved"],
+            })
+    data = pd.DataFrame(records)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    # --- Left: Seconds saved per MB (higher = more efficient) ---
+    for label, (model_key, color, style) in model_groups.items():
+        subset = data[data["model"] == model_key].sort_values("n_features")
+        if subset.empty:
+            continue
+        ax1.plot(subset["n_features"], subset["efficiency_s_per_mb"],
+                 style, color=color, label=label, linewidth=2, markersize=7)
+
+    ax1.set_xlabel("Number of features", fontsize=11)
+    ax1.set_ylabel("Seconds saved per MB of cache", fontsize=11)
+    ax1.set_title("Cache Efficiency (higher = better)", fontsize=12)
+    ax1.legend(fontsize=9)
+    ax1.set_yscale("log")
+    ax1.grid(True, alpha=0.2)
+    ax1.set_xticks(topk_vals)
+
+    # Viable threshold annotation: viability uses mb_per_s_saved < 0.5 → equiv. to efficiency > 2.0 s/MB
+    ax1.axhline(y=2.0, color="#888888", linestyle="--", linewidth=1.5, alpha=0.6)
+    ax1.text(155, 2.3, "Viable threshold\n(> 2.0 s/MB)", fontsize=8, color="#666666",
+             ha="right", va="bottom")
+
+    # --- Right: MB per second saved (lower = better, matches viability metric) ---
+    for label, (model_key, color, style) in model_groups.items():
+        subset = data[data["model"] == model_key].sort_values("n_features")
+        if subset.empty:
+            continue
+        ax2.plot(subset["n_features"], subset["mb_per_s_saved"],
+                 style, color=color, label=label, linewidth=2, markersize=7)
+
+    # Threshold lines matching viability definition
+    ax2.axhline(y=0.5, color="#5cb85c", linestyle="--", linewidth=1.5, alpha=0.7,
+                label="Viable (< 0.5)")
+    ax2.axhline(y=2.0, color="#d9534f", linestyle=":", linewidth=1.5, alpha=0.7,
+                label="Not viable (> 2.0)")
+
+    ax2.set_xlabel("Number of features", fontsize=11)
+    ax2.set_ylabel("MB per second saved (lower = better)", fontsize=11)
+    ax2.set_title("Viability Metric vs. Feature Count", fontsize=12)
+    ax2.legend(fontsize=8, loc="upper left")
+    ax2.set_yscale("log")
+    ax2.grid(True, alpha=0.2)
+    ax2.set_xticks(topk_vals)
+
+    fig.suptitle("Cache Efficiency Improves with Model Complexity\n"
+                 "More features → more training time → more compute saved per MB of cache",
+                 fontsize=12, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    fig.savefig(FIG_DIR / "fig_bonus_cache_efficiency.pdf", bbox_inches="tight")
+    print(f"  [11/12] Saved fig_bonus_cache_efficiency.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
 # Main
 # ===================================================================
 def main():
@@ -672,9 +857,11 @@ def main():
     fig7_feature_importance(args.show)
     tab8_global_vs_fold(args.show)
     fig_bonus_svm_scaling(args.show)
+    fig_bonus_cache_scaling(args.show)
+    fig_bonus_cache_efficiency(args.show)
 
     print()
-    print(f"Done! 8 figures + 4 tables generated.")
+    print(f"Done! 10 figures + 4 tables generated.")
     print(f"  PDF figures: {FIG_DIR}")
     print(f"  LaTeX tables: {TAB_DIR}")
 
