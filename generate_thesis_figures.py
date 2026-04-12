@@ -247,6 +247,7 @@ def fig3_efficiency(show: bool):
 
 # ===================================================================
 # 3b. Compute-to-I/O Crossover — RF vs XGBoost (averaged per feature count)
+#     Each point annotated with cache size per fold
 # ===================================================================
 def fig3b_crossover(show: bool):
     import matplotlib.pyplot as plt
@@ -255,12 +256,16 @@ def fig3b_crossover(show: bool):
     rf = pd.read_csv(RF_CSV)
 
     # Average per unique feature count (removes noise from different corr thresholds)
-    xgb_avg = xgb.groupby("n_features")[["cold_per_fold_s", "warm_per_fold_s"]].mean().reset_index()
-    rf_avg = rf.groupby("n_features")[["cold_per_fold_s", "warm_per_fold_s"]].mean().reset_index()
+    # Also average the cache_size_mb
+    xgb_avg = xgb.groupby("n_features")[["cold_per_fold_s", "warm_per_fold_s", "cache_size_mb"]].mean().reset_index()
+    rf_avg = rf.groupby("n_features")[["cold_per_fold_s", "warm_per_fold_s", "cache_size_mb"]].mean().reset_index()
+    # Per-fold cache size: total / 128 folds
+    xgb_avg["cache_per_fold_mb"] = xgb_avg["cache_size_mb"] / 128
+    rf_avg["cache_per_fold_mb"] = rf_avg["cache_size_mb"] / 128
     xgb_avg = xgb_avg.sort_values("n_features")
     rf_avg = rf_avg.sort_values("n_features")
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
     # --- XGBoost panel ---
     ax1.plot(xgb_avg["n_features"], xgb_avg["cold_per_fold_s"], "o-",
@@ -270,10 +275,16 @@ def fig3b_crossover(show: bool):
     ax1.fill_between(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"],
                      xgb_avg["cold_per_fold_s"], alpha=0.15, color="#5cb85c",
                      label="Time saved")
+    # Annotate each warm point with cache size
+    for _, row in xgb_avg.iterrows():
+        ax1.annotate(f"{row['cache_per_fold_mb']:.1f} MB",
+                     (row["n_features"], row["warm_per_fold_s"]),
+                     textcoords="offset points", xytext=(0, -12),
+                     fontsize=7, ha="center", color="#2a7a2a")
     ax1.set_xlabel("Number of features")
     ax1.set_ylabel("Time per fold (seconds)")
-    ax1.set_title("XGBoost — large gap = caching very effective")
-    ax1.legend(fontsize=8)
+    ax1.set_title("XGBoost — ~1.5 MB/fold, loads in 0.05s")
+    ax1.legend(fontsize=8, loc="upper left")
     ax1.set_yscale("log")
     ax1.yaxis.set_major_formatter(plt.FuncFormatter(
         lambda v, _: f"{v:.2f}" if v < 1 else f"{v:.0f}"))
@@ -286,16 +297,16 @@ def fig3b_crossover(show: bool):
     ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
                      rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
                      label="Small gap = I/O bottleneck")
-    # Annotate the warm line with cache size info
-    ax2.annotate("~131 MB/fold\n(serialized trees)",
-                 xy=(rf_avg["n_features"].iloc[-1], rf_avg["warm_per_fold_s"].iloc[-1]),
-                 xytext=(-60, 25), textcoords="offset points", fontsize=8,
-                 arrowprops=dict(arrowstyle="->", color="#888"),
-                 color="#d9534f")
+    # Annotate each warm point with cache size
+    for _, row in rf_avg.iterrows():
+        ax2.annotate(f"{row['cache_per_fold_mb']:.0f} MB",
+                     (row["n_features"], row["warm_per_fold_s"]),
+                     textcoords="offset points", xytext=(0, -12),
+                     fontsize=7, ha="center", color="#cc3333")
     ax2.set_xlabel("Number of features")
     ax2.set_ylabel("Time per fold (seconds)")
-    ax2.set_title("Random Forest — cache load ~2.5s (131 MB I/O)")
-    ax2.legend(fontsize=8)
+    ax2.set_title("Random Forest — ~131 MB/fold, loads in 2.5s")
+    ax2.legend(fontsize=8, loc="upper left")
 
     fig.suptitle("XGBoost vs. Random Forest: Why Model Size Determines Cache Viability",
                  fontsize=12, fontweight="bold")
