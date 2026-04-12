@@ -277,7 +277,7 @@ class TrainingOutputFormatter:
         else:
             # Normal mode: compact output
             print(f"  Fold {fold_idx:2d}/{n_folds}: Test=Subject_{test_subject} "
-                  f"(train: {n_train_epochs:,} epochs, test: {n_test_epochs:,} epochs)", end="")
+                  f"(train: {n_train_epochs:,} epochs, test: {n_test_epochs:,} epochs)", end="", flush=True)
     
     def print_feature_selection(self, n_input: int, n_after_corr: int, n_final: int,
                                  corr_removed: int):
@@ -361,7 +361,7 @@ class TrainingOutputFormatter:
             print()
         else:
             # Normal mode: inline result
-            print(f" -> acc={accuracy:.3f}, k={kappa:.3f}, F1={f1:.3f} ({elapsed:.1f}s)")
+            print(f" -> acc={accuracy:.3f}, k={kappa:.3f}, F1={f1:.3f} ({elapsed:.1f}s)", flush=True)
     
     # =========================================================================
     # Configuration Summary
