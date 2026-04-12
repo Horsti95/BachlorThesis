@@ -425,7 +425,6 @@ def run_training_experiment(
         output_dir=exp_dir,
         experiment_name=experiment_name,
         formatter=formatter,
-        n_jobs=n_jobs,
         cache_min_free_space_gb=cache_min_free_gb,
         cache_max_size_gb=cache_max_size_gb
     )
