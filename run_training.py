@@ -331,6 +331,13 @@ def parse_arguments():
         help='Maximum model cache size (GB). Oldest models evicted when exceeded. Default: unlimited.'
     )
 
+    parser.add_argument(
+        '--n-jobs',
+        type=int,
+        default=1,
+        help='Number of parallel jobs for model training (default: 1)'
+    )
+
     return parser.parse_args()
 
 
