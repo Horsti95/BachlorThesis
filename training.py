@@ -356,7 +356,8 @@ class TrainingPipeline:
         enable_model_cache: bool = True,
         model_cache_dir: Optional[str] = None,
         cache_min_free_space_gb: float = 5.0,
-        cache_max_size_gb: Optional[float] = None
+        cache_max_size_gb: Optional[float] = None,
+        max_folds: Optional[int] = None
     ):
         """
         Initialize training pipeline.
@@ -372,6 +373,7 @@ class TrainingPipeline:
             model_cache_dir: Directory for model cache (default: results/loso_model_cache)
             cache_min_free_space_gb: Min free disk space (GB) to allow caching (default: 5)
             cache_max_size_gb: Max cache size (GB). Oldest models evicted when exceeded. None = unlimited.
+            max_folds: Limit number of LOSO folds (None = all). Useful for quick verification.
         """
         self.features_df = features_df
         self.labels = labels
@@ -379,7 +381,8 @@ class TrainingPipeline:
         self.output_dir = Path(output_dir)
         self.experiment_name = experiment_name
         self.formatter = formatter or get_formatter()
-        
+        self.max_folds = max_folds
+
         # Create output directories
         self.results_dir = self.output_dir / "training_results"
         self.results_dir.mkdir(parents=True, exist_ok=True)
@@ -461,6 +464,8 @@ class TrainingPipeline:
         
         fold_results = []
         folds = list(self.cv.split(self.features_df, self.labels, self.subject_ids))
+        if self.max_folds and self.max_folds < len(folds):
+            folds = folds[:self.max_folds]
         n_folds = len(folds)
         config_start_time = time.time()
         model_cache_hits = 0

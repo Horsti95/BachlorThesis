@@ -338,6 +338,13 @@ def parse_arguments():
         help='Number of parallel jobs for model training (default: 1)'
     )
 
+    parser.add_argument(
+        '--max-folds',
+        type=int,
+        default=None,
+        help='Limit LOSO folds (e.g., 3 = only first 3 subjects held out). Default: all.'
+    )
+
     return parser.parse_args()
 
 
@@ -356,7 +363,8 @@ def run_training_experiment(
     use_hybrid: bool = True,
     n_jobs: int = 1,
     cache_min_free_gb: float = 5.0,
-    cache_max_size_gb: Optional[float] = None
+    cache_max_size_gb: Optional[float] = None,
+    max_folds: Optional[int] = None
 ) -> Dict:
     """
     Run the complete training experiment.
@@ -426,7 +434,8 @@ def run_training_experiment(
         experiment_name=experiment_name,
         formatter=formatter,
         cache_min_free_space_gb=cache_min_free_gb,
-        cache_max_size_gb=cache_max_size_gb
+        cache_max_size_gb=cache_max_size_gb,
+        max_folds=max_folds
     )
     
     results = pipeline.run_grid(configs, save_intermediate=True)
@@ -702,7 +711,8 @@ def main():
             use_hybrid=not args.pure_mi,
             n_jobs=args.n_jobs,
             cache_min_free_gb=args.cache_min_free_gb,
-            cache_max_size_gb=args.cache_max_size_gb
+            cache_max_size_gb=args.cache_max_size_gb,
+            max_folds=args.max_folds
         )
         
         # Generate cache-focused outputs (THESIS FOCUS)
