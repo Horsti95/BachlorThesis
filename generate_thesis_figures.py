@@ -275,16 +275,17 @@ def fig3b_crossover(show: bool):
     ax1.fill_between(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"],
                      xgb_avg["cold_per_fold_s"], alpha=0.15, color="#5cb85c",
                      label="Time saved")
-    # Annotate each warm point with cache size
+    # Annotate cold points with cache size (above the cold line, centered)
     for _, row in xgb_avg.iterrows():
         ax1.annotate(f"{row['cache_per_fold_mb']:.1f} MB",
-                     (row["n_features"], row["warm_per_fold_s"]),
-                     textcoords="offset points", xytext=(0, -12),
-                     fontsize=7, ha="center", color="#2a7a2a")
+                     (row["n_features"], row["cold_per_fold_s"]),
+                     textcoords="offset points", xytext=(0, 10),
+                     fontsize=7.5, ha="center", color="#555555",
+                     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7))
     ax1.set_xlabel("Number of features")
     ax1.set_ylabel("Time per fold (seconds)")
     ax1.set_title("XGBoost — ~1.5 MB/fold, loads in 0.05s")
-    ax1.legend(fontsize=8, loc="upper left")
+    ax1.legend(fontsize=8, loc="center left")
     ax1.set_yscale("log")
     ax1.yaxis.set_major_formatter(plt.FuncFormatter(
         lambda v, _: f"{v:.2f}" if v < 1 else f"{v:.0f}"))
@@ -297,12 +298,13 @@ def fig3b_crossover(show: bool):
     ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
                      rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
                      label="Small gap = I/O bottleneck")
-    # Annotate each warm point with cache size
+    # Annotate cold points with cache size (above the cold line, no overlap)
     for _, row in rf_avg.iterrows():
         ax2.annotate(f"{row['cache_per_fold_mb']:.0f} MB",
-                     (row["n_features"], row["warm_per_fold_s"]),
-                     textcoords="offset points", xytext=(0, -12),
-                     fontsize=7, ha="center", color="#cc3333")
+                     (row["n_features"], row["cold_per_fold_s"]),
+                     textcoords="offset points", xytext=(0, 10),
+                     fontsize=7.5, ha="center", color="#555555",
+                     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7))
     ax2.set_xlabel("Number of features")
     ax2.set_ylabel("Time per fold (seconds)")
     ax2.set_title("Random Forest — ~131 MB/fold, loads in 2.5s")
@@ -624,10 +626,14 @@ def fig_bonus_svm_scaling(show: bool):
     ax.legend()
     ax.set_xticks(subjects)
 
-    # Annotate points
+    # Annotate both lines
     for i, n in enumerate(subjects):
         ax.annotate(f"{svm_rbf_speedup[i]:.0f}x", (n, svm_rbf_speedup[i]),
-                     textcoords="offset points", xytext=(0, 10), ha="center", fontsize=9)
+                     textcoords="offset points", xytext=(0, 10), ha="center", fontsize=9,
+                     color="#e74c3c", fontweight="bold")
+        ax.annotate(f"{svm_linear_speedup[i]:.0f}x", (n, svm_linear_speedup[i]),
+                     textcoords="offset points", xytext=(0, -14), ha="center", fontsize=9,
+                     color="#3498db", fontweight="bold")
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig_bonus_svm_scaling.pdf", bbox_inches="tight")
