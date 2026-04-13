@@ -364,8 +364,8 @@ def main() -> None:
         "--corr",
         type=str,
         nargs="+",
-        default=["0.75", "0.90", "none"],
-        help="Use floats and/or 'none'",
+        default=["none"],
+        help="Use floats and/or 'none' (default: none only)",
     )
     parser.add_argument(
         "--subject-counts",
