@@ -851,7 +851,7 @@ def fig_bonus_rf_interactions(show: bool):
 
     subject_counts = sorted(df["subject_count"].unique())
 
-    fig, axes = plt.subplots(1, len(subject_counts), figsize=(5 * len(subject_counts) + 2, 5),
+    fig, axes = plt.subplots(1, len(subject_counts), figsize=(18, 5.5),
                               sharey=True)
     if len(subject_counts) == 1:
         axes = [axes]
@@ -893,12 +893,14 @@ def fig_bonus_rf_interactions(show: bool):
                  "All values > 0.5 = NOT VIABLE (green = closer to viable, red = far from viable)",
                  fontsize=12, fontweight="bold")
 
-    cbar = fig.colorbar(im, ax=axes, shrink=0.8, pad=0.03,
+    fig.subplots_adjust(top=0.82, wspace=0.25, left=0.06, right=0.88)
+
+    # Manually place colorbar to avoid overlap with rightmost panel
+    cbar_ax = fig.add_axes([0.91, 0.15, 0.015, 0.55])
+    cbar = fig.colorbar(im, cax=cbar_ax,
                          label="MB per second saved (< 0.5 = viable)")
     cbar.ax.axhline(y=0.5, color="black", linewidth=2, linestyle="--")
     cbar.ax.axhline(y=2.0, color="black", linewidth=1, linestyle=":")
-
-    fig.subplots_adjust(top=0.82, wspace=0.1, right=0.88)
     fig.savefig(FIG_DIR / "fig_bonus_rf_interactions.pdf", bbox_inches="tight")
     print(f"  [12/14] Saved fig_bonus_rf_interactions.pdf")
     if show:
