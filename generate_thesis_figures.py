@@ -53,6 +53,8 @@ FEATURE_SEL_JSON = VIABILITY / "feature_selection_methods" / "feature_selection_
 WARM_RUN_DIR = RESULTS / "training_20260408_181311_full" / "training_results"
 SVM_SCALING_DIR = VIABILITY / "5090_svm_scaling"
 FEATURE_SIZE_DIR = RESULTS / "feature_size_20260315_001142"
+RF_INTERACTIONS_CSV = RESULTS / "rf_cache_interactions_20260413_204548.csv"
+RF_INTERACTIONS_SUMMARY = RESULTS / "rf_cache_interactions_summary_20260413_204548.csv"
 
 
 def ensure_dirs():
@@ -833,6 +835,131 @@ def fig_bonus_cache_efficiency(show: bool):
 
 
 # ===================================================================
+# BONUS 4: RF Cache Interaction Heatmap — tree count vs features vs subjects
+# ===================================================================
+def fig_bonus_rf_interactions(show: bool):
+    """Heatmap showing RF cache viability (MB/s-saved) across tree count,
+    feature count, and subject count. All combinations are NOT_VIABLE,
+    proving tree ensemble caching is fundamentally I/O-bound."""
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+
+    df = pd.read_csv(RF_INTERACTIONS_CSV)
+
+    # Label top_k nicely
+    df["features_label"] = df["top_k"].fillna(149).astype(int).astype(str) + "f"
+
+    subject_counts = sorted(df["subject_count"].unique())
+
+    fig, axes = plt.subplots(1, len(subject_counts), figsize=(5 * len(subject_counts) + 2, 5),
+                              sharey=True)
+    if len(subject_counts) == 1:
+        axes = [axes]
+
+    for ax, n_subj in zip(axes, subject_counts):
+        subset = df[df["subject_count"] == n_subj]
+
+        # Pivot: rows=tree_count, cols=features
+        pivot = subset.groupby(["tree_count", "features_label"])["mb_per_second_saved"].mean().reset_index()
+        # Order features
+        feat_order = ["30f", "50f", "149f"]
+        pivot_table = pivot.pivot(index="tree_count", columns="features_label", values="mb_per_second_saved")
+        pivot_table = pivot_table.reindex(columns=[f for f in feat_order if f in pivot_table.columns])
+
+        im = ax.imshow(pivot_table.values, cmap="RdYlGn_r", aspect="auto",
+                       norm=LogNorm(vmin=0.5, vmax=50))
+
+        # Labels
+        ax.set_xticks(range(len(pivot_table.columns)))
+        ax.set_xticklabels(pivot_table.columns, fontsize=10)
+        ax.set_yticks(range(len(pivot_table.index)))
+        ax.set_yticklabels(pivot_table.index, fontsize=10)
+
+        # Annotate cells
+        for i in range(len(pivot_table.index)):
+            for j in range(len(pivot_table.columns)):
+                val = pivot_table.values[i, j]
+                color = "white" if val > 10 else "black"
+                ax.text(j, i, f"{val:.1f}", ha="center", va="center",
+                        fontsize=9, fontweight="bold", color=color)
+
+        ax.set_xlabel("Features", fontsize=11)
+        if ax == axes[0]:
+            ax.set_ylabel("n_estimators (trees)", fontsize=11)
+        ax.set_title(f"{n_subj} subjects", fontsize=12)
+
+    # Threshold annotation
+    fig.suptitle("RF Cache Viability: MB/s Saved Across All Configurations\n"
+                 "All values > 0.5 = NOT VIABLE (green = closer to viable, red = far from viable)",
+                 fontsize=12, fontweight="bold")
+
+    cbar = fig.colorbar(im, ax=axes, shrink=0.8, pad=0.03,
+                         label="MB per second saved (< 0.5 = viable)")
+    cbar.ax.axhline(y=0.5, color="black", linewidth=2, linestyle="--")
+    cbar.ax.axhline(y=2.0, color="black", linewidth=1, linestyle=":")
+
+    fig.subplots_adjust(top=0.82, wspace=0.1, right=0.88)
+    fig.savefig(FIG_DIR / "fig_bonus_rf_interactions.pdf", bbox_inches="tight")
+    print(f"  [12/14] Saved fig_bonus_rf_interactions.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
+# BONUS 5: RF Cache Size vs Training Time (interaction plot)
+# ===================================================================
+def fig_bonus_rf_size_vs_time(show: bool):
+    """Scatter plot showing cache size vs cold training time for all RF
+    configurations. Lines connect tree counts. Shows that cache size
+    grows linearly with trees but training time also grows — the ratio
+    never crosses the viability threshold."""
+    import matplotlib.pyplot as plt
+
+    df = pd.read_csv(RF_INTERACTIONS_CSV)
+    df["features_label"] = df["top_k"].fillna(149).astype(int).astype(str) + "f"
+
+    # Only 128 subjects (most relevant for thesis)
+    df128 = df[df["subject_count"] == 128]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    # Left: Cache size vs tree count, colored by feature count
+    colors = {"30f": "#e74c3c", "50f": "#3498db", "149f": "#2ecc71"}
+    for feat_label, color in colors.items():
+        subset = df128[df128["features_label"] == feat_label].groupby("tree_count").mean(numeric_only=True).reset_index()
+        ax1.plot(subset["tree_count"], subset["cache_size_mb"], "o-",
+                 color=color, label=feat_label, linewidth=2, markersize=7)
+    ax1.set_xlabel("n_estimators (trees)", fontsize=11)
+    ax1.set_ylabel("Cache size per fold (MB)", fontsize=11)
+    ax1.set_title("Cache Size Grows Linearly with Trees", fontsize=12)
+    ax1.legend(fontsize=10)
+    ax1.grid(True, alpha=0.2)
+
+    # Right: Speedup vs tree count
+    for feat_label, color in colors.items():
+        subset = df128[df128["features_label"] == feat_label].groupby("tree_count").mean(numeric_only=True).reset_index()
+        ax2.plot(subset["tree_count"], subset["speedup_cold_vs_warm"], "o-",
+                 color=color, label=feat_label, linewidth=2, markersize=7)
+
+    ax2.set_xlabel("n_estimators (trees)", fontsize=11)
+    ax2.set_ylabel("Speedup (cold / warm)", fontsize=11)
+    ax2.set_title("Speedup Stays Low (~5-11x) Regardless of Config", fontsize=12)
+    ax2.legend(fontsize=10)
+    ax2.grid(True, alpha=0.2)
+
+    fig.suptitle("Random Forest: Why No Configuration Makes Caching Viable\n"
+                 "(128 subjects, 3 LOSO folds per setting)",
+                 fontsize=12, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    fig.savefig(FIG_DIR / "fig_bonus_rf_size_vs_time.pdf", bbox_inches="tight")
+    print(f"  [13/14] Saved fig_bonus_rf_size_vs_time.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
 # Main
 # ===================================================================
 def main():
@@ -859,9 +986,11 @@ def main():
     fig_bonus_svm_scaling(args.show)
     fig_bonus_cache_scaling(args.show)
     fig_bonus_cache_efficiency(args.show)
+    fig_bonus_rf_interactions(args.show)
+    fig_bonus_rf_size_vs_time(args.show)
 
     print()
-    print(f"Done! 10 figures + 4 tables generated.")
+    print(f"Done! 12 figures + 4 tables generated.")
     print(f"  PDF figures: {FIG_DIR}")
     print(f"  LaTeX tables: {TAB_DIR}")
 
