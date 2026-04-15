@@ -25,6 +25,17 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+
+% ---- Colored TODO/Note boxes for thesis review ----
+\newtcolorbox{todobox}[1][]{colback=red!8, colframe=red!70!black, fonttitle=\bfseries, title=TODO, #1}
+\newtcolorbox{verifybox}[1][]{colback=orange!8, colframe=orange!70!black, fonttitle=\bfseries, title=VERIFY, #1}
+\newtcolorbox{claudenote}[1][]{colback=blue!8, colframe=blue!60!black, fonttitle=\bfseries, title=Claude Note, #1}
+\newtcolorbox{missingref}[1][]{colback=purple!8, colframe=purple!60!black, fonttitle=\bfseries, title=Missing Reference, #1}
+\newtcolorbox{plotsuggestion}[1][]{colback=green!8, colframe=green!60!black, fonttitle=\bfseries, title=Plot/Figure Suggestion, #1}
+\newtcolorbox{generatefigure}[1][]{colback=yellow!15, colframe=yellow!60!black, fonttitle=\bfseries, title=Generate This Figure, #1}
 
 \begin{document}
 
