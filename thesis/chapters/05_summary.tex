@@ -1,0 +1,89 @@
+\chapter{Summary and Future Work}
+
+
+\section{summary}
+\textcolor{orange}{tba}
+
+\section{Future Work}
+
+Several extensions are planned or proposed for future research:
+
+\begin{itemize}
+\item \textbf{FNN Evaluation:} Complete the experimental evaluation of the implemented FNN model across all 18 configurations.
+\item \textbf{Cross-Experiment Cache Reuse:} Enable cache sharing across different experiments with compatible preprocessing parameters.
+\item \textbf{Distributed Caching:} Extend the framework to support multi-node caching for large-scale experiments.
+\item \textbf{Integration with MLOps Tools:} Develop plugins for MLflow, DVC, or ZenML to bring fingerprint-based caching to existing workflows.
+\item \textbf{Cross-Domain Validation:} Apply the framework to other ML domains (NLP, computer vision) to validate generalizability.
+\item \textbf{Two level cache:} Last 10 saved on RAM, Everything on SSD see 4.1.6.
+\end{itemize}
+\subsection{Scalability Considerations for Large-Scale Experiments}
+
+While this thesis addresses a controlled experimental scenario (128 subjects, 18 configurations, 2-stage caching), scaling the framework to production environments would introduce significant challenges that merit consideration.
+
+\subsubsection{Cache Key Explosion}
+
+
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+check the math and adjust if combination grid changes + autmatic invaldiation / deleting 
+\end{minipage}
+}
+\end{center}
+
+The current implementation manages a tractable configuration space. However, extending the framework to support dynamic dataset compositions would dramatically increase complexity. Consider the combinatorial explosion:
+
+\begin{itemize}
+\item \textbf{Current scope:} 1 fixed dataset $\times$ 18 configurations = 18 primary cache entries
+\item \textbf{Dynamic subject combinations:} With 128 subjects, there exist $2^{128} \approx 3.4 \times 10^{38}$ possible subject subsets, clearly intractable for exhaustive caching
+\item \textbf{Full configuration space:} Combining dynamic scopes ($\sim$500 realistic combinations) with preprocessing variants (48), CV strategies (3), models (4), feature strategies (6), hyperparameter grids ($\sim$10), and random seeds (3) yields approximately 259 million potential cache keys
+\end{itemize}
+
+This analysis suggests that naive ``cache everything'' strategies would not scale. Future implementations could explore selective caching policies that prioritize high-reuse, high-computation-cost artifacts while accepting recomputation for low-cost or rarely-accessed configurations.
+
+\subsubsection{Dynamic Dataset Scope Management}
+
+A key open question concerns how to reproducibly define and cache arbitrary subject combinations:
+
+\begin{enumerate}
+\item \textbf{Enumeration-based:} Predefined scopes (e.g., \texttt{dev-3}, \texttt{quality-high}, \texttt{full-128}) offer reproducibility but limited flexibility
+\item \textbf{Hash-based identification:} Sorting subject IDs and hashing the resulting list provides deterministic keys for any combination, but does not address the storage explosion
+\item \textbf{Progressive inclusion strategies:} Systematically adding subjects (1 $\rightarrow$ 2 $\rightarrow$ ... $\rightarrow$ 128) could enable incremental caching with $O(n)$ rather than $O(2^n)$ storage requirements
+\end{enumerate}
+
+\subsubsection{Hierarchical Invalidation at Scale}
+
+
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+more a note section as finalisiert will be done after the piepline is complete and running and the implementation stands
+\end{minipage}
+}
+\end{center}
+
+The current two-stage invalidation model (preprocessing changes invalidate features; feature changes invalidate downstream results) could be extended to a more granular hierarchy:
+
+\begin{enumerate}
+\item \textbf{Per-subject epoching:} Stable, rarely invalidated
+\item \textbf{Per-subject features:} Invalidated only on feature extraction code changes
+\item \textbf{Aggregated datasets per scope:} Short TTL (e.g., 3 days) to prevent cache bloat
+\item \textbf{Hyperparameter tuning intermediates:} Potentially excluded from caching entirely, as recomputation is typically fast
+\item \textbf{Final models and results:} Persistent for reproducibility
+\end{enumerate}
+
+\subsubsection{Semantic Configuration Similarity}
+
+An intriguing research direction concerns whether semantically similar configurations could share cached results. For example, if hyperparameter set $A$ produces results within 0.1\% of set $B$, could $B$'s cached results satisfy queries for $A$? This ``approximate caching'' concept parallels semantic caching in LLM applications but remains unexplored for ML experiment pipelines.
+
+\subsubsection{Practical Implications}
+
+These scalability considerations reinforce a key finding of this thesis: for domain-specific ML pipelines with controlled experimental designs, simple hierarchical caching with SHA-256 fingerprinting provides substantial benefits without requiring sophisticated ML-based cache prediction or semantic similarity matching. The complexity of such advanced techniques may only be justified in multi-user, multi-project environments where cache access patterns are less predictable and marginal efficiency gains translate to significant cost savings.
+
+
+
+\chapter{Old versions - not yet deleted as "backup" within the document}

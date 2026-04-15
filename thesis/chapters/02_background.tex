@@ -1,0 +1,221 @@
+\chapter{Background}
+
+
+\section{Domain: Machine Learning Research Methodology}
+
+The landscape of Machine Learning (ML) research and development is 
+characterized by rapid iteration and experimentation. According to the 
+AI Index Report 2023, AI-related publications have more than doubled since 
+2015, reflecting the field's exponential growth~\cite{AIIndex2023}. Data 
+scientists and ML engineers continuously explore different model architectures, 
+algorithms, hyperparameters, and data preprocessing techniques to achieve 
+optimal performance. This iterative process, while essential for innovation, 
+introduces significant challenges concerning efficiency and reproducibility. 
+A single experiment may require hours or days of computation, and researchers 
+often repeat similar computations across multiple runs. The cumulative effect 
+translates into substantial costs in GPU hours, cloud computing expenses, 
+and researcher productivity~\cite{schubotz2022caching}.
+
+To manage this complexity, standardized process models have emerged. 
+CRISP-DM (Cross-Industry Standard Process for Data Mining), developed in 
+1996, remains widely adopted~\cite{wirth2000crispdm}. However, its limitations 
+for modern ML—particularly lack of emphasis on model monitoring and 
+maintenance, led to CRISP-ML(Q), which extends CRISP-DM with quality assurance 
+methodology tailored for ML applications~\cite{studer2021crispmlq}. This 
+framework aligns with modern MLOps principles, which emphasize automation, 
+continuous integration/deployment (CI/CD), and reproducibility throughout 
+the ML lifecycle~\cite{kreuzberger2023mlops}.
+
+Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp} 
+support experiment tracking by recording parameters, metrics, code versions, 
+and artifacts for each run, enabling comparison and reproducibility. Despite 
+these advances, reproducibility remains a pervasive challenge in ML 
+research~\cite{semmelrock2023reproducibility}. Reproducibility ensures consistent 
+results from an ML workflow under identical conditions, hinging on the 
+``Holy Trinity'': input data, code and parameters, and the execution 
+environment~\cite{schubotz2022caching}. Challenges arise from:
+
+\begin{itemize}
+    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
+          Unrecorded decisions or parameter changes hinder replication.
+    \item \textbf{Data and Environment Volatility:} Dataset alterations, 
+          framework updates, and inconsistent compute environments cause 
+          divergent outcomes~\cite{idowu2024empirical}.
+    \item \textbf{Inherent Randomness:} Random initializations, data 
+          shuffling, and non-deterministic GPU operations make consistent 
+          replication challenging~\cite{semmelrock2023reproducibility}.
+\end{itemize}
+
+These challenges are particularly acute during iterative experimentation, 
+where researchers may run hundreds of configurations before identifying 
+promising approaches. Without intelligent management of computational 
+artifacts, substantial resources are wasted on redundant calculations. 
+This observation motivates the central contribution of this thesis: a 
+fingerprint-based caching framework that persists and reuses computational 
+artifacts (extracted features and trained models) across iterative modeling 
+phases while maintaining reproducibility through cryptographic configuration 
+fingerprinting.
+
+\section{Context: Computational Efficiency in Research}
+
+Building on the iterative experimentation challenges described in 
+Section 2.1, this section examines the computational efficiency bottlenecks 
+that motivate intelligent caching frameworks.
+
+The increasing complexity and scale of Machine Learning models have 
+substantially raised computational demands. Training models, tuning 
+hyperparameters, and running repeated experiments consume vast compute, 
+memory, and time resources, creating bottlenecks in research productivity 
+and driving up costs.
+
+Several factors drive this resource consumption:
+
+\begin{itemize}
+\item \textbf{Large Datasets:} Massive datasets require intensive I/O and 
+      memory usage.
+      
+\item \textbf{Complex Models:} Both deep neural networks and ensemble 
+      methods (e.g., gradient boosting with thousands of trees, large 
+      random forests) require substantial computational resources for 
+      training and inference.
+      
+\item \textbf{Iterative Experimentation:} Frequent experiments often repeat 
+      computations unnecessarily when modifying a subset of parameters while 
+      keeping others constant.
+      
+\item \textbf{Hyperparameter Optimization:} Searching large hyperparameter 
+      spaces is inherently compute-intensive.
+      
+\item \textbf{Rigorous Validation:} Cross-validation strategies (e.g., 
+      k-fold, leave-one-out) multiply training costs by the number of folds.
+\end{itemize}
+
+While caching can help, traditional caching systems (e.g., general-purpose 
+key-value stores like Redis or Memcached) often fail to meet ML-specific 
+needs~\cite{krishna2025cache}. These systems are typically static and focus 
+on reducing latency rather than adapting to experiment configuration changes 
+or optimizing for ML-specific access patterns. Such inefficiencies can slow 
+research progress and increase costs.
+
+This thesis addresses these inefficiencies through a fingerprint-based 
+caching framework specifically designed for iterative ML workflows. By 
+encoding complete experiment configurations (including cross-validation 
+fold identity) into cryptographic cache keys, the framework enables 
+automatic result reuse while maintaining scientific validity and 
+reproducibility.
+
+\section{Technology: Configuration Fingerprinting and Caching}
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note:} Some statistics and system-specific claims in this section 
+are from papers I reviewed, and written down notes but haven't yet added to the bibliography. These 
+need proper bib entries and source verification before final submission. 
+Marked with \textcolor{red}{[TODO: Add bib entry]}.
+\end{minipage}
+}
+\end{center}
+
+Efficient ML experimentation depends on configuration management and intelligent 
+result reuse. This section reviews technologies directly relevant to the 
+fingerprint-based LOSO caching approach developed in this thesis.
+
+\subsection{Configuration Fingerprinting}
+
+Configuration fingerprinting uses cryptographic hash functions (MD5, SHA-256) 
+to create unique identifiers for experiment configurations. By hashing a 
+canonical representation of all parameters, these fingerprints enable 
+deterministic identification of identical configurations and automatic 
+cache invalidation when parameters change.
+
+Modern MLOps tools employ this approach:
+\begin{itemize}
+\item \textbf{DVC} logs pipeline signatures combining dependency contents, 
+      parameters, and commands~\cite{dvc2022inproceedings}
+\item \textbf{MLflow} tracks experiment metadata and enables visual 
+      comparison~\cite{zaharia2018mlflow}
+\item \textbf{MLXP} uses Hydra-based configuration logging with Git 
+      hashes~\cite{arbel2024mlxp}
+\end{itemize}
+
+\subsection{Hash-Based Caching in MLOps}
+
+MLOps pipeline caching implements content-addressable storage: when pipeline 
+inputs and code match previous runs (verified through hash comparison), 
+cached outputs are reused~\cite{dvc2022inproceedings}. DVC's run cache, 
+for example, combines dependency hashes with parameter configurations to 
+create cache keys. When a match is found, execution is skipped and previous 
+results are restored.
+
+This approach provides reproducibility: identical configurations produce 
+identical cache keys, ensuring cached results correspond to recorded 
+parameters~\cite{schubotz2022caching}.
+
+\subsection{Related Caching Approaches}
+
+\begin{center}
+\colorbox{red!20}{%
+\begin{minipage}{0.9\textwidth}
+\textcolor{red}{\textbf{TODO:}} Add bib entries for: vLLM/PagedAttention paper 
+(60-80\% memory reduction claim), GATI learned caching paper (7.69$\times$ speedup), 
+XRootD/XCache infrastructure reports (10.8 PB statistic). Papers are in my 
+download folder but not yet in references.bib.
+\end{minipage}
+}
+\end{center}
+
+While this thesis focuses on hash-based caching for ML experiments, other 
+caching paradigms exist in adjacent domains:
+
+\textbf{Large Language Model (LLM) Inference Caching} addresses inference 
+latency by caching attention key-value tensors during autoregressive generation. 
+Systems like vLLM's PagedAttention reportedly reduce memory waste from 60--80\% 
+to under 4\% and enable up to 24$\times$ higher throughput \textcolor{red}{[TODO: Add bib entry]}. 
+Prefix caching can achieve up to 85\% latency reduction and 90\% cost savings 
+for repeated system prompts \textcolor{red}{[TODO: Add bib entry]}. These techniques 
+are specific to LLM inference and not directly applicable to experiment result caching.
+
+\textbf{Learned Caching for Deep Networks} employs neural networks to predict 
+hidden layer outputs, enabling layer skipping during inference. GATI, for 
+example, achieves up to 7.69$\times$ latency reduction at 97\% accuracy 
+\textcolor{red}{[TODO: Add bib entry]}. This represents a different caching 
+philosophy—using ML to make cache decisions—but applies only to inference scenarios.
+
+\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale 
+for raw data files. Systems like XRootD/XCache achieve cache hit rates exceeding 
+85\% by request count. The Southern California Cache infrastructure reportedly 
+saved 10.8 PB of network traffic in a single year \textcolor{red}{[TODO: Add bib entry]}. 
+However, these systems are optimized for data distribution, not experiment 
+configuration management.
+
+In contrast to these approaches, this thesis implements deterministic, 
+hash-based caching specifically designed for cross-validation experiments, 
+where cache validity depends on both configuration parameters and fold identity.
+
+\subsection{Reproducibility Considerations}
+
+Despite fingerprinting, perfect reproducibility remains challenging. Sources 
+of non-determinism include random seed variation, software version differences, 
+hardware-specific floating-point operations, and non-deterministic GPU 
+algorithms~\cite{semmelrock2023reproducibility}.
+
+\begin{center}
+\colorbox{red!20}{%
+\begin{minipage}{0.9\textwidth}
+\textcolor{red}{\textbf{TODO:}} Verify 0.2--0.5\% variance statistic. Check if 
+this is in Semmelrock 2023 or requires separate citation (possibly Pham et al. 
+2020 on variance in deep learning systems).
+\end{minipage}
+}
+\end{center}
+
+Empirical studies suggest that even with controlled random seeds, small 
+variance (approximately 0.2--0.5\%) may persist between runs due to hardware-level 
+floating-point non-determinism \textcolor{red}{[TODO: Add bib entry]}. Configuration 
+fingerprinting addresses controllable factors (seeds, software versions, data 
+splits) while accepting that hardware-induced variance cannot be eliminated 
+through software means. For caching purposes, cached results are considered 
+valid if configuration fingerprints match, with the understanding that minor 
+numerical differences may occur due to non-deterministic hardware operations.
+\chapter{Related Works}

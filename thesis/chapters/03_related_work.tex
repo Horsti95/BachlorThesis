@@ -1,0 +1,116 @@
+\chapter{Related Works}
+
+
+This chapter reviews existing solutions for ML experiment caching and identifies 
+the specific gap this thesis addresses: the lack of validated best practices 
+for caching in Leave-One-Subject-Out (LOSO) cross-validation scenarios.
+
+\section{Academic Research on ML Caching}
+
+Recent research explores adaptive caching strategies for ML workloads. Krishna 
+(2025) surveys ML-aided caching techniques including LSTM-based cache usage 
+prediction and reinforcement learning for adaptive cache policies~\cite{krishna2025cache}. 
+These approaches focus on \textit{learned} caching decisions using predictive 
+models.
+
+In the context of reproducibility, Schubotz et al. (2022) demonstrate how 
+caching can accelerate data science experiments while maintaining FAIR 
+principles~\cite{schubotz2022caching}. Their work emphasizes content-addressable 
+storage for automatic result reuse, similar to the fingerprinting approach 
+used in this thesis.
+
+However, existing academic work on ML caching does not specifically address 
+the requirements of cross-validation experiments, where cache validity depends 
+on explicit encoding of data splits. The challenge of fold-aware cache key 
+generation remains unaddressed in the literature.
+
+\section{Commercial MLOps Tools}
+
+Current MLOps platforms provide general experiment tracking and pipeline 
+caching but lack native support for cross-validation-specific scenarios:
+
+\begin{itemize}
+\item \textbf{MLflow:} Provides experiment tracking, model registry, and 
+      basic result caching~\cite{zaharia2018mlflow}. Pipeline caching requires 
+      the MLflow Recipes module, which caches individual steps but does not 
+      natively encode fold assignments in cache keys.
+
+\item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable 
+      pipeline stage reuse~\cite{dvc2022inproceedings}. While DVC can cache 
+      cross-validation results, it requires manual configuration of the pipeline 
+      definition to parameterize fold indices—a process not documented in 
+      standard DVC workflows.
+
+\item \textbf{ZenML:} Implements hash-based step caching with automatic 
+      invalidation when inputs or code change. However, ZenML's caching 
+      abstractions do not provide explicit support for encoding held-out 
+      subject identifiers, requiring users to implement custom materializers.
+
+\item \textbf{Neptune AI and Weights \& Biases:} Excel at experiment logging, 
+      metric visualization, and collaborative features~\cite{neptune2024docs,wandb2024docs}, 
+      but do not provide computational caching mechanisms—only metadata tracking.
+\end{itemize}
+
+\section{Research Gap Analysis}
+
+Table~\ref{tab:related_works_comparison} compares caching capabilities of 
+existing tools relevant to this thesis.
+
+
+\begin{center}
+\colorbox{red!20}{%
+\begin{minipage}{0.9\textwidth}
+\textcolor{red}{\textbf{TODO:}} Confirm on latest tool versions + format table new
+\end{minipage}
+}
+\end{center}
+
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{5cm}|}
+\hline
+\textbf{Tool/Framework} & \textbf{Caching Strategy} & \textbf{Fingerprinting Method} & \textbf{LOSO Support} \\
+\hline
+MLflow & Step-level (optional) & Parameter hashing & Manual fold parameterization \\
+\hline
+DVC & Pipeline stage & MD5 (code + inputs) & Manual pipeline params \\
+\hline
+ZenML & Step-level & SHA-256 (inputs + code + env) & Custom materializers \\
+\hline
+Neptune AI / W\&B & None (tracking only) & N/A & N/A \\
+\hline
+\textbf{This Thesis} & \textbf{Hierarchical (features + models)} & \textbf{SHA-256 with subject ID} & \textbf{Native fold-aware keys} \\
+\hline
+\end{tabular}
+\caption{Comparison of caching capabilities in MLOps tools. ``LOSO Support'' 
+indicates whether the tool natively encodes fold assignments in cache keys 
+or requires manual configuration.}
+\label{tab:related_works_comparison}
+\end{table}
+
+The core gap is the lack of validated, documented patterns for 
+implementing fold-aware caching in cross-validation workflows. While tools 
+like DVC and ZenML provide general pipeline caching infrastructure, adapting 
+them for LOSO requires custom logic that:
+\begin{enumerate}
+\item Encodes the held-out subject identifier in cache keys to prevent 
+      cross-fold contamination
+\item Manages hierarchical dependencies between preprocessing, feature 
+      extraction, and model training stages
+\item Validates cache hits against both parameter configurations and 
+      fold assignments
+\end{enumerate}
+
+These requirements are not addressed in standard documentation, and incorrect 
+implementation risks subtle bugs where models trained on Subject A are 
+erroneously reused for evaluating Subject B.
+
+This thesis provides a reference implementation demonstrating these patterns 
+in a real LOSO scenario (128-fold cross-validation on Sleep-EDF), with 
+explicit measurement of cache performance (hit rates, time savings) and 
+validation of reproducibility. The contribution is not a new MLOps platform, 
+but a validated approach for extending existing fingerprinting 
+techniques to cross-validation contexts.
+
+\chapter{Methodology}
