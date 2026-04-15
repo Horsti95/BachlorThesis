@@ -1,116 +1,278 @@
 \chapter{Related Works}
 
 
-This chapter reviews existing solutions for ML experiment caching and identifies 
-the specific gap this thesis addresses: the lack of validated best practices 
-for caching in Leave-One-Subject-Out (LOSO) cross-validation scenarios.
+This chapter reviews existing solutions for ML experiment caching and sleep
+stage classification, and identifies the specific gap this thesis addresses:
+the lack of validated best practices for caching in Leave-One-Subject-Out
+(LOSO) cross-validation scenarios.
 
+% ============================================================================
 \section{Academic Research on ML Caching}
+% ============================================================================
 
-Recent research explores adaptive caching strategies for ML workloads. Krishna 
-(2025) surveys ML-aided caching techniques including LSTM-based cache usage 
-prediction and reinforcement learning for adaptive cache policies~\cite{krishna2025cache}. 
-These approaches focus on \textit{learned} caching decisions using predictive 
+Recent research explores adaptive caching strategies for ML workloads. Krishna
+(2025) surveys ML-aided caching techniques including LSTM-based cache usage
+prediction and reinforcement learning for adaptive cache policies~\cite{krishna2025cache}.
+These approaches focus on \textit{learned} caching decisions using predictive
 models.
 
-In the context of reproducibility, Schubotz et al. (2022) demonstrate how 
-caching can accelerate data science experiments while maintaining FAIR 
-principles~\cite{schubotz2022caching}. Their work emphasizes content-addressable 
-storage for automatic result reuse, similar to the fingerprinting approach 
+In the context of reproducibility, Schubotz et al.\ (2022) demonstrate how
+caching can accelerate data science experiments while maintaining FAIR
+principles~\cite{schubotz2022caching}. Their work emphasizes content-addressable
+storage for automatic result reuse, similar to the fingerprinting approach
 used in this thesis.
 
-However, existing academic work on ML caching does not specifically address 
-the requirements of cross-validation experiments, where cache validity depends 
-on explicit encoding of data splits. The challenge of fold-aware cache key 
+However, existing academic work on ML caching does not specifically address
+the requirements of cross-validation experiments, where cache validity depends
+on explicit encoding of data splits. The challenge of fold-aware cache key
 generation remains unaddressed in the literature.
 
-\section{Commercial MLOps Tools}
+\begin{todobox}
+TODO Lennart: Only 2 papers (Krishna 2025, Schubotz 2022) are currently cited
+in this section. Find and add 3--5 more ML caching papers. Look for:
+\begin{itemize}
+\item Pipeline caching in ML workflows (e.g., papers on DVC internals,
+      ZenML caching design, or MLflow artifact management)
+\item Experiment result reuse and memoization in scientific computing
+\item Computational artifact management for iterative ML
+\item Content-addressable storage for ML pipelines
+\end{itemize}
+Search terms: ``ML experiment caching'', ``pipeline artifact reuse'',
+``memoization machine learning'', ``computational reproducibility caching''.
+\end{todobox}
 
-Current MLOps platforms provide general experiment tracking and pipeline 
+% ============================================================================
+\section{Commercial MLOps Tools}
+% ============================================================================
+
+Current MLOps platforms provide general experiment tracking and pipeline
 caching but lack native support for cross-validation-specific scenarios:
 
 \begin{itemize}
-\item \textbf{MLflow:} Provides experiment tracking, model registry, and 
-      basic result caching~\cite{zaharia2018mlflow}. Pipeline caching requires 
-      the MLflow Recipes module, which caches individual steps but does not 
+\item \textbf{MLflow:} Provides experiment tracking, model registry, and
+      basic result caching~\cite{zaharia2018mlflow}. Pipeline caching requires
+      the MLflow Recipes module, which caches individual steps but does not
       natively encode fold assignments in cache keys.
 
-\item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable 
-      pipeline stage reuse~\cite{dvc2022inproceedings}. While DVC can cache 
-      cross-validation results, it requires manual configuration of the pipeline 
-      definition to parameterize fold indices—a process not documented in 
+\item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable
+      pipeline stage reuse~\cite{dvc2022inproceedings}. While DVC can cache
+      cross-validation results, it requires manual configuration of the pipeline
+      definition to parameterise fold indices---a process not documented in
       standard DVC workflows.
 
-\item \textbf{ZenML:} Implements hash-based step caching with automatic 
-      invalidation when inputs or code change. However, ZenML's caching 
-      abstractions do not provide explicit support for encoding held-out 
+\item \textbf{ZenML:} Implements hash-based step caching with automatic
+      invalidation when inputs or code change. However, ZenML's caching
+      abstractions do not provide explicit support for encoding held-out
       subject identifiers, requiring users to implement custom materializers.
 
-\item \textbf{Neptune AI and Weights \& Biases:} Excel at experiment logging, 
-      metric visualization, and collaborative features~\cite{neptune2024docs,wandb2024docs}, 
-      but do not provide computational caching mechanisms—only metadata tracking.
+\item \textbf{Neptune AI and Weights \& Biases:} Excel at experiment logging,
+      metric visualisation, and collaborative features~\cite{neptune2024docs,wandb2024docs},
+      but do not provide computational caching mechanisms---only metadata tracking.
 \end{itemize}
 
+% ============================================================================
 \section{Research Gap Analysis}
+% ============================================================================
 
-Table~\ref{tab:related_works_comparison} compares caching capabilities of 
+Table~\ref{tab:related_works_comparison} compares caching capabilities of
 existing tools relevant to this thesis.
 
+\begin{todobox}
+TODO Lennart: Verify table contents against latest tool versions before
+final submission. DVC, ZenML, and MLflow update frequently.
+\end{todobox}
 
-\begin{center}
-\colorbox{red!20}{%
-\begin{minipage}{0.9\textwidth}
-\textcolor{red}{\textbf{TODO:}} Confirm on latest tool versions + format table new
-\end{minipage}
-}
-\end{center}
-
-
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
-\begin{tabular}{|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{5cm}|}
-\hline
-\textbf{Tool/Framework} & \textbf{Caching Strategy} & \textbf{Fingerprinting Method} & \textbf{LOSO Support} \\
-\hline
-MLflow & Step-level (optional) & Parameter hashing & Manual fold parameterization \\
-\hline
-DVC & Pipeline stage & MD5 (code + inputs) & Manual pipeline params \\
-\hline
-ZenML & Step-level & SHA-256 (inputs + code + env) & Custom materializers \\
-\hline
-Neptune AI / W\&B & None (tracking only) & N/A & N/A \\
-\hline
-\textbf{This Thesis} & \textbf{Hierarchical (features + models)} & \textbf{SHA-256 with subject ID} & \textbf{Native fold-aware keys} \\
-\hline
-\end{tabular}
-\caption{Comparison of caching capabilities in MLOps tools. ``LOSO Support'' 
-indicates whether the tool natively encodes fold assignments in cache keys 
+\caption{Comparison of caching capabilities in MLOps tools. ``LOSO Support''
+indicates whether the tool natively encodes fold assignments in cache keys
 or requires manual configuration.}
 \label{tab:related_works_comparison}
+\begin{tabular}{llll}
+\toprule
+\textbf{Tool/Framework} & \textbf{Caching Strategy} & \textbf{Fingerprinting} & \textbf{LOSO Support} \\
+\midrule
+MLflow        & Step-level (optional)          & Parameter hashing          & Manual fold param. \\
+DVC           & Pipeline stage                 & MD5 (code + inputs)        & Manual pipeline \\
+ZenML         & Step-level                     & SHA-256 (inputs+code+env)  & Custom materializers \\
+Neptune / W\&B & None (tracking only)          & N/A                        & N/A \\
+\textbf{This Thesis} & \textbf{Hierarchical (feat.+models)} & \textbf{SHA-256 + subject ID} & \textbf{Native fold-aware} \\
+\bottomrule
+\end{tabular}
 \end{table}
 
-The core gap is the lack of validated, documented patterns for 
-implementing fold-aware caching in cross-validation workflows. While tools 
-like DVC and ZenML provide general pipeline caching infrastructure, adapting 
+The core gap is the lack of validated, documented patterns for
+implementing fold-aware caching in cross-validation workflows. While tools
+like DVC and ZenML provide general pipeline caching infrastructure, adapting
 them for LOSO requires custom logic that:
 \begin{enumerate}
-\item Encodes the held-out subject identifier in cache keys to prevent 
+\item Encodes the held-out subject identifier in cache keys to prevent
       cross-fold contamination
-\item Manages hierarchical dependencies between preprocessing, feature 
+\item Manages hierarchical dependencies between preprocessing, feature
       extraction, and model training stages
-\item Validates cache hits against both parameter configurations and 
+\item Validates cache hits against both parameter configurations and
       fold assignments
 \end{enumerate}
 
-These requirements are not addressed in standard documentation, and incorrect 
-implementation risks subtle bugs where models trained on Subject A are 
-erroneously reused for evaluating Subject B.
+These requirements are not addressed in standard documentation, and incorrect
+implementation risks subtle bugs where models trained on Subject~A are
+erroneously reused for evaluating Subject~B.
 
-This thesis provides a reference implementation demonstrating these patterns 
-in a real LOSO scenario (128-fold cross-validation on Sleep-EDF), with 
-explicit measurement of cache performance (hit rates, time savings) and 
-validation of reproducibility. The contribution is not a new MLOps platform, 
-but a validated approach for extending existing fingerprinting 
+This thesis provides a reference implementation demonstrating these patterns
+in a real LOSO scenario (128-fold cross-validation on the BOAS dataset), with
+explicit measurement of cache performance (hit rates, time savings) and
+validation of reproducibility. The contribution is not a new MLOps platform,
+but a validated approach for extending existing fingerprinting
 techniques to cross-validation contexts.
 
-\chapter{Methodology}
+% ============================================================================
+\section{Sleep Stage Classification Methods}
+\label{sec:related_sleep}
+% ============================================================================
+
+\begin{missingref}
+TODO Lennart: Find additional references for this section before final submission:
+\begin{itemize}
+\item 2--3 feature-based sleep classification papers (2020--2026) beyond
+      Satapathy~(2024). Search: ``EEG feature extraction sleep staging'',
+      ``handcrafted features polysomnography classification''.
+\item 1 LOSO methodology paper for EEG/BCI (e.g., Jayaram et al.\ 2016
+      ``Transfer learning in brain-computer interfaces'' or similar).
+\item 1 class imbalance handling reference for sleep staging (N1 underrepresentation).
+      Search: ``class imbalance sleep staging'', ``macro F1 sleep classification''.
+\end{itemize}
+\end{missingref}
+
+Sleep stage classification is a well-studied problem in biomedical signal
+processing. Methods are broadly grouped into two categories: feature-based
+approaches that extract handcrafted signal descriptors, and deep learning
+approaches that learn representations directly from raw signals.
+
+\subsection{Feature-Based Approaches}
+
+Feature-based sleep staging extracts domain-informed descriptors from EEG
+signals and feeds them to classical machine learning classifiers. Features
+typically span time-domain statistics (mean, variance, RMS), frequency-domain
+band powers (delta, theta, alpha, sigma, beta), and signal complexity measures
+(Hjorth parameters, Hurst exponent, sample entropy).
+
+Satapathy et al.\ (2024) demonstrate that multi-modality feature sets combining
+EEG, EOG, and EMG signals with ensemble classifiers achieve competitive
+performance on standard sleep staging benchmarks~\cite{satapathy2024multimodal}.
+Their work highlights that carefully engineered features remain competitive with
+deep learning methods, particularly in cross-subject generalisation settings
+where training data is limited per subject.
+
+The approach taken in this thesis follows this feature-based paradigm: 149
+handcrafted features are extracted per 30-second epoch across 6 EEG channels,
+then classified using XGBoost and Random Forest. Feature-based approaches have
+the advantage of interpretability (feature importance scores identify which EEG
+descriptors drive classification) and compatibility with tabular ML models that
+are well-suited to caching (compact serialised representations).
+
+LOSO cross-validation is the standard evaluation protocol in this domain,
+reflecting the fundamental challenge of subject variability: EEG patterns
+differ substantially between individuals, and a model trained on one subject
+pool may not generalise to unseen subjects. LOSO evaluation provides an
+unbiased estimate of cross-subject performance.
+
+\subsection{Deep Learning Approaches}
+
+Deep learning methods for sleep staging learn feature representations directly
+from raw EEG signals, eliminating the need for manual feature engineering.
+
+Perslev et al.\ (2021) present U-Sleep, a fully convolutional network trained
+on diverse polysomnographic recordings that achieves robust high-frequency sleep
+staging across different acquisition systems~\cite{perslev2021usleep}. U-Sleep
+demonstrates that deep models can generalise across hardware configurations, a
+significant practical advantage.
+
+Jirakittayakorn et al.\ (2024) propose ZleepAnlystNet, a deep learning model
+for automatic sleep staging from single-channel raw EEG using separating
+training strategies~\cite{jirakittayakorn2024zleepanlyst}. Single-channel
+approaches are particularly relevant for wearable sleep monitoring applications
+where full PSG electrode montages are impractical.
+
+Zhang et al.\ (2025) address domain generalisation in sleep staging through an
+adversarial domain-generalised residual attention network, improving robustness
+to dataset shift across recording sites and equipment~\cite{zhang2025adg}.
+
+Li et al.\ (2025) explore few-shot sleep classification using spatial-temporal
+hypergraph meta-learning, targeting scenarios with limited labelled
+data~\cite{li2025metasth}.
+
+A common limitation of deep learning approaches in the context of this thesis
+is their computational and caching profile: deep models (CNNs, RNNs,
+Transformers) typically serialise to hundreds of MB or GB of parameters, and
+their training time is dominated by GPU availability rather than CPU caching
+bottlenecks. None of the cited deep learning papers address caching strategies
+for iterative experimentation or LOSO efficiency. This gap motivates the
+caching-oriented framework developed here.
+
+\subsection{LOSO Evaluation in EEG Research}
+
+Leave-One-Subject-Out cross-validation is preferred over standard k-fold
+cross-validation in EEG and sleep research for a fundamental reason: EEG
+signals contain strong subject-specific signatures. If training and test data
+from the same subject appear in the same fold (as in random k-fold splits),
+the classifier learns subject-specific patterns rather than generalisable
+sleep stage indicators. LOSO ensures the model is evaluated on data from
+subjects it has never seen, providing a conservative and clinically meaningful
+estimate of generalisation.
+
+The computational cost of LOSO scales directly with subject pool size. For
+128 subjects, LOSO requires 128 separate model training runs per configuration.
+With 18 configurations, this yields 2{,}304 training operations per complete
+experiment---making caching not merely convenient but essential for practical
+parameter search.
+
+% ============================================================================
+\section{Industrial Research and Applications}
+\label{sec:related_industrial}
+% ============================================================================
+
+\begin{todobox}
+TODO Lennart: The professor explicitly requires an industrial research section.
+Find 2--3 references on industrial ML deployment or commercial sleep technology:
+\begin{itemize}
+\item Industrial MLOps / production ML systems (e.g., Google's ML production
+      paper, Facebook/Meta's production ML infrastructure)
+\item Commercial sleep monitoring devices (Dreem headband, Fitbit sleep staging,
+      Apple Watch sleep tracking accuracy papers)
+\item Industry-academic gap in sleep staging deployment
+\end{itemize}
+Search: ``production machine learning systems'', ``commercial sleep staging device'',
+``wearable EEG sleep monitoring accuracy''.
+\end{todobox}
+
+The gap between academic sleep staging research and industrial deployment
+reflects broader challenges in production machine learning. Academic studies
+typically report results on controlled datasets under ideal acquisition
+conditions, while commercial sleep monitoring must cope with consumer-grade
+hardware, motion artefacts, and users who do not follow electrode placement
+protocols.
+
+\textbf{Commercial Sleep Monitoring:} Consumer wearables (smartwatches,
+fitness bands) incorporate simplified sleep staging using accelerometers and
+optical heart rate sensors rather than full EEG. While convenient, these
+devices sacrifice staging accuracy, particularly for distinguishing N1 from
+N2 and accurately identifying REM. Medical-grade consumer EEG headbands
+(such as the Dreem headband) have demonstrated PSG-comparable performance
+in controlled studies, suggesting that the accuracy gap is closeable with
+sufficient EEG channel coverage.
+
+\textbf{Production ML Challenges:} Deploying ML models in clinical and
+consumer contexts introduces requirements not typically addressed in academic
+research: model versioning, inference latency constraints, regulatory approval,
+and the need for reproducible audit trails. Caching and fingerprinting
+frameworks like the one developed in this thesis address the reproducibility
+and computational efficiency aspects of this deployment challenge, particularly
+for iterative model development and validation cycles.
+
+\textbf{Research-to-Production Gap:} The transition from research prototype
+to production deployment requires systematic experiment management, including
+the ability to reproduce any prior result on demand and to resume interrupted
+experiments without restarting from scratch. These requirements directly
+motivate the fingerprint-based caching approach of this thesis, which ensures
+that any configuration can be reproduced by its SHA-256 fingerprint, and
+that completed work is never discarded due to hardware interruption.
