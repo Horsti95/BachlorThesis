@@ -2,126 +2,225 @@
 
 
 \section{Introduction and Motivation}
-The field of Artificial Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth, marked by an explosive increase in both academic publications and industrial applications. This rapid expansion has led to the development of ML systems that present unique challenges compared to traditional software. Their complexity stems primarily from a reliance on dynamic data, evolving model behaviors, and continuous learning paradigms, factors that conventional software management practices are not designed to address. This complexity extends across the entire ML lifecycle, encompassing data pipelines, model deployment, and continuous monitoring.
 
-The sheer volume of research output underscores this challenge. For example, according to the Stanford AI Index Report 2023, the AI landscape has seen significant shifts in publication and collaboration patterns~\cite{AIIndex2023}. Notably, collaborations between educational institutions and industry grew 4.2 times from 2010 to 2021. In 2021, educational institutions and nonprofits led with 32,551 collaborations, followed by industry and educational institutions (12,856), and educational and government institutions (8,913). Furthermore, the number of AI journal publications increased approximately 2.3 times since 2015, showing a 14.8\% rise from 2020 to 2021.
+This thesis grew out of a practical problem encountered during a sleep lab project
+in a previous university course. The project involved EEG-based sleep stage
+classification --- training machine learning models to automatically label
+30-second sleep epochs as Wake, N1, N2, N3, or REM. The classification task itself
+worked. What did not work was the iteration speed.
 
-Organizations are also increasingly dependent on ML systems for critical insights and decision-making, highlighting the crucial role of MLOps (Machine Learning Operations) pipelines in achieving reliable and scalable ML implementations. MLOps aims to standardize development, boost productivity, and enable reproducible techniques for rapid experimentation and model training.
+Leave-One-Subject-Out (LOSO) cross-validation, the standard evaluation protocol
+for subject-independent sleep staging, requires training one model per subject.
+With 128 subjects, every parameter change --- adjusting a correlation threshold,
+trying a different feature count, switching from XGBoost to Random Forest ---
+triggered a full retraining of 128 models. A single Random Forest run across
+128 subjects took over eight hours. Exploring 9 configurations meant days of
+wall-clock time for a parameter sweep that should take minutes.
+
+The question that arose was not ``how do we improve the classifier?'' but ``why
+are we retraining models that haven't changed?'' Most models in a LOSO sweep
+remain valid when only a handful of parameters are modified. The computational
+waste was not a classification problem --- it was a caching problem.
+
+This observation motivated a shift in focus: from sleep classification as the goal
+to caching optimization as the contribution. The sleep staging task became the
+validation vehicle for a more general framework addressing redundant computation
+in iterative ML experimentation.
+
+The broader landscape reinforces why this matters. The field of Artificial
+Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth,
+with an explosive increase in both academic publications and industrial
+applications~\cite{AIIndex2023}. According to the Stanford AI Index Report 2023,
+AI-related publications increased approximately 2.3 times since 2015, and
+collaborations between educational institutions and industry grew 4.2 times from
+2010 to 2021. As ML systems grow more complex, the cost of redundant computation
+scales accordingly. MLOps (Machine Learning Operations) pipelines aim to
+standardize development, boost productivity, and enable reproducible
+experimentation~\cite{kreuzberger2023mlops} --- but caching for cross-validation
+workflows remains an unaddressed gap.
 
 \section{Research Problem}
 
-Despite rapid advancements in ML, iterative experimentation workflows face significant computational inefficiencies, particularly in cross-validation scenarios. Leave-One-Subject-Out (LOSO) cross-validation, commonly used to evaluate model generalization across individuals, requires training \textit{N} models for \textit{N} subjects—a process that can take 8-10 hours for datasets with 128 subjects. When researchers iterate on hyperparameters or feature selection strategies, this entire process must be repeated, even when many trained models remain valid under the new configuration.
+Despite rapid advancements in ML, iterative experimentation workflows face
+significant computational inefficiencies, particularly in cross-validation
+scenarios. Leave-One-Subject-Out (LOSO) cross-validation, commonly used to
+evaluate model generalisation across individuals, requires training \textit{N}
+models for \textit{N} subjects. In the experiments conducted for this thesis,
+a single 9-configuration XGBoost sweep across 128 subjects required
+approximately 12{,}500 seconds ($\approx$3.5 hours) from cold start. Random
+Forest was substantially worse: a single 9-configuration sweep required over
+77{,}000 seconds ($\approx$21 hours). A full 18-configuration experiment
+therefore spans from several hours (XGBoost) to multiple days (Random Forest)
+per complete cold run. When researchers iterate on hyperparameters or feature
+selection strategies, this entire process must be repeated, even when most
+trained models remain valid under the new configuration.
 
-This research addresses three interconnected challenges in managing LOSO experimentation workflows:
+This thesis addresses three interconnected challenges in managing LOSO
+experimentation workflows:
 
 \begin{itemize}
 
-\item \textbf{Redundant Computation Across Experimental Iterations:} 
-ML experimentation requires repeatedly modifying specific components 
-(hyperparameters, feature subsets, model architectures) while keeping others 
-constant. Existing MLOps tools such as DVC~\cite{dvc2022inproceedings} and 
-ZenML provide hierarchical pipeline caching, where downstream changes do not 
-invalidate upstream artifacts. However, adapting these tools to LOSO workflows 
-requires explicit parameterization of the held-out subject and careful cache 
-key design, a process that is neither standardized nor validated in existing 
-literature. Without a validated framework, researchers face a choice between 
-no caching (prohibitive recomputation costs) or manual cache management 
+\item \textbf{Redundant Computation Across Experimental Iterations:}
+ML experimentation requires repeatedly modifying specific components
+(hyperparameters, feature subsets, model architectures) while keeping others
+constant. Existing MLOps tools such as DVC~\cite{dvc2022inproceedings} and
+ZenML provide hierarchical pipeline caching, where downstream changes do not
+invalidate upstream artifacts. However, adapting these tools to LOSO workflows
+requires explicit parameterisation of the held-out subject and careful cache
+key design, a process that is neither standardised nor validated in existing
+literature. Without a validated framework, researchers face a choice between
+no caching (prohibitive recomputation costs) or manual cache management
 (error-prone and difficult to reproduce).
 
-
 \item \textbf{Ensuring Cache Validity Across Cross-Validation Folds:}
-In LOSO cross-validation, each fold's trained model is valid only for 
-evaluating its specific held-out subject. A model trained with subject $S_i$ 
-held out produces scientifically invalid predictions when applied to evaluate 
-subject $S_j$ held out, not due to data leakage (the train/test split is 
-maintained) but due to applying cached results to an incorrect experimental 
+In LOSO cross-validation, each fold's trained model is valid only for
+evaluating its specific held-out subject. A model trained with subject $S_i$
+held out produces scientifically invalid predictions when applied to evaluate
+subject $S_j$ held out --- not due to data leakage (the train/test split is
+maintained) but due to applying cached results to an incorrect experimental
 condition.
 
-While general-purpose caching systems like DVC can be configured to handle this 
-by parameterizing the held-out subject, there is no validated framework 
-demonstrating best practices for LOSO cache key design. Without explicit 
-guidance, researchers risk either overly conservative cache invalidation 
-(recomputing valid results) or incorrect parameterization (potential cache 
-validity violations). This research establishes a validated approach where 
-held-out subject identifiers are systematically included in fingerprint-based 
+While general-purpose caching systems like DVC can be configured to handle this
+by parameterising the held-out subject, there is no validated framework
+demonstrating best practices for LOSO cache key design. Without explicit
+guidance, researchers risk either overly conservative cache invalidation
+(recomputing valid results) or incorrect parameterisation (potential cache
+validity violations). This thesis established a validated approach where
+held-out subject identifiers are systematically included in fingerprint-based
 cache keys.
 
-
-
 \item \textbf{Unified Fingerprinting for Reproducibility and Cache Validity:}
-Existing MLOps tools separate experiment tracking (MLflow, W\&B) from 
-pipeline caching (DVC, ZenML), requiring researchers to manually coordinate 
+Existing MLOps tools separate experiment tracking (MLflow, W\&B) from
+pipeline caching (DVC, ZenML), requiring researchers to manually coordinate
 logged configurations with cached artifacts~\cite{zaharia2018mlflow,%
-wandb2024docs,dvc2022inproceedings}. This separation becomes particularly 
-challenging in LOSO scenarios where fold identity must be consistently tracked 
-across both systems. This research proposes cryptographic fingerprinting 
-(SHA-256 of canonical JSON configurations) as a unified solution: a single 
-fingerprint simultaneously ensures cache validity, reproducibility, and 
-experiment identification. The approach is validated by demonstrating 
-deterministic fingerprint generation across 18 experimental configurations 
-and 128 cross-validation folds, with zero fingerprint collisions and 
+wandb2024docs,dvc2022inproceedings}. This separation becomes particularly
+challenging in LOSO scenarios where fold identity must be consistently tracked
+across both systems. This thesis implemented cryptographic fingerprinting
+(SHA-256 of canonical JSON configurations) as a unified solution: a single
+fingerprint simultaneously ensures cache validity, reproducibility, and
+experiment identification. The approach was validated by demonstrating
+deterministic fingerprint generation across 18 experimental configurations
+and 128 cross-validation folds, with zero fingerprint collisions and
 complete result reproducibility.
 
 \end{itemize}
 
+This thesis addresses these challenges through a fingerprint-based caching
+framework for LOSO cross-validation experiments. The framework uses SHA-256
+hashing of canonical JSON configuration representations to generate deterministic
+cache keys, with held-out subject identifiers included to ensure cache validity
+across folds. The approach was validated through a sleep stage classification
+case study using 128 subjects from the BOAS (Bitbrain Open Access Sleep)
+dataset.
 
+\begin{verifybox}
+VERIFY Lennart: The citations \texttt{kemp2000sleepEDF} and
+\texttt{goldberger2000physionet} reference the Sleep-EDF dataset and PhysioNet
+platform, not BOAS specifically. Find the correct BOAS dataset citation and
+replace these references here and throughout the thesis.
+\end{verifybox}
 
-This thesis addresses these challenges through a fingerprint-based caching 
-framework for LOSO cross-validation experiments. The framework uses SHA-256 
-hashing of canonical JSON configuration representations to generate deterministic 
-cache keys, with held-out subject identifiers included to ensure cache validity 
-across folds. The approach is validated through a practical case study: sleep 
-stage classification using 128 subjects from the BOAS (Bitbrain Open Access 
-Sleep) dataset~\cite{kemp2000sleepEDF,goldberger2000physionet}. Evaluation 
-metrics include cache hit rates, computational time savings, storage requirements, 
-and reproducibility validation across experimental iterations.
+Evaluation metrics included cache hit rates, computational time savings,
+storage requirements, and reproducibility validation across experimental
+iterations.
 
 
 \section{Research Questions}
 
 \textbf{Main Research Question:}
 
-How can fingerprint-based caching reduce computational costs in Leave-One-Subject-Out cross-validation while ensuring reproducibility and preventing data leakage?
+How can fingerprint-based caching reduce computational costs in
+Leave-One-Subject-Out cross-validation while ensuring reproducibility
+and preventing data leakage?
 
 \begin{itemize}
-\item \textbf{RQ1 (Efficiency):} What time savings and cache hit rates can be achieved through fingerprint-based caching of extracted features and trained models in LOSO cross-validation?
-\item \textbf{RQ2 (Reproducibility):} How does SHA-256 configuration fingerprinting ensure consistent and reproducible experiment results across multiple runs?
-\item \textbf{RQ3 (Scalability):} How does caching performance scale from pilot studies (10 subjects) to full datasets (128 subjects)?
-\item \textbf{RQ4 (Trade-offs):} What are the storage costs versus computational savings of the proposed caching approach?
+\item \textbf{RQ1 (Efficiency):} What time savings and cache hit rates were
+achieved through fingerprint-based caching of extracted features and trained
+models in LOSO cross-validation?
+\item \textbf{RQ2 (Reproducibility):} How does SHA-256 configuration
+fingerprinting ensure consistent and reproducible experiment results across
+multiple runs?
+\item \textbf{RQ3 (Scalability):} How does caching performance scale with
+dataset size, from 10 subjects to the full 128-subject dataset?
+\item \textbf{RQ4 (Trade-offs):} What are the storage costs versus
+computational savings of the caching approach, and under what conditions
+does caching remain viable?
 \end{itemize}
 
 
+\section{Research Approach}
+
+This thesis followed a quantitative experimental methodology. The fingerprint-based
+caching framework was implemented, deployed on a real EEG sleep staging pipeline,
+and evaluated through controlled benchmarks. The research approach comprised three
+phases:
+
+\begin{enumerate}
+\item \textbf{Framework Implementation:} Design and implement the SHA-256
+fingerprinting system, feature cache, and LOSO model cache. Validate
+correctness through unit tests and cache invalidation tests.
+\item \textbf{Benchmark Experiments:} Execute the full 18-configuration
+experiment (2 models $\times$ 3 correlation thresholds $\times$ 3 feature
+counts, 128-fold LOSO each) under cold-start and warm-cache conditions.
+Measure speedup, storage, and accuracy for each configuration.
+\item \textbf{Extended Validation:} Conduct viability analysis across 15
+model types, scaling analysis from 10 to 128 subjects, and feature
+selection benchmarks (ANOVA vs.\ Mutual Information).
+\end{enumerate}
 
 \section{Research Method and Approach}
-This research employs a quantitative experimental methodology combining:
+
+The experimental evaluation combined:
 
 \begin{itemize}
-\item \textbf{Performance Measurement:} Systematic collection of timing metrics, cache hit rates, and storage utilization across multiple experimental scenarios.
-\item \textbf{Comparative Analysis:} Evaluation of caching efficiency across different conditions (cold start vs. cached runs, identical vs. modified configurations).
-\item \textbf{Reproducibility Validation:} Verification that identical fingerprints produce identical results across multiple runs.
+\item \textbf{Performance Measurement:} Systematic collection of timing
+metrics, cache hit rates, and storage utilisation across multiple
+experimental scenarios.
+\item \textbf{Comparative Analysis:} Evaluation of caching efficiency across
+different conditions (cold start vs.\ cached runs, identical vs.\ modified
+configurations).
+\item \textbf{Reproducibility Validation:} Verification that identical
+fingerprints produce identical results across multiple runs.
 \end{itemize}
 
-The approach centers on two orthogonal evaluation dimensions:
+The approach centres on two orthogonal evaluation dimensions:
 \begin{itemize}
-\item \textbf{WHY to cache:} Optimization goals including latency reduction, throughput improvement, and cumulative time savings across iterative experiments.
-\item \textbf{WHERE to cache:} The framework implements hierarchical caching at two levels. Feature-level caching stores 149 extracted features per epoch, computed once per subject (implemented, achieving 227$\times$ speedup in preliminary tests). LOSO model caching will store trained models per cross-validation fold, with the held-out subject identifier encoded in the cache key to prevent data leakage (currently in implementation).
+\item \textbf{WHY to cache:} Optimisation goals including latency reduction,
+throughput improvement, and cumulative time savings across iterative experiments.
+\item \textbf{WHERE to cache:} The framework implements hierarchical caching
+at two levels. Feature-level caching stores 149 extracted features per epoch,
+computed once per subject (implemented, achieving 227$\times$ speedup).
+LOSO model caching stores trained models per cross-validation fold, with the
+held-out subject identifier encoded in the cache key to prevent data leakage
+(implemented and validated across all 18 configurations).
 \end{itemize}
 
 \section{Structure of the Thesis}
 This thesis is structured as follows:
 
 \begin{itemize}
-\item \textbf{Chapter 1: Introduction} presents the motivation, research problem, and main research question for fingerprint-based caching in LOSO cross-validation
+\item \textbf{Chapter 1: Introduction} presents the motivation rooted in
+practical LOSO runtime problems, the research problem, research questions,
+and research approach.
 
-\item \textbf{Chapter 2: Background} covers ML research methodology, computational efficiency challenges, and caching technologies.
+\item \textbf{Chapter 2: Background} covers ML research methodology,
+computational efficiency challenges, sleep medicine fundamentals, EEG signal
+processing basics, ML ensemble methods, and configuration fingerprinting
+and caching technologies.
 
-\item \textbf{Chapter 3: Related Works} reviews existing MLOps tools (MLflow, DVC, ZenML) and sleep stage classification methods, identifying gaps in LOSO-aware caching that this work addresses.
+\item \textbf{Chapter 3: Related Works} reviews existing MLOps tools
+(MLflow, DVC, ZenML), sleep stage classification methods grouped by technique,
+and identifies the gap in LOSO-aware caching that this work addresses.
 
-\item \textbf{Chapter 4: Methodology} details the fingerprint-based caching framework, the Sleep-EDF dataset, preprocessing pipeline, extraction of 149 EEG features per epoch, and the LOSO cross-validation experimental design.
+\item \textbf{Chapter 4: Methodology and Results} details the fingerprint-based
+caching framework, the BOAS dataset, preprocessing pipeline, extraction of
+149 EEG features per epoch, the LOSO cross-validation experimental design,
+and the full experimental results including cache speedups, classification
+performance, model viability analysis, and discussion.
 
-\item \textbf{Chapter 5: Results} presents cache performance metrics (hit rates, time savings, storage overhead - currently in inplementation), reproducibility validation, and classification results validating framework correctnes.
-
-\item \textbf{Chapter 6: Conclusion and Future Work} summarizes contributions in fingerprint-based caching for cross-validation experiments and discusses extensions including cross-experiment cache reuse.
+\item \textbf{Chapter 5: Summary and Future Work} summarises the contributions
+of the fingerprint-based caching framework and discusses extensions including
+two-tier RAM+Disk caching and cross-experiment cache reuse.
 \end{itemize}
 
 \chapter{Background}
