@@ -3,11 +3,11 @@
 % --- IMC Template Specific Commands ---
 \title{Optimizing ML Experiments: Intelligent Frameworks for Efficiency and Reproducibility}
 \subtitle{A Fingerprint-Based LOSO Caching Approach Validated on EEG Sleep Classification}
-\thesistype{Bachelor Thesis Proposal} % FIXED: Changed from Bachelor Exposé
+\thesistype{Bachelor Thesis}
 \author{Lennart Gorzel}
-\supervisor{Prof. Himanshu Buckchash} % FIXED: Correct supervisor
-\copyrightyear{2026} % FIXED: Updated year
-\submissiondate{15.01.2026} % FIXED: Proposal deadline
+\supervisor{Prof. Himanshu Buckchash}
+\copyrightyear{2026}
+\submissiondate{15.04.2026}
 \keywords{Machine Learning, Intelligent Caching, Reproducibility, Sleep Stage Classification, EEG, Feature Engineering}
 
 % --- Standard Packages ---
@@ -55,39 +55,37 @@ This thesis addresses the computational costs and reproducibility challenges
 that confront modern Machine Learning (ML) experimentation. As ML systems grow
 increasingly complex, researchers face significant overhead from redundant
 computations, inconsistent results across runs, and difficulties resuming
-interrupted experiments. This work proposes a fingerprint-based caching
+interrupted experiments. This thesis presents a fingerprint-based caching
 framework using SHA-256 configuration hashing to systematically address these
 challenges.
 
-The research develops a deterministic fingerprinting system where a cryptographic
-hash uniquely identifies each experiment configuration.The fingerprint is computed from a canonical JSON representation of the tracked experiment state: random seed, code version, model type and hyperparameters, feature configuration, and held-out subject. The core principle is:
-\textit{if it can change the output, it must change the fingerprint}. This enables automatic cache invalidation for all tracked experiment parameters: when any fingerprinted component changes, the cache key changes and stale results are bypassed. Identical fingerprints therefore indicate the same tracked configuration and a valid cache match.
+The research developed a deterministic fingerprinting system where a cryptographic
+hash uniquely identifies each experiment configuration. The fingerprint is computed
+from a canonical JSON representation of the tracked experiment state: random seed,
+code version, model type and hyperparameters, feature configuration, and held-out
+subject. The core principle is: \textit{if it can change the output, it must change
+the fingerprint}. This enables automatic cache invalidation for all tracked experiment
+parameters: when any fingerprinted component changes, the cache key changes and stale
+results are bypassed.
 
-The framework extends caching to Leave-One-Subject-Out cross-validation by including the held-out subject in the cache key. This prevents reuse of models across different LOSO folds and avoids cross-contamination between train/test splits under the fixed dataset partition used in this thesis.
+The framework extends caching to Leave-One-Subject-Out cross-validation by including
+the held-out subject in the cache key. This prevents reuse of models across different
+LOSO folds and avoids cross-contamination between train/test splits.
 
-The framework is validated through a sleep stage classification case study using the Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, approximately 120,000 epochs).
-The feature extraction module computes 149 features per epoch across 6 EEG channels (F3, F4, C3, C4, O1, O2), spanning time-domain statistics, frequency-domain power spectral features, and signal complexity measures. These features are computed once per subject and cached persistently, isolating the caching evaluation to the computationally expensive model training phase.
+The framework was validated through a sleep stage classification case study using the
+Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, approximately 120,000 epochs).
+The feature extraction module computes 149 features per epoch across 6 EEG channels
+(F3, F4, C3, C4, O1, O2), spanning time-domain statistics, frequency-domain power
+spectral features, and signal complexity measures.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:}
-check speedup claims
-\end{minipage}
-}
-\end{center}
-
-The contributions of this thesis are: (1) a fingerprint-based LOSO model caching framework that ensures cache correctness through SHA-256 configuration tracking, preventing cross-contamination across folds, (2) quantified efficiency gains of up to 498x speedup for XGBoost and 110x for Random Forest at the highest feature dimensionality (149 features, 128 LOSO folds) and (3) validated reproducibility --- all cached models produce identical classification results to cold retraining (accuracy match confirmed for all configurations).
+The contributions of this thesis are: (1) a fingerprint-based LOSO model caching
+framework that ensures cache correctness through SHA-256 configuration tracking,
+preventing cross-contamination across folds, (2) quantified efficiency gains of
+up to 498$\times$ speedup for XGBoost and 110$\times$ for Random Forest at the
+highest feature dimensionality (149 features, 128 LOSO folds), and (3) validated
+reproducibility --- all cached models produce identical classification results to
+cold retraining (accuracy match confirmed for all 18 configurations).
 \end{abstract}
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:}
-rework table of contentns, make sure sraita goal of chapter lenght is achieved
-\end{minipage}
-}
-\end{center}
 
 \addtoToC{Table of Contents}%
 \tableofcontents%
@@ -106,24 +104,11 @@ rework table of contentns, make sure sraita goal of chapter lenght is achieved
 % ============================================================================
 \mainmatter
 
-
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:}
-This document currently uses structured lists for clarity during the planning phase.
-These will be converted to prose format in the final thesis submission.
-\end{minipage}
-}
-\end{center}
-
-% Chapters (current structure from main branch)
+% Chapters
 \include{chapters/01_introduction}
 \include{chapters/02_background}
 \include{chapters/03_related_work}
 \include{chapters/04_methodology}
-\include{chapters/05_expected_results}
 \include{chapters/05_summary}
 
 % ============================================================================

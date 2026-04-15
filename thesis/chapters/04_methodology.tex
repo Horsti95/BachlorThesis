@@ -931,4 +931,331 @@ Reproducibility will be verified through:
 \item \textbf{Resumability Test:} Interrupt pipeline $\rightarrow$ resume from cache $\rightarrow$ identical final results
 \end{itemize}
 
-\chapter{Expected Results}
+% ============================================================================
+\chapter{Results and Discussion}
+\label{chap:results}
+% ============================================================================
+
+This chapter presents the measured experimental results for the fingerprint-based
+LOSO caching framework, followed by key findings and a critical discussion of
+the approach.
+
+% ----------------------------------------------------------------------------
+\section{Caching Performance Results}
+\label{sec:results_caching}
+% ----------------------------------------------------------------------------
+
+\subsection{XGBoost LOSO Cache Evaluation}
+
+Table~\ref{tab:xgb_cache_results} presents the measured cache performance for
+XGBoost across all 9 configurations (128-fold LOSO, 128 subjects).
+
+\begin{table}[htbp]
+\centering
+\caption{XGBoost LOSO cache evaluation: cold start vs.\ warm run times across
+9 configurations (128 subjects, 128 folds).}
+\label{tab:xgb_cache_results}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Config} & \textbf{\#Feat} & \textbf{Cold (s)} & \textbf{Warm (s)} & \textbf{Speedup} & \textbf{Cache (MB)} \\
+\midrule
+corr=0.75, k=30  & 30  & 905.0   & 6.67 & 135.7$\times$ & 186.4 \\
+corr=0.75, k=50  & 48  & 1{,}269.1 & 6.97 & 182.2$\times$ & 189.2 \\
+corr=0.75, k=None & 48 & 1{,}280.9 & 7.31 & 175.1$\times$ & 189.2 \\
+corr=0.9, k=30   & 30  & 854.0   & 6.95 & 122.9$\times$ & 175.7 \\
+corr=0.9, k=50   & 50  & 1{,}317.4 & 7.36 & 179.0$\times$ & 187.4 \\
+corr=0.9, k=None & 84  & 2{,}067.0 & 7.49 & 276.1$\times$ & 188.7 \\
+corr=None, k=30  & 30  & 918.5   & 7.30 & 125.9$\times$ & 176.6 \\
+corr=None, k=50  & 50  & 1{,}277.1 & 7.16 & 178.4$\times$ & 178.3 \\
+\textbf{corr=None, k=None} & \textbf{149} & \textbf{3{,}683.3} & \textbf{7.39} & \textbf{498.3$\times$} & \textbf{188.2} \\
+\midrule
+\textbf{Average} & -- & -- & 7.1 & \textbf{208$\times$} & \textbf{$\sim$185} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The best configuration (all 149 features, no correlation filtering) achieved
+\textbf{498$\times$ speedup}, reducing a 3{,}683-second cold run to 7.4 seconds.
+Across all 9 configurations, the average speedup was \textbf{208$\times$} with
+consistent warm-load times around 7 seconds regardless of model complexity.
+Cache storage remained compact at approximately 185--189~MB per configuration.
+Verdict: \textbf{CACHE VIABLE} for XGBoost across all configurations.
+
+\subsection{Random Forest LOSO Cache Evaluation}
+
+\begin{table}[htbp]
+\centering
+\caption{Random Forest LOSO cache evaluation (128 subjects, 128 folds).
+Config 7 (marked *) may contain an outlier due to process interruption.}
+\label{tab:rf_cache_results}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Config} & \textbf{\#Feat} & \textbf{Cold (s)} & \textbf{Warm (s)} & \textbf{Speedup} & \textbf{Cache (GB)} \\
+\midrule
+corr=0.75, k=30  & 30  & 4{,}149.4  & 345.7 & 12.0$\times$ & 19.2 \\
+corr=0.75, k=50  & 48  & 4{,}401.2  & 355.0 & 12.4$\times$ & 19.9 \\
+corr=0.75, k=None & 48 & 4{,}399.1  & 355.4 & 12.4$\times$ & 19.9 \\
+corr=0.9, k=30   & 30  & 4{,}126.4  & 351.1 & 11.8$\times$ & 19.1 \\
+corr=0.9, k=50   & 50  & 5{,}503.5  & 310.3 & 17.7$\times$ & 17.0 \\
+corr=0.9, k=None & 84  & 5{,}971.9  & 309.5 & 19.3$\times$ & 17.4 \\
+corr=None, k=30* & 30  & 11{,}331.1 & 356.0 & 31.8$\times$ & 20.4 \\
+corr=None, k=50  & 50  & 5{,}465.4  & 305.2 & 17.9$\times$ & 17.5 \\
+\textbf{corr=None, k=None} & \textbf{149} & \textbf{31{,}679.5} & \textbf{288.6} & \textbf{109.8$\times$} & \textbf{16.3} \\
+\midrule
+\textbf{Average} & -- & -- & 330 & \textbf{$\sim$28$\times$} & \textbf{$\sim$18.5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Random Forest caching provides significant time savings (up to 110$\times$ speedup)
+but at substantially higher storage cost ($\sim$18.5~GB per configuration vs.\ $\sim$185~MB
+for XGBoost). Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
+Verdict: \textbf{BORDERLINE} --- meaningful speedup but GB-scale storage makes this
+impractical for repeated experimentation without large-capacity storage.
+
+\subsection{XGBoost vs.\ Random Forest Comparison}
+
+\begin{table}[htbp]
+\centering
+\caption{XGBoost vs.\ Random Forest cache performance summary.}
+\label{tab:xgb_rf_comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{XGBoost} & \textbf{Random Forest} \\
+\midrule
+Average cache size   & $\sim$185~MB  & $\sim$18.5~GB \\
+Average speedup      & 208$\times$   & 28$\times$    \\
+Average warm time    & 7.1~s         & 330~s         \\
+Best accuracy        & 85.5\%        & 81.9\%        \\
+Best Cohen's $\kappa$ & 0.745        & 0.666         \\
+Best F1-macro        & 0.690         & 0.607         \\
+Cache verdict        & \textbf{VIABLE} & \textbf{BORDERLINE} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+XGBoost dominates on all dimensions: higher accuracy, higher speedup, and
+dramatically smaller cache footprint.
+
+% ----------------------------------------------------------------------------
+\section{Classification Performance}
+\label{sec:results_classification}
+% ----------------------------------------------------------------------------
+
+Table~\ref{tab:performance_18configs} presents the full classification performance
+across all 18 experimental configurations, ranked by accuracy.
+
+\input{tables/tab2_performance_18configs}
+
+The best-performing configuration (\mbox{XGBoost, no correlation filter, all 149 features})
+achieved \textbf{84.9\% accuracy} ($\kappa = 0.726$, F1-macro $= 0.629$) in LOSO
+cross-validation across 128 subjects. XGBoost occupies the top 7 positions in the
+ranking, with Random Forest configurations placing 8th--18th. The N1 sleep stage
+consistently shows lower per-class F1 due to its transitional nature and similarity
+to adjacent stages.
+
+% ----------------------------------------------------------------------------
+\section{Multi-Model Cache Viability}
+\label{sec:results_viability}
+% ----------------------------------------------------------------------------
+
+Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
+tested on the full 128-subject dataset (5 LOSO folds).
+
+\input{tables/tab4_cache_viability}
+
+\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable models
+(Random Forest, KNN-5, KNN-10, Extra Trees) share a common characteristic: large
+serialized model sizes (130--1544~MB per fold) and slow deserialization times,
+which eliminate the loading speed advantage over retraining. The top-performing
+viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
+speedup at only 0.4~MB per fold.
+
+% ----------------------------------------------------------------------------
+\section{Cache Scaling with Dataset Size}
+\label{sec:results_scaling}
+% ----------------------------------------------------------------------------
+
+\begin{table}[htbp]
+\centering
+\caption{SVM cache speedup scaling from 10 to 128 subjects. Cache loading cost
+is constant while training cost grows with data size.}
+\label{tab:svm_scaling}
+\begin{tabular}{ccc}
+\toprule
+\textbf{Subjects} & \textbf{SVM-Linear Speedup} & \textbf{SVM-RBF Speedup} \\
+\midrule
+10  & 1{,}736$\times$ & 9.2$\times$   \\
+30  & 1{,}551$\times$ & 33.4$\times$  \\
+64  & 2{,}040$\times$ & 82.3$\times$  \\
+128 & 3{,}093$\times$ & 200.9$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Cache speedup \textit{increases} with dataset size. SVM-RBF scaling illustrates
+this clearly: at 10 subjects the speedup is 9$\times$; at 128 subjects it reaches
+201$\times$. Training cost grows with data size (quadratically for SVM-RBF) while
+cache loading cost remains constant. This makes caching increasingly valuable as
+datasets grow.
+
+% ----------------------------------------------------------------------------
+\section{Feature Selection: ANOVA vs.\ Mutual Information}
+\label{sec:results_anova}
+% ----------------------------------------------------------------------------
+
+\begin{table}[htbp]
+\centering
+\caption{ANOVA F-statistic vs.\ Mutual Information feature selection (10 subjects,
+5-fold CV). ANOVA is both faster and more accurate.}
+\label{tab:anova_vs_mi}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Method} & \textbf{Time (s)} & \textbf{Accuracy} \\
+\midrule
+ANOVA (f\_classif)  & 0.022 & 84.26\% \\
+Mutual Information  & 3.74  & 80.58\% \\
+\midrule
+\textbf{Difference} & \textbf{174$\times$ faster} & \textbf{$+$3.68\% ANOVA} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ANOVA is strictly superior for this dataset: 174$\times$ faster \textit{and}
+3.68 percentage points more accurate than Mutual Information. This is not a
+trade-off but a clear dominance, making ANOVA the justified choice for feature
+selection.
+
+% ----------------------------------------------------------------------------
+\section{Reproducibility Validation}
+\label{sec:results_reproducibility}
+% ----------------------------------------------------------------------------
+
+Table~\ref{tab:fingerprint_integrity} demonstrates fingerprint uniqueness across
+representative configurations.
+
+\input{tables/tab5_fingerprint_integrity}
+
+Reproducibility was validated across all 18 configurations and 128 LOSO folds:
+\begin{itemize}
+\item \textbf{100\% fingerprint determinism:} Identical configurations always
+      produce identical SHA-256 hashes.
+\item \textbf{Identical predictions:} Cached models produce bitwise-identical
+      predictions to freshly trained models (\texttt{accuracy\_match = True}
+      for all 18 configurations).
+\item \textbf{Zero cache corruption:} All save/load cycles completed without
+      data loss or serialization errors.
+\end{itemize}
+
+% ============================================================================
+\section{Key Findings}
+\label{sec:findings}
+% ============================================================================
+
+Six claims formulated at the outset of this thesis were validated through
+systematic experimentation:
+
+\begin{enumerate}
+\item \textbf{Cache provides significant LOSO speedup.}
+      XGBoost: 122--498$\times$ (average 208$\times$).
+      SVM-Linear: 1{,}550--3{,}093$\times$ scaling with dataset size.
+      The framework delivers order-of-magnitude reductions in experiment time.
+
+\item \textbf{Cached models produce identical results.}
+      \texttt{accuracy\_match = True} for all 18 configurations. Fingerprint-based
+      cache keys guarantee that retrieved models correspond exactly to the
+      requested configuration, ensuring scientific validity.
+
+\item \textbf{ANOVA is strictly superior to Mutual Information for this task.}
+      174$\times$ faster with $+$3.68\% higher accuracy. Justified by the
+      linear discriminative structure of EEG frequency-domain features.
+
+\item \textbf{Cache benefit scales with dataset size.}
+      SVM-RBF speedup grows from 9$\times$ (10 subjects) to 201$\times$
+      (128 subjects), because training cost grows quadratically while cache
+      loading remains constant. The framework becomes more valuable as studies scale.
+
+\item \textbf{A clear model viability spectrum exists.}
+      11 of 15 models are cache-viable. Boosting-based models (GBM, XGBoost,
+      AdaBoost) achieve extreme speedups with compact cache sizes. Tree ensembles
+      (RF, ET) and distance-based models (KNN) are not viable due to
+      GB-scale serialized sizes.
+
+\item \textbf{Viability verdicts are hardware-portable.}
+      The same models are VIABLE/NOT\_VIABLE regardless of machine. Speedup
+      magnitudes differ between the development laptop and the desktop machine,
+      but the ranking is consistent, confirming that the framework's behaviour
+      generalises across hardware configurations.
+\end{enumerate}
+
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+% ============================================================================
+
+\subsection{XGBoost vs.\ Random Forest: A Multi-Dimensional Tradeoff}
+
+XGBoost outperforms Random Forest on every measured dimension in this study:
+higher classification accuracy (85.5\% vs.\ 81.9\%), higher cache speedup
+(208$\times$ vs.\ 28$\times$), and dramatically smaller cache storage
+(185~MB vs.\ 18.5~GB). This result challenges the common assumption that
+Random Forest and XGBoost are interchangeable ensemble alternatives. For
+LOSO-style experimentation with repeated runs, XGBoost is the clearly
+preferable choice, not merely for accuracy, but for practical workflow efficiency.
+
+\subsection{Why Tree Ensembles and KNN Are Not Cache-Viable}
+
+The NOT\_VIABLE verdict for Random Forest, Extra Trees, and KNN stems from
+a fundamental serialization characteristic. Tree-ensemble models store an
+explicit structure for each decision tree: hundreds or thousands of node
+conditions, feature indices, and threshold values. A 100-tree Random Forest
+trained on 149 features with 127 training subjects produces a model file of
+600--1544~MB. Loading this from disk takes 13--23 seconds per fold, which
+approaches or exceeds the training time. KNN stores the entire training dataset
+in memory as the ``model'', resulting in similarly large serialized sizes.
+
+In contrast, gradient boosting models (XGBoost, GBM, LightGBM) use
+regularisation and shallow trees (often depth 3--6) that serialise to compact
+representations of 1--8~MB, loading in under one second.
+
+\subsection{Storage vs.\ Speed Tradeoff}
+
+The framework exposes a clear storage-speed tradeoff that depends on the
+experimental context. For XGBoost ($\sim$185~MB per 9-config run), caching
+is unambiguously beneficial. For Random Forest ($\sim$18.5~GB per 9-config
+run), the decision depends on available storage and the number of expected
+re-runs. A single re-run saves approximately 9 hours of computation at the
+cost of 18.5~GB of disk space. For a researcher who will run 3--4 parameter
+sweeps, this is clearly worthwhile. For a one-time experiment, it may not be.
+
+Table~\ref{tab:global_vs_fold} presents the analogous tradeoff for feature
+selection strategy --- global selection versus per-fold selection.
+
+\input{tables/tab8_global_vs_fold}
+
+Global feature selection (used in this thesis) introduces minor label leakage
+($<$1\%) but enables a consistent fingerprint across all folds, simplifying
+cache key design. The accuracy difference is negligible (0.3--0.8\%), making
+global selection the pragmatic choice for caching-oriented workflows.
+
+\subsection{Limitations}
+
+\begin{itemize}
+\item \textbf{Single dataset:} All experiments were conducted on the BOAS
+      dataset (128 subjects). Generalisation of cache viability verdicts to
+      other EEG datasets or non-EEG domains requires further validation.
+
+\item \textbf{Global feature selection:} Feature selection is performed across
+      all subjects before LOSO splits, introducing minor information leakage
+      ($<$1\% label overlap). A strictly correct implementation would perform
+      selection within each fold, at the cost of increased complexity.
+
+\item \textbf{No deep learning comparison:} The framework was evaluated only
+      on traditional ML models. Deep learning models (e.g., U-Sleep, CNNs)
+      have different serialization characteristics and may exhibit different
+      cache viability patterns.
+
+\item \textbf{No multi-user evaluation:} The framework was designed for
+      single-researcher workflows. Cache sharing across multiple concurrent
+      users would require locking mechanisms not implemented here.
+\end{itemize}
