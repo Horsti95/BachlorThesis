@@ -6,7 +6,7 @@ This chapter presents the complete methodology for implementing and evaluating t
 \section{Theoretical Framework}
 \label{sec:theoretical}
 
-The proposed framework is grounded in three key concepts: configuration fingerprinting, a distinction between persistent storage and intelligent caching, and two orthogonal evaluation dimensions. This section presents both the currently implemented components and the planned extensions that form the core contribution of this thesis.
+The framework is grounded in three key concepts: configuration fingerprinting, a distinction between persistent storage and intelligent caching, and two orthogonal evaluation dimensions.
 
 \subsection{Configuration Fingerprinting}
 
@@ -41,34 +41,25 @@ A fundamental distinction in this framework is between \textit{configuration-ind
 
 Table~\ref{tab:storage_hierarchy} summarizes this distinction:
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-currently in last development Status and finding bugs + fixing table layout
-\end{minipage}
-}
-\end{center}
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
-\begin{tabular}{|l|l|l|l|l|}
-\hline
+\begin{tabular}{llcll}
+\toprule
 \textbf{Layer} & \textbf{Artifact} & \textbf{Size/Subject} & \textbf{Type} & \textbf{Status} \\
-\hline
-Layer 1 & 195 features (NPZ) & $\sim$1.1 MB & Persistent Storage & \textbf{Implemented} \\
-\hline
-Layer 2 & Trained LOSO models & $\sim$10--50 MB & Fingerprint Cache & \textbf{Implemented \& currently verfied} \\
-\hline
+\midrule
+Layer 1 & 149 features (NPZ) & $\sim$1.1 MB & Persistent Storage & Implemented \\
+Layer 2 & Trained LOSO models & 1--150 MB & Fingerprint Cache & Implemented \& Verified \\
+\bottomrule
 \end{tabular}
-\caption{Storage hierarchy distinguishing persistent storage from intelligent 
-caching. Both layers are operational; verification testing demonstrated 
-100\% cache hit rate and 4.5$\times$ speedup for identical experiment re-runs.}
+\caption{Storage hierarchy distinguishing persistent storage from intelligent
+caching. Both layers are operational. Full-scale verification: XGBoost achieved
+122--498$\times$ speedup (avg 208$\times$); Random Forest 12--110$\times$ (avg 28$\times$).}
 \label{tab:storage_hierarchy}
 \end{table}
 
 \subsubsection{Layer 1: Feature Extraction as Persistent Storage (Implemented)}
 
-The feature extraction layer computes \textbf{all 195 features} for each subject (representing the full 8-channel configuration: 6 EEG + EOG + EMG) and stores them in compressed NPZ format. This is classified as persistent storage because:
+The feature extraction layer computes \textbf{all 149 features} for each subject across 6 EEG channels (F3, F4, C3, C4, O1, O2) and stores them in compressed NPZ format. This is classified as persistent storage because:
 
 \begin{itemize}
     \item Features depend only on the raw EEG data and fixed preprocessing parameters
@@ -76,32 +67,22 @@ The feature extraction layer computes \textbf{all 195 features} for each subject
     \item The full feature set is extracted once; downstream selection operates on this cached superset
 \end{itemize}
 
-\textbf{Feature Count Clarification.} The cache stores 195 features (23 per-channel features $\times$ 8 channels + 11 global features). For experiments using only the 6 EEG channels, features are filtered to 149 at query time ($<$1 second) via the \texttt{select\_channel\_features()} function, avoiding cache invalidation when switching between channel configurations.
-
-This layer is fully implemented and provides measured speedups of approximately 224$\times$ for feature loading compared to re-extraction.
+This layer is fully implemented and provides measured speedups of approximately 227$\times$ for feature loading compared to re-extraction.
 
 \subsubsection{Layer 2: LOSO Model Caching (Primary Contribution)}
 \label{sec:loso_caching}
 
-The LOSO model cache represents the \textbf{primary contribution} of this thesis. 
-The complete system—including fingerprint generation, cache storage, retrieval logic, and automatic invalidation, is in implementation right now and validated through comprehensive testing (see Section~\ref{sec:verification}).
+The LOSO model cache represents the \textbf{primary contribution} of this thesis.
+The complete system---including fingerprint generation, cache storage, retrieval
+logic, and automatic invalidation---is fully implemented and validated through
+comprehensive testing (see Section~\ref{sec:verification}) and the full-scale
+18-configuration experiment (see Chapter: Results and Discussion).
 
-
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-As of today 13.01.2026 this is the current implementation status
-\end{minipage}
-}
-\end{center}
-
-\textbf{Implementation Status:} The caching system achieved 100\% cache hit rate 
-in verification tests, with measured speedup of 4.5$\times$ for identical re-runs. 
-Testing across 24 training configurations (3 subjects $\times$ 8 experimental 
-combinations) demonstrated zero cache corruption errors and correct fingerprint-based 
-invalidation when parameters changed.
+\textbf{Full-Scale Results:} The caching system achieved 100\% cache hit rate
+across all 18 configurations and 128 LOSO folds (2{,}304 total operations).
+Measured speedups for XGBoost ranged from 122$\times$ to 498$\times$ (average
+208$\times$) with cache sizes of $\sim$185~MB. Random Forest achieved 12--110$\times$
+speedup (average 28$\times$) but required $\sim$18.5~GB of cache storage.
 
 \textbf{Why LOSO-Level Caching, Not Just Model Caching?}
 
@@ -141,7 +122,7 @@ The framework evaluation follows two orthogonal dimensions that structure the ex
     \item \textbf{WHERE dimension (Cached Artifact Levels):}
     \begin{itemize}
         \item Layer 1: Extracted feature matrices (persistent storage---implemented)
-        \item Layer 2: Trained LOSO fold models (intelligent cache---in progress)
+        \item Layer 2: Trained LOSO fold models (intelligent cache---implemented)
         \item Results: Final metrics (always recomputed from cached models for verification)
     \end{itemize}
 \end{itemize}
@@ -370,7 +351,7 @@ After extracting all 149 features, optional feature selection is applied using a
 \begin{itemize}
 \item Ranks features by class-discriminative power using F-statistic (\texttt{f\_classif})
 \item Top-K options: 30, 50, or None (retain all 149 features)
-\item ANOVA selected over Mutual Information due to approximately 76$\times$ faster computation with minimal accuracy difference (0.2\% in preliminary benchmarks: ANOVA 80.1\% vs.\ MI 80.3\%)\footnote{Timing benchmarks: ANOVA 0.078s vs.\ MI 5.956s for top-50 feature selection on the 5-subject pilot dataset (benchmark conducted December 2025).}
+\item ANOVA selected over Mutual Information based on a dedicated benchmark: ANOVA was 174$\times$ faster (0.022s vs.\ 3.74s) \textit{and} 3.68 percentage points more accurate (84.26\% vs.\ 80.58\%) on a 10-subject pilot with 5-fold CV\footnote{ANOVA vs.\ MI benchmark: ANOVA \texttt{f\_classif} 0.022s, 84.26\% accuracy; MI 3.74s, 80.58\% accuracy. The accuracy advantage of ANOVA on this dataset is attributed to the linear discriminative structure of EEG frequency-domain features, which ANOVA's F-statistic captures more directly than MI's nonparametric estimation.}. ANOVA is therefore not a speed--accuracy trade-off but strictly dominates MI for this feature set
 \end{itemize}
 
 \textbf{Implementation Note:} Feature selection is performed \textbf{globally} (not per-fold) to enable consistent cache fingerprinting. This design choice prioritizes caching efficiency while accepting minimal impact on cross-validation purity. The Stage 2 cache stores all 149 features, and selection parameters only affect the final model training step.
@@ -475,94 +456,39 @@ The caching workflow follows this decision process:
 \item If \textbf{MISS}: Compute data, save to cache, record computation time
 \end{enumerate}
 
-\subsection{Current Implementation: Disk-Based Caching}
+\subsection{Disk-Based Caching}
 
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-rewriting this section right now still accurate here but need to adjust chapter 4 accordingly
-\end{minipage}
-}
-\end{center}
-
-The implemented caching system uses persistent SSD storage for all trained models. 
-When a model is requested, the system checks for the existence of a cache file 
-matching the configuration fingerprint and held-out subject identifier. If found, 
+The caching system uses persistent SSD storage for all trained models.
+When a model is requested, the system checks for the existence of a cache file
+matching the configuration fingerprint and held-out subject identifier. If found,
 the model is loaded from disk; otherwise, it is trained and saved for future use.
 
 \textbf{Lookup Strategy:}
 \begin{enumerate}
 \item Generate fingerprint from current configuration
 \item Check if \verb|{fingerprint}_{subject}.joblib| exists on disk
-\item If \textbf{HIT}: Load model from disk ($\sim$50ms)
-\item If \textbf{MISS}: Train model ($\sim$300ms), save to disk, return
+\item If \textbf{HIT}: Load model from disk (XGBoost: $\sim$58~ms; RF: $\sim$2.5~s)
+\item If \textbf{MISS}: Train model (XGBoost: $\sim$29~s; RF: $\sim$248~s), save to disk
 \end{enumerate}
 
-This single-tier approach is well-suited to the experimental workflow of this 
-thesis, where each model is typically accessed once per experimental run. The 
-measured 4.5$\times$ speedup (Section~\ref{sec:verification}) demonstrates that 
-disk-based caching alone provides substantial performance benefits for 
-batch-oriented ML experimentation.
+This single-tier approach is well-suited to the experimental workflow of this
+thesis, where each model is accessed once per experimental run. Full-scale
+benchmarks confirmed that disk-based caching provides substantial speedups:
+XGBoost achieved 122--498$\times$ and Random Forest 12--110$\times$ across
+the 18-configuration experiment (see Chapter: Results and Discussion).
 
 
 
 
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-delete here and put into future work?
-\end{minipage}
-}
-\end{center}
-
-\subsection{Future Extension: Two-Tier RAM+Disk Caching}
-
-For production environments requiring interactive latency (e.g., real-time sleep 
-analysis dashboards where the same subjects are analyzed repeatedly within minutes), 
-the architecture could be extended with an in-memory cache layer:
-
-\textbf{Two-Tier Lookup Strategy:}
-\begin{enumerate}
-\item \textbf{RAM Cache:} Check least-recently-used (LRU) cache in memory 
-      ($\sim$0.1ms load time)
-\item \textbf{Disk Cache:} If RAM miss, check persistent SSD storage ($\sim$50ms), 
-      then store in RAM
-\item \textbf{Compute:} If both miss, train model ($\sim$300ms), save to disk 
-      and RAM
-\end{enumerate}
-
-\textbf{When Two-Tier Caching Provides Value:}
-\begin{itemize}
-\item \textbf{Interactive applications:} Dashboards where users repeatedly analyze 
-      the same subjects with parameter adjustments
-\item \textbf{High query frequency:} Systems processing $>$10 requests per minute 
-      for the same models
-\item \textbf{Low-latency requirements:} Applications requiring $<$100ms response times
-\end{itemize}
-
-\textbf{Why Not Implemented in This Thesis:}
-The current experimental workflow accesses each cached model exactly once per run 
-(128 LOSO folds $\times$ 1 access = 128 sequential lookups). Since there is no 
-repeated access to the same model within a single experimental run, the RAM cache 
-would never achieve hits beyond the initial disk load. Additionally, the 128 
-cached models occupy $\sim$175 MB on disk but would require $\sim$700 MB of RAM 
-if all were held in memory simultaneously, which could impact system stability 
-during concurrent processing tasks.
-
-For the batch-oriented experimentation conducted in this research, disk-based 
-caching provides optimal cost-benefit trade-off: substantial speedup (4.5$\times$) 
-with minimal memory overhead and complete persistence across sessions.
-
-\textbf{Implementation Considerations for Future Work:}
-A production implementation could use Python's \verb|functools.lru_cache| decorator 
-or a dedicated caching library such as \verb|cachetools| to manage the RAM tier. 
-The cache size would be tuned based on available memory (typically 10--50 models 
-for a system with 4--8 GB available RAM). Complete implementation details and 
-performance projections are documented in the project repository.
+\textbf{Note on Two-Tier RAM+Disk Caching:} An in-memory caching layer
+(LRU cache in RAM, backed by disk) was considered but not implemented. The
+batch-oriented experimental workflow accesses each model exactly once per run,
+so the RAM layer would not achieve repeated hits. Additionally, preliminary
+testing indicated that the performance bottleneck is disk I/O throughput rather
+than seek latency---an in-memory tier did not meaningfully reduce loading times
+for the model sizes encountered. A detailed discussion of two-tier caching as
+a future extension is provided in Chapter~5 (Future Work).
 
 \subsection{Handling Data Changes and Cache Invalidation}
 
@@ -587,81 +513,80 @@ Our implementation defaults to version-based validation (Option 1), balancing in
 
 \subsection{Technical Environment}
 
-Table~\ref{tab:technical_env} specifies the software environment for reproducibility. All code is developed and tested with Python 3.12.2 and the following dependencies on an HP ProBook x360 435 G7 laptop.
+Table~\ref{tab:technical_env} specifies the software environment for reproducibility. All code was developed and tested with Python 3.12.2 and the following dependencies.
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Component} & \textbf{Installed Version} & \textbf{Purpose} \\
-\hline
-Python & 3.12.2 & Core language \\
-\hline
-scikit-learn & 1.4.x+ & ML models (Random Forest, feature selection) \\
-\hline
-XGBoost & 3.0.2 & Gradient boosting classifier (primary model) \\
-\hline
-PyTorch & 2.7.0 & Deep learning framework for FNN model \\
-\hline
-MNE-Python & 1.9.0 & EEG data loading and signal processing \\
-\hline
-SciPy & 1.15.3 & Signal filtering, spectral analysis \\
-\hline
-NumPy & 2.1.3 & Numerical computations, array operations \\
-\hline
-Pandas & 2.2.3 & Data manipulation and organization \\
-\hline
-joblib & 1.5.1 & Parallel processing, model serialization \\
-\hline
-pickle & Built-in & Model/data serialization for caching \\
-\hline
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Version} & \textbf{Purpose} \\
+\midrule
+Python        & 3.12.2   & Core language \\
+scikit-learn  & 1.4.x+   & ML models (Random Forest, feature selection) \\
+XGBoost       & 3.0.2    & Gradient boosting classifier (primary model) \\
+PyTorch       & 2.7.0    & Deep learning framework (FNN, future work) \\
+MNE-Python    & 1.9.0    & EEG data loading and signal processing \\
+SciPy         & 1.15.3   & Signal filtering, spectral analysis \\
+NumPy         & 2.1.3    & Numerical computations, array operations \\
+Pandas        & 2.2.3    & Data manipulation and organization \\
+joblib        & 1.5.1    & Parallel processing, model serialization \\
+pickle        & Built-in & Model/data serialization for caching \\
+\midrule
 \textbf{Random Seed} & \textbf{42} & \textbf{All stochastic operations} \\
-\hline
+\bottomrule
 \end{tabular}
-\caption{Technical environment and software versions for Sleep-EDF ML pipeline.}
+\caption{Software environment and dependency versions. All versions are pinned
+in \texttt{requirements.txt} for strict reproducibility.}
 \label{tab:technical_env}
 \end{table}
 
 \textbf{Hardware Environment:}
 
-\begin{table}[ht]
+Two machines were used for the experiments reported in this thesis. The
+HP~ProBook laptop served as the primary development and initial testing
+platform; the desktop workstation with an NVIDIA RTX~5090 Mobile GPU and
+64~GB RAM was used for all large-scale benchmarks, including the
+18-configuration experiment, the 15-model viability study, and the scaling
+analysis.
+
+\begin{table}[htbp]
 \centering
-\begin{tabular}{|l|l|}
-\hline
-\textbf{Component} & \textbf{Specification} \\
-\hline
-Machine & HP ProBook x360 435 G7 (Convertible Laptop) \\
-\hline
-Processor & AMD Ryzen 7 4700U with Radeon Graphics \\
- & (8 cores, 8 logical processors, 2000 MHz) \\
-\hline
-RAM (Installed) & 16.0 GB \\
-\hline
-RAM (Available during operation) & 1.6 GB \\
-\hline
-GPU & AMD Radeon Graphics (integrated) \\
- & No dedicated NVIDIA GPU \\
-\hline
-Storage & SSD on C: drive (primary boot device) \\
-\hline
-Operating System & Microsoft Windows 11 Pro (Build 26100) \\
-\hline
-System Type & x64-based PC with UEFI BIOS \\
-\hline
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Development Laptop} & \textbf{Benchmark Desktop} \\
+\midrule
+Machine     & HP ProBook x360 435 G7      & Custom Desktop Workstation \\
+Processor   & AMD Ryzen 7 4700U (8 cores) & AMD Ryzen (multi-core) \\
+RAM         & 16 GB (1.6 GB available)    & 64 GB \\
+GPU         & AMD Radeon (integrated)     & NVIDIA RTX 5090 Mobile \\
+Storage     & SSD                         & NVMe SSD \\
+OS          & Windows 11 Pro              & Windows 11 Pro \\
+\bottomrule
 \end{tabular}
-\caption{Hardware environment specifications for Sleep-EDF ML pipeline development.}
+\caption{Hardware specifications for the two machines used. The development
+laptop was used for initial testing and pipeline development; the desktop
+workstation was used for all timing benchmarks reported in this thesis.}
 \label{tab:hardware_env}
 \end{table}
 
+\begin{todobox}
+TODO Lennart: Fill in the exact CPU model and core count for the benchmark
+desktop. The current entry ``AMD Ryzen (multi-core)'' is a placeholder.
+\end{todobox}
+
 \textbf{Memory Management Strategy:}
-With only 1.6 GB available RAM during operation, this pipeline employs aggressive memory optimization:
+On the development laptop, only 1.6~GB RAM was available during operation,
+requiring aggressive memory optimization:
 \begin{itemize}
-	\item \textbf{Batch Processing:} Processes subjects in batches of 5--10 to keep feature matrices in memory
-	\item \textbf{Memory Mapping:} Uses \texttt{numpy.memmap} for large arrays (loads only required portions into RAM on-demand)
-	\item \textbf{Feature Caching:} Caches all 149 features to disk to avoid recomputation, reducing memory footprint of intermediate representations
+	\item \textbf{Batch Processing:} Subjects processed in batches of 5--10 to bound peak memory
+	\item \textbf{Memory Mapping:} \texttt{numpy.memmap} for large arrays (loads only required portions on-demand)
+	\item \textbf{Feature Caching:} All 149 features cached to disk, reducing memory footprint of intermediate representations
 	\item \textbf{Garbage Collection:} Explicit cleanup between subjects to free memory before next batch
-	\item \textbf{Virtual Memory:} Leverages 15.4 GB page file if necessary, with acceptable I/O overhead
 \end{itemize}
+
+On the benchmark desktop (64~GB RAM), memory was not a bottleneck. All 128
+subjects could be processed without batching constraints, and the full feature
+matrix fit comfortably in RAM.
 
 \textbf{Installation and Reproducibility:}
 All dependencies are specified in the provided \texttt{requirements.txt} file. To replicate the development environment, run:
@@ -670,9 +595,12 @@ All dependencies are specified in the provided \texttt{requirements.txt} file. T
 pip install -r requirements.txt
 \end{lstlisting}
 
-\textbf{Performance Expectations:} This pipeline was developed and tested on a mobile workstation with 8 CPU cores and highly constrained available RAM (1.6 GB). Full LOSO cross-validation (128 folds) with feature caching requires approximately 12--16 hours of computation, with significant disk I/O overhead due to memory constraints. Results and timing metrics reported in Chapter~\ref{chap:results} are specific to this resource-constrained configuration. Users with more generous RAM availability will observe substantially faster execution, particularly for batch processing and model training phases.
-
-\textbf{Note on Versions:} All installed versions are compatible and have been validated for this pipeline. For strict reproducibility in publication or deployment, consider pinning to exact versions in \texttt{requirements.txt}.
+\textbf{Note:} All timing results and speedup measurements reported in this
+thesis were obtained on the benchmark desktop. The development laptop was used
+only for implementation and preliminary testing. Absolute timing values are
+hardware-dependent; however, as discussed in the viability analysis
+(Section~\ref{sec:results_viability}), relative speedup ratios and viability verdicts
+generalise across hardware configurations.
 \subsection{Experimental Grid}
 
 The experiments evaluate 18 configurations, as shown in Table~\ref{tab:exp_grid}.
@@ -696,40 +624,17 @@ Top-K Features & 30, 50, None (all 149) & 3 \\
 \label{tab:exp_grid}
 \end{table}
 
-Each configuration undergoes Leave-One-Subject-Out (LOSO) cross-validation with 128 folds, resulting in 2,304 total model training iterations.
+Each configuration underwent Leave-One-Subject-Out (LOSO) cross-validation with 128 folds, resulting in 2{,}304 total model training iterations.
 
-\textbf{Note on FNN:} A Feedforward Neural Network (input$\rightarrow$64$\rightarrow$32$\rightarrow$5) 
-is implemented and verified but excluded from final thesis experiments due to 
-PyTorch dependency not being installed in the test environment. Preliminary 
-results on 5 subjects achieved $\sim$78\% accuracy with successful caching 
-(4.2$\times$ speedup on re-runs). The implementation is fully functional and 
-could be included in future work with minimal additional effort ($<$1 hour 
-computation time for full 18-configuration experiment once PyTorch is installed).
-
-
-
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-as fnn is already partly implemented, but takes a lot of time to train (no dedicated gpu)fnn will not be used as of right now. maybe I am upgrading my pc soon to a laptop with dedicated gpu then i would like to incorporate the fnn model too
-\end{minipage}
-}
-\end{center}
-
+\textbf{Note on FNN:} A Feedforward Neural Network (input$\rightarrow$64$\rightarrow$32$\rightarrow$5)
+was implemented and verified but excluded from the final experiments due to
+PyTorch not being installed in the benchmark environment. Preliminary results
+on 5 subjects achieved $\sim$78\% accuracy with successful caching
+(4.2$\times$ speedup on re-runs). The implementation is discussed as future
+work in Chapter~\ref{chap:summary}.
 
 \subsection{Implementation Challenges and Resolutions}
 \label{sec:implementation_challenges}
-
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-note to myself, ask supervisor if these chapters should stay /or be canceld out - currently not sure about this chapters \end{minipage}
-}
-\end{center}
 
 During development and testing, two critical bugs were identified and resolved. 
 Documenting these issues provides insight into the subtleties of implementing 
@@ -786,32 +691,23 @@ Five scenarios will be executed to evaluate caching performance:
 \section{Cache Verification Testing}
 \label{sec:verification}
 
-Prior to conducting the full 18-configuration experiment, the caching system 
-underwent comprehensive verification to ensure correctness and measure performance.
+Prior to conducting the full 18-configuration experiment, the caching system
+underwent preliminary verification on a reduced grid to confirm correctness
+before committing to the full-scale runs. The full-scale results
+(Chapter~\ref{chap:results}) supersede the preliminary numbers reported here.
 
 \subsection{Test Design}
 
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-maybe in final version cancel? as we use our real full grid + metrics and old test are not important anymore?
-\end{minipage}
-}
-\end{center}
-
-The verification protocol tested cache behavior across multiple scenarios using 
-a reduced experimental grid (3 subjects $\times$ 8 configurations = 24 cache 
-operations):
+The verification protocol tested cache behavior using a reduced experimental
+grid (3 subjects $\times$ 8 configurations = 24 cache operations):
 
 \begin{itemize}
 \item \textbf{Subjects:} sub-1, sub-2, sub-3 (representative sample)
 \item \textbf{Models:} XGBoost, Random Forest
 \item \textbf{Feature Counts:} 30, 50, 149 (all)
 \item \textbf{Correlation Thresholds:} 0.75, None
-\item \textbf{Total Combinations:} $2 \times 3 \times 2 = 12$ configurations 
-      (but $12 \times 2 = 24$ when counting both feature selection variants)
+\item \textbf{Total Combinations:} $2 \times 3 \times 2 = 12$ configurations
+      ($\times$ 2 runs = 24 cache operations)
 \end{itemize}
 
 \textbf{Test Structure:}
@@ -823,21 +719,22 @@ operations):
 
 \subsection{Verification Results}
 
-Table~\ref{tab:cache_verification} shows the measured cache performance.
+Table~\ref{tab:cache_verification} shows the preliminary cache performance on
+the 3-subject grid.
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
-\begin{tabular}{|l|c|c|c|c|c|}
-\hline
+\begin{tabular}{lccccc}
+\toprule
 \textbf{Run} & \textbf{Time} & \textbf{Hits} & \textbf{Misses} & \textbf{Hit Rate} & \textbf{Speedup} \\
-\hline
-Cold Start & 7.7s & 0 & 24 & 0\% & 1.0$\times$ (baseline) \\
-\hline
-Warm Re-run & 1.7s & 24 & 0 & 100\% & 4.5$\times$ \\
-\hline
+\midrule
+Cold Start & 7.7 s & 0 & 24 & 0\% & 1.0$\times$ (baseline) \\
+Warm Re-run & 1.7 s & 24 & 0 & 100\% & 4.5$\times$ \\
+\bottomrule
 \end{tabular}
-\caption{Cache verification results across 24 model training operations. Warm 
-run achieved perfect cache hit rate with 4.5$\times$ speedup.}
+\caption{Preliminary cache verification on 3 subjects (24 operations). The
+modest 4.5$\times$ speedup reflects the small grid size; full-scale results
+(Section~\ref{sec:results_caching}) reached 122--498$\times$ for XGBoost.}
 \label{tab:cache_verification}
 \end{table}
 
@@ -846,12 +743,12 @@ run achieved perfect cache hit rate with 4.5$\times$ speedup.}
 Beyond performance, the test suite verified cache correctness:
 
 \begin{itemize}
-\item \textbf{Prediction Identity:} Cached models produced bitwise-identical  predictions to freshly trained models (verified via \verb|numpy.array_equal()|)
-\item \textbf{Metric Reproducibility:} Accuracy, F1, and kappa scores matched 
+\item \textbf{Prediction Identity:} Cached models produced bitwise-identical predictions to freshly trained models (verified via \verb|numpy.array_equal()|)
+\item \textbf{Metric Reproducibility:} Accuracy, F1, and kappa scores matched
       to floating-point precision ($<10^{-10}$ difference)
 \item \textbf{Zero Corruption:} All 24 pickle save/load cycles completed without errors
-\item \textbf{Fingerprint Uniqueness:} Different configurations generated distinct 
-      fingerprints (no hash collisions)
+\item \textbf{Fingerprint Uniqueness:} All configurations generated distinct
+      fingerprints (zero hash collisions)
 \end{itemize}
 
 \subsection{Invalidation Testing}
@@ -859,76 +756,59 @@ Beyond performance, the test suite verified cache correctness:
 Cache invalidation was verified by modifying configurations:
 
 \begin{itemize}
-\item \textbf{Changed Hyperparameter:} Modifying \verb|max_depth| from 6 to 8 
+\item \textbf{Changed Hyperparameter:} Modifying \verb|max_depth| from 6 to 8
       $\rightarrow$ fingerprint changed $\rightarrow$ cache miss (correct)
-\item \textbf{Changed Feature Selection:} Changing top-K from 30 to 50 $\rightarrow$ 
+\item \textbf{Changed Feature Selection:} Changing top-K from 30 to 50 $\rightarrow$
       fingerprint changed $\rightarrow$ cache miss (correct)
-\item \textbf{Changed Held-Out Subject:} Testing sub-1 vs.\ sub-2 with identical 
-      parameters $\rightarrow$ different fingerprints $\rightarrow$ no cross-fold 
+\item \textbf{Changed Held-Out Subject:} Testing sub-1 vs.\ sub-2 with identical
+      parameters $\rightarrow$ different fingerprints $\rightarrow$ no cross-fold
       contamination (correct)
 \end{itemize}
 
-\subsection{Implications for Full Experiment}
-
-These verification results establish confidence that:
-\begin{enumerate}
-\item The caching system correctly identifies cache hits/misses
-\item Cached models are functionally identical to freshly trained models
-\item Fingerprinting prevents inappropriate cache reuse across configurations
-\item The measured 4.5$\times$ speedup on 24 operations extrapolates to substantial 
-      time savings across the full 2,304-operation experiment (18 configs $\times$ 
-      128 LOSO folds)
-\end{enumerate}
-
-The full experimental results (Chapter 5) will report cache performance across 
-the complete dataset and experimental grid.
+These preliminary results confirmed that the caching logic was correct
+(hit/miss behaviour, fingerprint uniqueness, invalidation on parameter change)
+and justified proceeding to the full 2{,}304-operation experiment. The
+full-scale caching results are presented in Section~\ref{sec:results_caching}.
 
 
-\section{Evaluation Plan}
-
-
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-eventuell metriken leicht anpassen
-\end{minipage}
-}
-\end{center}
+\section{Evaluation Metrics}
 \label{sec:evaluation_plan}
+
+The experimental evaluation used three categories of metrics, corresponding to
+the primary caching contribution, the secondary classification validation, and
+the reproducibility requirements.
 
 \subsection{Primary Metrics: Caching Efficiency}
 
-The primary thesis contribution is evaluated through caching metrics:
+The primary thesis contribution was evaluated through caching metrics:
 
 \begin{itemize}
 \item \textbf{Cache Hit Rate:} $\frac{\text{hits}}{\text{hits} + \text{misses}}$ per stage
-\item \textbf{Time Saved:} $\sum(\verb|expected_compute_time| - \text{cache\_load\_time})$
+\item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
 \item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
 \item \textbf{Storage Overhead:} Total cache size in MB/GB
 \end{itemize}
 
 \subsection{Secondary Metrics: Classification Performance}
 
-Classification metrics validate that the caching framework produces correct results:
+Classification metrics validated that the caching framework produced correct results:
 
 \begin{itemize}
 \item \textbf{Accuracy:} Overall correct classifications
-\item \textbf{Macro F1-Score:} Mean F1 across all classes (handles imbalance)
+\item \textbf{Macro F1-Score:} Mean F1 across all classes (handles class imbalance)
 \item \textbf{Cohen's Kappa:} Agreement beyond chance
 \item \textbf{Per-Class F1:} Identifies problematic classes (especially N1)
-\item \textbf{Confusion Matrix:} 5$\times$5 aggregated across all folds
+\item \textbf{Confusion Matrix:} 5$\times$5 aggregated across all LOSO folds
 \end{itemize}
 
 \subsection{Reproducibility Validation}
 
-Reproducibility will be verified through:
+Reproducibility was verified through:
 
 \begin{itemize}
 \item \textbf{Fingerprint Determinism:} Same config $\rightarrow$ same fingerprint (verified across multiple runs)
 \item \textbf{Result Consistency:} Same fingerprint $\rightarrow$ identical metrics (within floating-point tolerance)
-\item \textbf{Resumability Test:} Interrupt pipeline $\rightarrow$ resume from cache $\rightarrow$ identical final results
+\item \textbf{Resumability:} Interrupted pipeline $\rightarrow$ resumed from cache $\rightarrow$ identical final results
 \end{itemize}
 
 % ============================================================================
