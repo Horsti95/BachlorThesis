@@ -1,114 +1,129 @@
 \documentclass{imc-inf}
 
-% ============================================================================
-% PACKAGES
-% ============================================================================
+% --- IMC Template Specific Commands ---
+\title{Optimizing ML Experiments: Intelligent Frameworks for Efficiency and Reproducibility}
+\subtitle{A Fingerprint-Based LOSO Caching Approach Validated on EEG Sleep Classification}
+\thesistype{Bachelor Thesis}
+\author{Lennart Gorzel}
+\supervisor{Prof. Himanshu Buckchash}
+\copyrightyear{2026}
+\submissiondate{May 2026} % TODO: Update to actual submission date
+\keywords{Machine Learning, Intelligent Caching, Reproducibility, Sleep Stage Classification, EEG, Feature Engineering}
+
+% --- Standard Packages ---
 \usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{svg}
+\usepackage{rotating}
+\usepackage{afterpage}
 \usepackage{amsmath}
+\usepackage{amsfonts}
 \usepackage{amssymb}
-\usepackage{algorithm}
-\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{multirow}
-\usepackage{subcaption}
-\usepackage{listings}
 \usepackage{xcolor}
 
-% Code listings configuration
-\lstset{
-    basicstyle=\ttfamily\small,
-    breaklines=true,
-    frame=single,
-    numbers=left,
-    numberstyle=\tiny,
-    keywordstyle=\color{blue},
-    commentstyle=\color{gray},
-    stringstyle=\color{red}
-}
-
-% Bibliography
-\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
-\addbibresource{references.bib}
-
-% ============================================================================
-% METADATA (Update these fields with your information)
-% ============================================================================
-\title{Sleep Stage Classification Using Machine Learning}
-\subtitle{A LOSO Cross-Validation Study with Two-Tier Caching}
-\author{Your Name}  % UPDATE THIS
-\supervisor{Supervisor Name}  % UPDATE THIS
-\thesistype{Bachelor Thesis}
-\submissiondate{Month Year}  % UPDATE THIS (e.g., "February 2026")
-\copyrightyear{2026}
-\keywords{Sleep Stage Classification, EEG, Machine Learning, XGBoost, Random Forest, LOSO Cross-Validation, Feature Extraction, Caching}
-
-% ============================================================================
-% DOCUMENT
-% ============================================================================
 \begin{document}
 
-% ----------------------------------------------------------------------------
-% FRONT MATTER
-% ----------------------------------------------------------------------------
+% --- Front Matter ---
 \frontmatter
-
-% Title page (automatically generated)
 \maketitle
 
-% Declaration of honour (required by IMC)
 \begin{declarations}
 \end{declarations}
 
-% Abstract
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+
 \begin{abstract}
-Sleep stage classification is a critical task in sleep medicine and neuroscience research. This thesis presents an automated sleep stage classification pipeline using machine learning models trained on EEG data from the BOAS dataset. We implement and compare two models---XGBoost and Random Forest---using Leave-One-Subject-Out (LOSO) cross-validation to ensure subject-independent generalization.
+This thesis addresses the computational costs and reproducibility challenges
+that confront modern Machine Learning (ML) experimentation. As ML systems grow
+increasingly complex, researchers face significant overhead from redundant
+computations, inconsistent results across runs, and difficulties resuming
+interrupted experiments. This work proposes a fingerprint-based caching
+framework using SHA-256 configuration hashing to systematically address these
+challenges.
 
-A key contribution of this work is the implementation of a two-tier caching system consisting of feature-level and model-level caches with SHA-256 fingerprint-based cache invalidation. This approach significantly reduces computational overhead for iterative experimentation while maintaining full reproducibility.
+The research develops a deterministic fingerprinting system where a cryptographic
+hash uniquely identifies each experiment configuration. The fingerprint is computed
+from a canonical JSON representation of the tracked experiment state: random seed,
+code version, model type and hyperparameters, feature configuration, and held-out
+subject. The core principle is:
+\textit{if it can change the output, it must change the fingerprint}. This enables
+automatic cache invalidation for all tracked experiment parameters: when any
+fingerprinted component changes, the cache key changes and stale results are
+bypassed. Identical fingerprints therefore indicate the same tracked configuration
+and a valid cache match.
 
-Our pipeline extracts 149 time-domain and frequency-domain features from 6 EEG channels per 30-second epoch, applies ANOVA-based feature selection, and trains models on 128 subjects (approximately 119,763 epochs total). The LOSO cross-validation ensures robust evaluation of subject-independent performance.
+The framework extends caching to Leave-One-Subject-Out cross-validation by
+including the held-out subject in the cache key. This prevents reuse of models
+across different LOSO folds and avoids cross-contamination between train/test
+splits under the fixed dataset partition used in this thesis.
 
-Results demonstrate that [ADD RESULTS HERE AFTER EXPERIMENTS], with XGBoost achieving [X\%] accuracy and Random Forest achieving [Y\%] accuracy. The two-tier caching system reduced total experiment time by [Z\%] compared to a naive implementation without caching.
+The framework is validated through a sleep stage classification case study using
+the Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, approximately
+120,000 epochs). The feature extraction module computes 149 features per epoch
+across 6 EEG channels (F3, F4, C3, C4, O1, O2), spanning time-domain statistics,
+frequency-domain power spectral features, and signal complexity measures. These
+features are computed once per subject and cached persistently, isolating the
+caching evaluation to the computationally expensive model training phase.
 
-This thesis provides a complete, reproducible pipeline for sleep stage classification with practical considerations for computational efficiency in machine learning research.
+Experimental evaluation across 18 configurations (2 models $\times$ 3 correlation
+thresholds $\times$ 3 feature counts) with 128-fold LOSO cross-validation
+demonstrates: XGBoost achieves 84.9\% accuracy (Cohen's $\kappa = 0.73$, F1-macro
+= 0.63) and Random Forest achieves 81.5\% accuracy ($\kappa = 0.65$, F1-macro =
+0.56). The caching framework provides speedups of approximately 67$\times$ for
+XGBoost and 12$\times$ for Random Forest on the validated hardware configuration,
+with 100\% prediction match between cached and cold-trained models across all
+2,304 training runs.
+
+The contributions of this thesis are: (1)~a fingerprint-based LOSO model caching
+framework that ensures cache correctness through SHA-256 configuration tracking,
+preventing cross-contamination across folds, (2)~quantified efficiency gains
+demonstrating model-dependent caching viability---XGBoost benefits substantially
+while Random Forest's large serialized model size limits cache throughput, and
+(3)~validated reproducibility---all cached models produce identical classification
+results to cold retraining (accuracy match confirmed for all configurations).
 \end{abstract}
 
-% Acknowledgements (optional)
-\begin{acknowledgements}
-I would like to thank my supervisor, [Supervisor Name], for their guidance and support throughout this project. I also acknowledge the developers of the BOAS dataset for making their data publicly available for research purposes.
+\addtoToC{Table of Contents}%
+\tableofcontents%
+\clearpage
 
-[ADD YOUR ACKNOWLEDGEMENTS HERE]
-\end{acknowledgements}
-
-% Table of Contents
-\tableofcontents
-\listoffigures
+\addtoToC{List of Tables}%
 \listoftables
+\clearpage
 
-% ----------------------------------------------------------------------------
+\addtoToC{List of Figures}%
+\listoffigures
+\clearpage
+
+% ============================================================================
 % MAIN MATTER
-% ----------------------------------------------------------------------------
+% ============================================================================
 \mainmatter
 
-% Chapters
+% Chapters (5-chapter structure per professor's requirements)
 \include{chapters/01_introduction}
-\include{chapters/02_related_work}
-\include{chapters/03_methodology}
-\include{chapters/04_implementation}
-\include{chapters/05_results}
-\include{chapters/06_discussion}
-\include{chapters/07_conclusion}
+\include{chapters/02_background}
+\include{chapters/03_related_work}
+\include{chapters/04_methodology}
+\include{chapters/05_summary}
 
-% ----------------------------------------------------------------------------
+% ============================================================================
 % BACK MATTER
-% ----------------------------------------------------------------------------
-\backmatter
+% ============================================================================
+\backmatter%
+\addtoToC{Bibliography}
+\bibliographystyle{IEEEtranS}
+\bibliography{references}
 
-% Bibliography
-\printbibliography[heading=bibintoc,title={References}]
-
-% Appendices (optional)
+% Appendices
 \begin{appendices}
-\include{chapters/appendix_a}
 \include{chapters/appendix_pipeline_settings}
 \end{appendices}
 
