@@ -3,219 +3,414 @@
 
 \section{Domain: Machine Learning Research Methodology}
 
-The landscape of Machine Learning (ML) research and development is 
-characterized by rapid iteration and experimentation. According to the 
-AI Index Report 2023, AI-related publications have more than doubled since 
-2015, reflecting the field's exponential growth~\cite{AIIndex2023}. Data 
-scientists and ML engineers continuously explore different model architectures, 
-algorithms, hyperparameters, and data preprocessing techniques to achieve 
-optimal performance. This iterative process, while essential for innovation, 
-introduces significant challenges concerning efficiency and reproducibility. 
-A single experiment may require hours or days of computation, and researchers 
-often repeat similar computations across multiple runs. The cumulative effect 
-translates into substantial costs in GPU hours, cloud computing expenses, 
+The landscape of Machine Learning (ML) research and development is
+characterized by rapid iteration and experimentation. According to the
+AI Index Report 2023, AI-related publications have more than doubled since
+2015, reflecting the field's exponential growth~\cite{AIIndex2023}. Data
+scientists and ML engineers continuously explore different model architectures,
+algorithms, hyperparameters, and data preprocessing techniques to achieve
+optimal performance. This iterative process, while essential for innovation,
+introduces significant challenges concerning efficiency and reproducibility.
+A single experiment may require hours or days of computation, and researchers
+often repeat similar computations across multiple runs. The cumulative effect
+translates into substantial costs in GPU hours, cloud computing expenses,
 and researcher productivity~\cite{schubotz2022caching}.
 
-To manage this complexity, standardized process models have emerged. 
-CRISP-DM (Cross-Industry Standard Process for Data Mining), developed in 
-1996, remains widely adopted~\cite{wirth2000crispdm}. However, its limitations 
-for modern ML—particularly lack of emphasis on model monitoring and 
-maintenance, led to CRISP-ML(Q), which extends CRISP-DM with quality assurance 
-methodology tailored for ML applications~\cite{studer2021crispmlq}. This 
-framework aligns with modern MLOps principles, which emphasize automation, 
-continuous integration/deployment (CI/CD), and reproducibility throughout 
+To manage this complexity, standardized process models have emerged.
+CRISP-DM (Cross-Industry Standard Process for Data Mining), developed in
+1996, remains widely adopted~\cite{wirth2000crispdm}. However, its limitations
+for modern ML---particularly lack of emphasis on model monitoring and
+maintenance---led to CRISP-ML(Q), which extends CRISP-DM with quality assurance
+methodology tailored for ML applications~\cite{studer2021crispmlq}. This
+framework aligns with modern MLOps principles, which emphasize automation,
+continuous integration/deployment (CI/CD), and reproducibility throughout
 the ML lifecycle~\cite{kreuzberger2023mlops}.
 
-Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp} 
-support experiment tracking by recording parameters, metrics, code versions, 
-and artifacts for each run, enabling comparison and reproducibility. Despite 
-these advances, reproducibility remains a pervasive challenge in ML 
-research~\cite{semmelrock2023reproducibility}. Reproducibility ensures consistent 
-results from an ML workflow under identical conditions, hinging on the 
-``Holy Trinity'': input data, code and parameters, and the execution 
+Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
+support experiment tracking by recording parameters, metrics, code versions,
+and artifacts for each run, enabling comparison and reproducibility. Despite
+these advances, reproducibility remains a pervasive challenge in ML
+research~\cite{semmelrock2023reproducibility}. Reproducibility ensures consistent
+results from an ML workflow under identical conditions, hinging on the
+``Holy Trinity'': input data, code and parameters, and the execution
 environment~\cite{schubotz2022caching}. Challenges arise from:
 
 \begin{itemize}
-    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
+    \item \textbf{Lack of Records and Hyperparameter Inconsistency:}
           Unrecorded decisions or parameter changes hinder replication.
-    \item \textbf{Data and Environment Volatility:} Dataset alterations, 
-          framework updates, and inconsistent compute environments cause 
+    \item \textbf{Data and Environment Volatility:} Dataset alterations,
+          framework updates, and inconsistent compute environments cause
           divergent outcomes~\cite{idowu2024empirical}.
-    \item \textbf{Inherent Randomness:} Random initializations, data 
-          shuffling, and non-deterministic GPU operations make consistent 
+    \item \textbf{Inherent Randomness:} Random initializations, data
+          shuffling, and non-deterministic GPU operations make consistent
           replication challenging~\cite{semmelrock2023reproducibility}.
 \end{itemize}
 
-These challenges are particularly acute during iterative experimentation, 
-where researchers may run hundreds of configurations before identifying 
-promising approaches. Without intelligent management of computational 
-artifacts, substantial resources are wasted on redundant calculations. 
-This observation motivates the central contribution of this thesis: a 
-fingerprint-based caching framework that persists and reuses computational 
-artifacts (extracted features and trained models) across iterative modeling 
-phases while maintaining reproducibility through cryptographic configuration 
+These challenges are particularly acute during iterative experimentation,
+where researchers may run hundreds of configurations before identifying
+promising approaches. Without intelligent management of computational
+artifacts, substantial resources are wasted on redundant calculations.
+This observation motivates the central contribution of this thesis: a
+fingerprint-based caching framework that persists and reuses computational
+artifacts (extracted features and trained models) across iterative modeling
+phases while maintaining reproducibility through cryptographic configuration
 fingerprinting.
 
 \section{Context: Computational Efficiency in Research}
 
-Building on the iterative experimentation challenges described in 
-Section 2.1, this section examines the computational efficiency bottlenecks 
+Building on the iterative experimentation challenges described in
+Section 2.1, this section examines the computational efficiency bottlenecks
 that motivate intelligent caching frameworks.
 
-The increasing complexity and scale of Machine Learning models have 
-substantially raised computational demands. Training models, tuning 
-hyperparameters, and running repeated experiments consume vast compute, 
-memory, and time resources, creating bottlenecks in research productivity 
+The increasing complexity and scale of Machine Learning models have
+substantially raised computational demands. Training models, tuning
+hyperparameters, and running repeated experiments consume vast compute,
+memory, and time resources, creating bottlenecks in research productivity
 and driving up costs.
 
 Several factors drive this resource consumption:
 
 \begin{itemize}
-\item \textbf{Large Datasets:} Massive datasets require intensive I/O and 
+\item \textbf{Large Datasets:} Massive datasets require intensive I/O and
       memory usage.
-      
-\item \textbf{Complex Models:} Both deep neural networks and ensemble 
-      methods (e.g., gradient boosting with thousands of trees, large 
-      random forests) require substantial computational resources for 
+
+\item \textbf{Complex Models:} Both deep neural networks and ensemble
+      methods (e.g., gradient boosting with thousands of trees, large
+      random forests) require substantial computational resources for
       training and inference.
-      
-\item \textbf{Iterative Experimentation:} Frequent experiments often repeat 
-      computations unnecessarily when modifying a subset of parameters while 
+
+\item \textbf{Iterative Experimentation:} Frequent experiments often repeat
+      computations unnecessarily when modifying a subset of parameters while
       keeping others constant.
-      
-\item \textbf{Hyperparameter Optimization:} Searching large hyperparameter 
+
+\item \textbf{Hyperparameter Optimization:} Searching large hyperparameter
       spaces is inherently compute-intensive.
-      
-\item \textbf{Rigorous Validation:} Cross-validation strategies (e.g., 
+
+\item \textbf{Rigorous Validation:} Cross-validation strategies (e.g.,
       k-fold, leave-one-out) multiply training costs by the number of folds.
 \end{itemize}
 
-While caching can help, traditional caching systems (e.g., general-purpose 
-key-value stores like Redis or Memcached) often fail to meet ML-specific 
-needs~\cite{krishna2025cache}. These systems are typically static and focus 
-on reducing latency rather than adapting to experiment configuration changes 
-or optimizing for ML-specific access patterns. Such inefficiencies can slow 
+While caching can help, traditional caching systems (e.g., general-purpose
+key-value stores like Redis or Memcached) often fail to meet ML-specific
+needs~\cite{krishna2025cache}. These systems are typically static and focus
+on reducing latency rather than adapting to experiment configuration changes
+or optimizing for ML-specific access patterns. Such inefficiencies can slow
 research progress and increase costs.
 
-This thesis addresses these inefficiencies through a fingerprint-based 
-caching framework specifically designed for iterative ML workflows. By 
-encoding complete experiment configurations (including cross-validation 
-fold identity) into cryptographic cache keys, the framework enables 
-automatic result reuse while maintaining scientific validity and 
+This thesis addresses these inefficiencies through a fingerprint-based
+caching framework specifically designed for iterative ML workflows. By
+encoding complete experiment configurations (including cross-validation
+fold identity) into cryptographic cache keys, the framework enables
+automatic result reuse while maintaining scientific validity and
 reproducibility.
 
 \section{Technology: Configuration Fingerprinting and Caching}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note:} Some statistics and system-specific claims in this section 
-are from papers I reviewed, and written down notes but haven't yet added to the bibliography. These 
-need proper bib entries and source verification before final submission. 
-Marked with \textcolor{red}{[TODO: Add bib entry]}.
-\end{minipage}
-}
-\end{center}
-
-Efficient ML experimentation depends on configuration management and intelligent 
-result reuse. This section reviews technologies directly relevant to the 
+Efficient ML experimentation depends on configuration management and intelligent
+result reuse. This section reviews technologies directly relevant to the
 fingerprint-based LOSO caching approach developed in this thesis.
 
 \subsection{Configuration Fingerprinting}
 
-Configuration fingerprinting uses cryptographic hash functions (MD5, SHA-256) 
-to create unique identifiers for experiment configurations. By hashing a 
-canonical representation of all parameters, these fingerprints enable 
-deterministic identification of identical configurations and automatic 
+Configuration fingerprinting uses cryptographic hash functions (MD5, SHA-256)
+to create unique identifiers for experiment configurations. By hashing a
+canonical representation of all parameters, these fingerprints enable
+deterministic identification of identical configurations and automatic
 cache invalidation when parameters change.
 
 Modern MLOps tools employ this approach:
 \begin{itemize}
-\item \textbf{DVC} logs pipeline signatures combining dependency contents, 
+\item \textbf{DVC} logs pipeline signatures combining dependency contents,
       parameters, and commands~\cite{dvc2022inproceedings}
-\item \textbf{MLflow} tracks experiment metadata and enables visual 
+\item \textbf{MLflow} tracks experiment metadata and enables visual
       comparison~\cite{zaharia2018mlflow}
-\item \textbf{MLXP} uses Hydra-based configuration logging with Git 
+\item \textbf{MLXP} uses Hydra-based configuration logging with Git
       hashes~\cite{arbel2024mlxp}
 \end{itemize}
 
 \subsection{Hash-Based Caching in MLOps}
 
-MLOps pipeline caching implements content-addressable storage: when pipeline 
-inputs and code match previous runs (verified through hash comparison), 
-cached outputs are reused~\cite{dvc2022inproceedings}. DVC's run cache, 
-for example, combines dependency hashes with parameter configurations to 
-create cache keys. When a match is found, execution is skipped and previous 
+MLOps pipeline caching implements content-addressable storage: when pipeline
+inputs and code match previous runs (verified through hash comparison),
+cached outputs are reused~\cite{dvc2022inproceedings}. DVC's run cache,
+for example, combines dependency hashes with parameter configurations to
+create cache keys. When a match is found, execution is skipped and previous
 results are restored.
 
-This approach provides reproducibility: identical configurations produce 
-identical cache keys, ensuring cached results correspond to recorded 
+This approach provides reproducibility: identical configurations produce
+identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}.
 
 \subsection{Related Caching Approaches}
 
-\begin{center}
-\colorbox{red!20}{%
-\begin{minipage}{0.9\textwidth}
-\textcolor{red}{\textbf{TODO:}} Add bib entries for: vLLM/PagedAttention paper 
-(60-80\% memory reduction claim), GATI learned caching paper (7.69$\times$ speedup), 
-XRootD/XCache infrastructure reports (10.8 PB statistic). Papers are in my 
-download folder but not yet in references.bib.
-\end{minipage}
-}
-\end{center}
+\begin{todobox}
+TODO Lennart: Add bib entries for the three systems cited below.
+(1)~vLLM/PagedAttention paper (60--80\% memory reduction, 24$\times$ throughput claim).
+(2)~GATI learned caching paper (7.69$\times$ latency reduction at 97\% accuracy).
+(3)~XRootD/XCache infrastructure report (10.8~PB network savings statistic).
+Papers are in your download folder but not yet in references.bib.
+\end{todobox}
 
-While this thesis focuses on hash-based caching for ML experiments, other 
+While this thesis focuses on hash-based caching for ML experiments, other
 caching paradigms exist in adjacent domains:
 
-\textbf{Large Language Model (LLM) Inference Caching} addresses inference 
-latency by caching attention key-value tensors during autoregressive generation. 
-Systems like vLLM's PagedAttention reportedly reduce memory waste from 60--80\% 
-to under 4\% and enable up to 24$\times$ higher throughput \textcolor{red}{[TODO: Add bib entry]}. 
-Prefix caching can achieve up to 85\% latency reduction and 90\% cost savings 
-for repeated system prompts \textcolor{red}{[TODO: Add bib entry]}. These techniques 
+\textbf{Large Language Model (LLM) Inference Caching} addresses inference
+latency by caching attention key-value tensors during autoregressive generation.
+Systems like vLLM's PagedAttention reportedly reduce memory waste from 60--80\%
+to under 4\% and enable up to 24$\times$ higher throughput \textcolor{red}{[TODO: Add bib entry]}.
+Prefix caching can achieve up to 85\% latency reduction and 90\% cost savings
+for repeated system prompts \textcolor{red}{[TODO: Add bib entry]}. These techniques
 are specific to LLM inference and not directly applicable to experiment result caching.
 
-\textbf{Learned Caching for Deep Networks} employs neural networks to predict 
-hidden layer outputs, enabling layer skipping during inference. GATI, for 
-example, achieves up to 7.69$\times$ latency reduction at 97\% accuracy 
-\textcolor{red}{[TODO: Add bib entry]}. This represents a different caching 
-philosophy—using ML to make cache decisions—but applies only to inference scenarios.
+\textbf{Learned Caching for Deep Networks} employs neural networks to predict
+hidden layer outputs, enabling layer skipping during inference. GATI, for
+example, achieves up to 7.69$\times$ latency reduction at 97\% accuracy
+\textcolor{red}{[TODO: Add bib entry]}. This represents a different caching
+philosophy---using ML to make cache decisions---but applies only to inference scenarios.
 
-\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale 
-for raw data files. Systems like XRootD/XCache achieve cache hit rates exceeding 
-85\% by request count. The Southern California Cache infrastructure reportedly 
-saved 10.8 PB of network traffic in a single year \textcolor{red}{[TODO: Add bib entry]}. 
-However, these systems are optimized for data distribution, not experiment 
+\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale
+for raw data files. Systems like XRootD/XCache achieve cache hit rates exceeding
+85\% by request count. The Southern California Cache infrastructure reportedly
+saved 10.8~PB of network traffic in a single year \textcolor{red}{[TODO: Add bib entry]}.
+However, these systems are optimized for data distribution, not experiment
 configuration management.
 
-In contrast to these approaches, this thesis implements deterministic, 
-hash-based caching specifically designed for cross-validation experiments, 
+In contrast to these approaches, this thesis implements deterministic,
+hash-based caching specifically designed for cross-validation experiments,
 where cache validity depends on both configuration parameters and fold identity.
 
 \subsection{Reproducibility Considerations}
 
-Despite fingerprinting, perfect reproducibility remains challenging. Sources 
-of non-determinism include random seed variation, software version differences, 
-hardware-specific floating-point operations, and non-deterministic GPU 
+Despite fingerprinting, perfect reproducibility remains challenging. Sources
+of non-determinism include random seed variation, software version differences,
+hardware-specific floating-point operations, and non-deterministic GPU
 algorithms~\cite{semmelrock2023reproducibility}.
 
-\begin{center}
-\colorbox{red!20}{%
-\begin{minipage}{0.9\textwidth}
-\textcolor{red}{\textbf{TODO:}} Verify 0.2--0.5\% variance statistic. Check if 
-this is in Semmelrock 2023 or requires separate citation (possibly Pham et al. 
-2020 on variance in deep learning systems).
-\end{minipage}
-}
-\end{center}
+\begin{todobox}
+TODO Lennart: Verify the 0.2--0.5\% variance statistic in the paragraph below.
+Check whether this is from Semmelrock~(2023) or requires a separate citation
+(possibly Pham et al.\ 2020 on variance in deep learning systems, or
+Bouthillier et al.\ 2019 on unreproducible ML).
+\end{todobox}
 
-Empirical studies suggest that even with controlled random seeds, small 
-variance (approximately 0.2--0.5\%) may persist between runs due to hardware-level 
-floating-point non-determinism \textcolor{red}{[TODO: Add bib entry]}. Configuration 
-fingerprinting addresses controllable factors (seeds, software versions, data 
-splits) while accepting that hardware-induced variance cannot be eliminated 
-through software means. For caching purposes, cached results are considered 
-valid if configuration fingerprints match, with the understanding that minor 
+Empirical studies suggest that even with controlled random seeds, small
+variance (approximately 0.2--0.5\%) may persist between runs due to hardware-level
+floating-point non-determinism \textcolor{red}{[TODO: Add bib entry]}. Configuration
+fingerprinting addresses controllable factors (seeds, software versions, data
+splits) while accepting that hardware-induced variance cannot be eliminated
+through software means. For caching purposes, cached results are considered
+valid if configuration fingerprints match, with the understanding that minor
 numerical differences may occur due to non-deterministic hardware operations.
-\chapter{Related Works}
+
+% ============================================================================
+\section{Sleep Medicine Fundamentals}
+\label{sec:sleep_medicine}
+% ============================================================================
+
+\begin{missingref}
+TODO Lennart: Find and add citations for this entire section. Suggested references:
+\begin{itemize}
+\item AASM scoring manual: Berry, R.B. et al.\ (2017). \textit{The AASM Manual for
+      the Scoring of Sleep and Associated Events}, Version 2.4. American Academy
+      of Sleep Medicine.
+\item Sleep medicine overview: Carskadon, M.A.\ \& Dement, W.C. (2011).
+      ``Normal human sleep: an overview.'' In Kryger, M.H. et al.\ (Eds.),
+      \textit{Principles and Practice of Sleep Medicine}, 5th ed., pp.~16--26.
+\item A recent review on automated sleep staging (2020--2026).
+\end{itemize}
+\end{missingref}
+
+\subsection{Sleep Stages and Their Characteristics}
+
+Human sleep follows a structured architecture of recurring cycles, each
+comprising distinct physiological states identified by characteristic brain
+activity patterns. The American Academy of Sleep Medicine (AASM) defines
+five sleep stages scored in 30-second epochs:
+
+\begin{itemize}
+\item \textbf{Wake (W):} Characterised by low-amplitude, high-frequency EEG
+      activity, voluntary eye movements, and sustained muscle tone. Alpha waves
+      (8--13~Hz) are prominent when the subject is relaxed with eyes closed.
+
+\item \textbf{N1 (Light Sleep):} The transition from wakefulness. EEG shows
+      low-amplitude mixed-frequency activity, with slow rolling eye movements.
+      N1 is brief (typically 1--5 minutes) and the most difficult stage to
+      classify automatically due to its transitional nature.
+
+\item \textbf{N2 (Sleep):} The most abundant stage, comprising 45--55\% of
+      total sleep time. Defined by the presence of sleep spindles (11--16~Hz
+      bursts) and K-complexes (large slow waves). Muscle tone decreases and
+      eye movements cease.
+
+\item \textbf{N3 (Deep Sleep / Slow-Wave Sleep):} Dominated by high-amplitude
+      delta waves (0.5--4~Hz) comprising $\geq$20\% of the epoch. Associated
+      with memory consolidation and physical restoration. Most prevalent in
+      the first third of the night.
+
+\item \textbf{REM (Rapid Eye Movement):} Characterised by mixed-frequency
+      low-amplitude EEG similar to wakefulness, rapid conjugate eye movements,
+      and near-complete skeletal muscle atonia (preventing acting out dreams).
+      Associated with dreaming and emotional memory processing.
+\end{itemize}
+
+A typical adult night consists of 4--6 sleep cycles of approximately 90 minutes
+each, with N3 predominating early and REM periods lengthening toward morning.
+
+\subsection{Electroencephalography Basics}
+
+Electroencephalography (EEG) measures electrical potentials generated by
+synchronized postsynaptic currents in cortical pyramidal neurons. Scalp
+electrodes record the summed activity of millions of neurons, providing
+a non-invasive window into brain state.
+
+Electrode placement follows the international 10-20 system, which defines
+standardised positions relative to anatomical landmarks. Labels indicate
+brain region (F=frontal, C=central, O=occipital, T=temporal, P=parietal)
+and hemisphere (odd=left, even=right, z=midline). This thesis uses 6 EEG
+channels from the 10-20 system: F3, F4 (frontal), C3, C4 (central), O1, O2
+(occipital), providing bilateral coverage of frontal, sensorimotor, and
+visual cortices.
+
+\subsection{AASM Scoring and the Need for Automation}
+
+Clinical polysomnography (PSG) combines EEG with electro-oculography (EOG)
+and electromyography (EMG) for comprehensive sleep staging. A trained sleep
+technologist manually scores each 30-second epoch according to AASM criteria.
+A full night's recording (typically 7--9 hours) produces 840--1080 epochs,
+requiring approximately 1.5--2 hours of expert annotation time per recording.
+
+For research studies with large cohorts, manual scoring becomes a significant
+bottleneck. The BOAS dataset (128 subjects) would require over 250 hours of
+manual annotation. Automated sleep staging using machine learning directly
+addresses this scalability problem. Importantly, inter-rater agreement between
+human scorers is typically 80--90\% even among certified experts, providing
+a natural performance ceiling for automated systems and a meaningful reference
+point for evaluating classifier accuracy.
+
+% ============================================================================
+\section{EEG Signal Processing Basics}
+\label{sec:eeg_processing}
+% ============================================================================
+
+\begin{missingref}
+TODO Lennart: Add an EEG signal processing reference for this section.
+Suggested: Niedermeyer, E.\ \& da Silva, F.L. (2011).
+\textit{Electroencephalography: Basic Principles, Clinical Applications,
+and Related Fields}, 6th ed. Wolters Kluwer. Or a more recent biomedical
+signal processing textbook.
+\end{missingref}
+
+\subsection{Frequency Bands}
+
+EEG signals are conventionally decomposed into frequency bands, each
+associated with distinct brain states:
+
+\begin{table}[htbp]
+\centering
+\caption{Standard EEG frequency bands and their sleep-relevant associations.}
+\label{tab:eeg_bands}
+\begin{tabular}{llll}
+\toprule
+\textbf{Band} & \textbf{Range (Hz)} & \textbf{Sleep Stage Association} \\
+\midrule
+Delta    & 0.5--4   & N3 (slow-wave sleep); power increases with sleep depth \\
+Theta    & 4--8     & N1, REM; drowsiness and light sleep \\
+Alpha    & 8--13    & Relaxed wakefulness (eyes closed); suppressed in sleep \\
+Sigma    & 12--15   & Sleep spindles in N2; key N2 marker \\
+Beta     & 13--30   & Active wakefulness, cognitive processing \\
+Gamma    & 30--40   & High-level cognitive processing; minimal in sleep \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Power spectral density (PSD) in these bands, computed via Welch's method or
+the Fast Fourier Transform (FFT), forms the core of frequency-domain feature
+extraction for sleep staging.
+
+\subsection{Standard Preprocessing Pipeline}
+
+Raw EEG signals contain multiple sources of contamination that must be
+addressed before feature extraction:
+
+\begin{itemize}
+\item \textbf{DC offset and slow drift:} Removed by high-pass filtering
+      (typically $\geq$0.5~Hz).
+\item \textbf{High-frequency noise:} Removed by low-pass filtering
+      (typically $\leq$40~Hz for sleep staging).
+\item \textbf{Power line interference:} A 50~Hz (Europe) or 60~Hz (USA)
+      notch filter removes electrical mains noise.
+\item \textbf{Downsampling:} The original 256~Hz sampling rate of the BOAS
+      dataset is downsampled to 128~Hz, sufficient for capturing all
+      sleep-relevant frequencies ($\leq$40~Hz) while halving computational costs.
+\item \textbf{Epoch rejection:} Epochs with amplitudes exceeding $\pm$500~$\mu$V,
+      NaN values, or flat channels are excluded as artefacts.
+\end{itemize}
+
+These steps constitute the preprocessing pipeline used in this thesis,
+producing clean 30-second epochs ready for feature extraction.
+
+% ============================================================================
+\section{Machine Learning Ensemble Methods}
+\label{sec:ensemble_methods}
+% ============================================================================
+
+\begin{missingref}
+TODO Lennart: Add a machine learning textbook reference for this section.
+Suggested: Hastie, T., Tibshirani, R., \& Friedman, J.\ (2009).
+\textit{The Elements of Statistical Learning}, 2nd ed., Springer.
+(Free PDF available at hastie.su.domains/ElemStatLearn/)
+Or: Breiman, L.\ (2001). ``Random Forests.'' \textit{Machine Learning},
+45(1), 5--32. (primary source for Random Forest).
+\end{missingref}
+
+Ensemble methods combine multiple weaker models to produce a stronger
+predictor. They are particularly effective for tabular and feature-based
+classification tasks, which motivates their use in this thesis for
+EEG feature-based sleep staging.
+
+\subsection{Decision Trees}
+
+A decision tree recursively partitions the feature space by selecting
+feature thresholds that maximise class separation (measured by criteria
+such as Gini impurity or information gain). Individual trees are fast to
+train but prone to overfitting on small datasets. Ensemble methods address
+this by combining many trees trained under different conditions.
+
+\subsection{Bagging: Random Forest}
+
+Bootstrap Aggregating (Bagging) trains each tree on a random bootstrap
+sample of the training data (sampling with replacement) and restricts
+each split to a random subset of features. The final prediction is
+the majority vote across all trees. This randomization reduces variance
+without substantially increasing bias.
+
+Random Forest is the canonical bagging ensemble. It typically achieves
+strong out-of-the-box performance on tabular data but produces large
+serialized model files when trained on high-dimensional data with many
+trees---a key factor in its caching viability, as discussed in Chapter~4.
+
+\subsection{Boosting: Gradient Boosting and XGBoost}
+
+Boosting trains trees sequentially, where each new tree corrects the
+residual errors of the previous ensemble. Gradient Boosting minimises a
+differentiable loss function via gradient descent in function space.
+XGBoost (Extreme Gradient Boosting) extends this with regularisation
+terms, sparsity-aware splitting, and cache-efficient tree construction,
+achieving state-of-the-art performance on many tabular benchmarks.
+
+Boosting models typically use shallow trees (depth 3--6) with aggressive
+regularisation, producing compact serialized representations. This property
+makes them highly cache-viable: a complete XGBoost model for 128-subject
+LOSO training serialises to approximately 1--2~MB, compared to
+600--1544~MB for a comparable Random Forest.
+
+\subsection{Why Ensembles for EEG Feature Classification}
+
+Ensemble methods are preferred over single models for EEG feature-based
+sleep staging for three reasons: (1) the feature space (149 features) is
+high-dimensional relative to training set size ($\sim$120{,}000 epochs across
+127 subjects per fold), and ensembles regularise effectively; (2) sleep
+stage boundaries are non-linear and interact across multiple frequency bands,
+which tree-based models capture without feature engineering; and (3) ensemble
+methods are interpretable through feature importance scores, enabling
+post-hoc analysis of which EEG features most discriminate sleep stages.
