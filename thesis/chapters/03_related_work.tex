@@ -1,3 +1,4 @@
+
 \chapter{Related Works}
 
 
@@ -10,11 +11,16 @@ the lack of validated best practices for caching in Leave-One-Subject-Out
 \section{Academic Research on ML Caching}
 % ============================================================================
 
-Recent research explores adaptive caching strategies for ML workloads. Krishna
-(2025) surveys ML-aided caching techniques including LSTM-based cache usage
-prediction and reinforcement learning for adaptive cache policies~\cite{krishna2025cache}.
-These approaches focus on \textit{learned} caching decisions using predictive
-models.
+Recent research explores the intersection of machine learning and cache management, though primarily from the perspective of \textit{ML-for-System-Optimization}. Krishna (2025) provides a comprehensive review of 'intelligent' caching techniques, including LSTM-based usage prediction and reinforcement learning for adaptive replacement policies~\cite{krishna2025cache}. These approaches focus on \textit{learned} caching decisions to improve hardware throughput.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+fix next cite
+\end{minipage}
+}
+\end{center}
+In contrast, the framework developed in this thesis focuses on \textit{Caching-for-ML-Workflows}. Rather than using predictive models to guess what to cache, this work employs a deterministic, content-addressed approach. This ensures that cache hits are strictly limited to identical experimental configurations—a requirement for scientific validity that the predictive models surveyed by Krishna (2025) are not designed to satisfy.
 
 In the context of reproducibility, Schubotz et al.\ (2022) demonstrate how
 caching can accelerate data science experiments while maintaining FAIR
@@ -44,9 +50,18 @@ Search terms: ``ML experiment caching'', ``pipeline artifact reuse'',
 % ============================================================================
 \section{Commercial MLOps Tools}
 % ============================================================================
-
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Should we incroporate this too here ? Working Draft Note (SotA - The "Gap" Argument):} \\
+\textbf{1. The Workflow Orchestration (C3) Gap:} Kreuzberger lists tools like Airflow, Kubeflow, and AWS SageMaker. \textbf{Critique:} These tools are designed for linear pipelines. Argue that they lack "deterministic sub-task invalidation" for nested loops like LOSO (128 subjects $\times$ 9 configs). \\
+\textbf{2. Cost Management (P6):} The paper says CT (Continuous Training) frequency should consider costs. \textbf{My Argument:} I am evolving P6 from "periodic retraining" to "state-aware retraining," which is more efficient for research. \\
+\textbf{3. Tool Review Weakness:} Reference their "Table I" (Tool Review). Note that most tools focus on the "Production/Serving" end (C8/C9). My framework fills a gap in the "Experimental/Engineering" stage by providing a "pre-computation check."
+\end{minipage}
+}
+\end{center}
 Current MLOps platforms provide general experiment tracking and pipeline
-caching but lack native support for cross-validation-specific scenarios:
+caching but are agnostic to the internal structure of cross-validation. While these tools can be configured for LOSO via complex templating, they do not natively encode fold-identity into cache keys, leading to coarse-grained invalidation where changing a single parameter might trigger an entire 128-fold recomputation unnecessarily.
 
 \begin{itemize}
 \item \textbf{MLflow:} Provides experiment tracking, model registry, and
@@ -55,7 +70,7 @@ caching but lack native support for cross-validation-specific scenarios:
       natively encode fold assignments in cache keys.
 
 \item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable
-      pipeline stage reuse~\cite{dvc2022inproceedings}. While DVC can cache
+      pipeline stage reuse~\cite{dvc_pipelines}. While DVC can cache
       cross-validation results, it requires manual configuration of the pipeline
       definition to parameterise fold indices---a process not documented in
       standard DVC workflows.
@@ -65,14 +80,29 @@ caching but lack native support for cross-validation-specific scenarios:
       abstractions do not provide explicit support for encoding held-out
       subject identifiers, requiring users to implement custom materializers.
 
-\item \textbf{Neptune AI and Weights \& Biases:} Excel at experiment logging,
-      metric visualisation, and collaborative features~\cite{neptune2024docs,wandb2024docs},
-      but do not provide computational caching mechanisms---only metadata tracking.
+\item \textbf{Neptune AI and Weights \& Biases:} While these platforms excel at 
+      metric visualization and experiment logging~\cite{wandb2024docs}, 
+      they are inherently subject to platform stability and vendor lock-in. 
+      The discontinuation of Neptune AI services in early 2026~\cite{neptune2026shutdown} 
+      vividly underscores the long-term risks of relying on proprietary, cloud-based 
+      metadata stores for academic research. Furthermore, these tools primarily 
+      function as observation layers; they lack integrated computational caching 
+      mechanisms. This necessitates the development of the independent, 
+      self-hosted framework for reproducible LOSO-fold management proposed 
+      in this thesis.
 \end{itemize}
 
 % ============================================================================
 \section{Research Gap Analysis}
 % ============================================================================
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note (3.3):}
+Hier die Brücke zwischen Prozess-Theorie und technischem Defizit schlagen: Trotz der weiten Verbreitung von CRISP-DM, wie in der Meta-Analyse von \cite{schroer2021crispdmslr} bestätigt, fehlen dem Modell kritische Mechanismen für moderne ML-Workflows. Insbesondere die von \cite{studer2021crispmlq} geforderte Qualitätssicherung (CRISP-ML(Q)) bleibt oft auf einer rein prozessualen Ebene stehen. Hier ansetzen: Mein Framework füllt diese Lücke technologisch, indem es die \textit{Reproduzierbarkeit} nicht nur als Richtlinie sieht, sondern durch striktes \textit{Configuration Fingerprinting} und \textit{Caching} erzwingt, um die in \cite{googlemlops2023} kritisierten manuellen Fehlerquellen zu eliminieren.
+\end{minipage}
+}
+\end{center}
 
 Table~\ref{tab:related_works_comparison} compares caching capabilities of
 existing tools relevant to this thesis.
@@ -177,7 +207,23 @@ pool may not generalise to unseen subjects. LOSO evaluation provides an
 unbiased estimate of cross-subject performance.
 
 \subsection{Deep Learning Approaches}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+wir nutzen kein deep learning wir haben cnn fnn gestrichen sollten wir diese section so lassen? 
+\end{minipage}
+}
+\end{center}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+sollten wir das einbauen """While deep learning architectures such as CNN-LSTMs can achieve high accuracy, recent comparative analyses by Siddiqui et al. (2025) confirm that these models require "substantially more computational resources" compared to traditional ensembles~\cite{siddiqui2025}. Their findings show that Random Forest classifiers remain highly competitive, offering a superior balance between interpretability and computational efficiency. This trade-off is critical for the framework proposed here; while a deep model like U-Sleep~\cite{perslev2021usleep} is difficult to cache due to its massive parameter size and non-deterministic training times, the feature-based XGBoost and Random Forest models used in this work are ideal candidates for granular, fold-level caching. By prioritizing these "caching-friendly" models, this work enables a rapid hyperparameter search across the entire LOSO spectrum that would be computationally prohibitive with deep learning alternatives."""
 
+\end{minipage}
+}
+\end{center}
 Deep learning methods for sleep staging learn feature representations directly
 from raw EEG signals, eliminating the need for manual feature engineering.
 
@@ -187,6 +233,15 @@ staging across different acquisition systems~\cite{perslev2021usleep}. U-Sleep
 demonstrates that deep models can generalise across hardware configurations, a
 significant practical advantage.
 
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+i want to remove jirakittayakorn2024zleepanlyst feels irrelevant also i am not using cnn rnn or dl so this entire subsesction feels a bit too long)
+\end{minipage}
+}
+\end{center}
 Jirakittayakorn et al.\ (2024) propose ZleepAnlystNet, a deep learning model
 for automatic sleep staging from single-channel raw EEG using separating
 training strategies~\cite{jirakittayakorn2024zleepanlyst}. Single-channel
@@ -208,6 +263,19 @@ their training time is dominated by GPU availability rather than CPU caching
 bottlenecks. None of the cited deep learning papers address caching strategies
 for iterative experimentation or LOSO efficiency. This gap motivates the
 caching-oriented framework developed here.
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+sollten wir "\paragraph{Computational and Caching Profile.} 
+A common limitation of these deep learning approaches in the context of this thesis is their specific resource profile. While models like \textit{ADG-RANet} \cite{zhang2025adg} and \textit{MetaSTH-Sleep} \cite{li2025metasth} push the boundaries of domain generalization and few-shot adaptation, they do so at a significant computational cost. These architectures typically serialize to hundreds of megabytes, and their training is dominated by heavy GPU utilization. 
+
+As noted by \cite{siddiqui2025}, traditional ensemble methods like Random Forest remain highly competitive, offering a superior balance between interpretability and resource efficiency. This trade-off is central to the framework proposed here: while the deep learning alternatives cited above do not address caching strategies for iterative LOSO experimentation, the feature-based models used in this work are ideal candidates for granular, fingerprint-based caching. By prioritizing these "caching-friendly" models, this work enables a rapid hyperparameter search that would be computationally prohibitive with deep learning alternatives." adden 
+
+\end{minipage}
+}
+\end{center}
 
 \subsection{LOSO Evaluation in EEG Research}
 
@@ -273,6 +341,12 @@ for iterative model development and validation cycles.
 to production deployment requires systematic experiment management, including
 the ability to reproduce any prior result on demand and to resume interrupted
 experiments without restarting from scratch. These requirements directly
-motivate the fingerprint-based caching approach of this thesis, which ensures
-that any configuration can be reproduced by its SHA-256 fingerprint, and
-that completed work is never discarded due to hardware interruption.
+motivate the fingerprint-based caching app
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note (3.5):}
+Diskussion der Diskrepanz zwischen akademischem Anspruch und industrieller Realität. Während \cite{studer2021crispmlq} mit CRISP-ML(Q) ein theoretisches Prozessmodell für Qualitätssicherung vorgibt, definieren \cite{kreuzberger2023mlops} und \cite{googlemlops2023} die notwendige Architektur. Mein Framework schließt die Lücke in der \textit{Monitoring & Maintenance}-Phase von Studer, indem es die technische Reproduzierbarkeit auf Hardware-Ebene (trotz GPU-Varianz) durch striktes Metadaten-Tracking sicherstellt.
+\end{minipage}
+}
+\end{center}
