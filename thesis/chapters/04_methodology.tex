@@ -423,6 +423,19 @@ The combined optimizations (process-based parallelization on 8 cores + Numba-acc
 \section{Caching Framework Implementation}
 \label{sec:caching}
 
+Figure~\ref{fig:pipeline_architecture} illustrates the overall architecture of
+the fingerprint-based caching framework, showing the two-layer cache hierarchy
+and the decision flow from configuration input to cached or freshly computed
+output.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/ml_framework_architecture.pdf}
+\caption{Overall architecture of the fingerprint-based caching framework
+showing the two-layer cache hierarchy.}
+\label{fig:pipeline_architecture}
+\end{figure}
+
 \subsection{Fingerprint Generation}
 
 Cache keys are generated using deterministic JSON serialization followed by SHA-256 hashing:
