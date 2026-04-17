@@ -1,8 +1,68 @@
+
 \chapter{Background}
 
+% TODO: Entscheidung treffen: Gehört dieser Abschnitt eher in 
+% Kapitel 2 (State of the Art) zur Problemdefinition oder 
+% Kapitel 3 (Related Work) zur Einordnung der Lösung?
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
 
+Entscheidung: SOTA oder Related Work? Aktuell tendiere ich zu SOTA.
+
+Despite the availability of experiment tracking tools, the level of 
+reproducibility in ML-driven research remains unsatisfactory, leading to 
+a classification of barriers into categories such as data, code, and 
+experiment reproducibility~\cite{semmelrock2024reproducibility}. 
+Semmelrock et al. identify \textit{technology-driven drivers} as a 
+foundational step toward overcoming these challenges. However, they also 
+warn that the rise of automation and tools for non-experts could introduce 
+new barriers if not handled rigorously~\cite{semmelrock2024reproducibility}. 
+The framework presented in this thesis directly aligns with these 
+findings by providing a technology-driven solution that ensures 
+experimental integrity through deterministic configuration fingerprinting.
+Despite the availability of experiment tracking tools, the level of 
+reproducibility in ML-driven research remains unsatisfactory, leading to 
+a classification of barriers into categories such as data, code, and 
+experiment reproducibility~\cite{semmelrock2024reproducibility}. 
+Semmelrock et al. identify \textit{technology-driven drivers} as a 
+foundational step toward overcoming these challenges. However, they also 
+warn that the rise of automation and tools for non-experts could introduce 
+new barriers if not handled rigorously~\cite{semmelrock2024reproducibility}. 
+The framework presented in this thesis directly aligns with these 
+findings by providing a technology-driven solution that ensures 
+experimental integrity through deterministic configuration fingerprinting.
+\end{minipage}
+}
+\end{center}
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+i want to add this at the right spot 
+Rather than replacing general-purpose DAG-based orchestration, this thesis introduces a LOSO-aware caching layer. By injecting the held-out subject identity directly into the cryptographic fingerprint, the system enables fine-grained, fold-level reuse. This allows for 'partial pipeline recovery'—where a researcher can resume a crashed 128-fold experiment from the exact point of failure—a feature that remains cumbersome to implement in standard, coarse-grained pipeline tools.
+
+\end{minipage}
+}
+\end{center}
 \section{Domain: Machine Learning Research Methodology}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Should we incorporate this more ? Working Draft Note (Background - Kreuzberger Hooks):} \\
+\textbf{1. Definition:} Use their formal definition: MLOps is a paradigm aiming to "eliminate the gap between development and operations." \\
+\textbf{2. The 3-Way Versioning (P4):} The paper insists on versioning \textit{Data, Model, and Code}. My SHA-256 fingerprint is the technical implementation of this "Trinity." \\
+\textbf{3. Metadata Tracking (P7):} Cite this to justify the "Canonical JSON" state. They define P7 as tracking "model lineage" (data + code used). My framework automates this tracking to ensure full traceability. \\
+\textbf{4. Reproducibility (P3):} They define it as the "ability to obtain the exact same results." Use this to justify why I compare Accuracy/Predictions of cached vs. retrained models.
 
+shoule we also add To manage this complexity, modern MLOps principles emphasize automation and reproducibility throughout the ML lifecycle~\cite{kreuzberger2023mlops}. A key requirement for achieving this is the implementation of what is often termed the "Holy Trinity" of versioning: consistent tracking of input data, code, and parameters~\cite{schubotz2022caching, kreuzberger2023mlops}. 
+
+Specifically, \cite{kreuzberger2023mlops} defines reproducibility as the "ability to obtain the exact same results" (Principle P3) and highlights the necessity of metadata tracking to maintain model lineage (Principle P7). The framework proposed in this thesis implements these principles by utilizing a canonical JSON representation to capture the complete experiment state. By hashing this state into a SHA-256 fingerprint, the framework automates lineage tracking and ensures that the execution environment remains transparent and reproducible, directly addressing the gap between experimental development and operational efficiency.
+\end{minipage}
+}
+\end{center}
 The landscape of Machine Learning (ML) research and development is
 characterized by rapid iteration and experimentation. According to the
 AI Index Report 2023, AI-related publications have more than doubled since
@@ -26,25 +86,42 @@ framework aligns with modern MLOps principles, which emphasize automation,
 continuous integration/deployment (CI/CD), and reproducibility throughout
 the ML lifecycle~\cite{kreuzberger2023mlops}.
 
-Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
-support experiment tracking by recording parameters, metrics, code versions,
-and artifacts for each run, enabling comparison and reproducibility. Despite
-these advances, reproducibility remains a pervasive challenge in ML
-research~\cite{semmelrock2023reproducibility}. Reproducibility ensures consistent
-results from an ML workflow under identical conditions, hinging on the
-``Holy Trinity'': input data, code and parameters, and the execution
+Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp} 
+support experiment tracking by recording parameters, metrics, code versions, 
+and artifacts for each run, enabling comparison and reproducibility. Despite 
+these advances, reproducibility remains a pervasive challenge in ML 
+research~\cite{semmelrock2025reproducibility}. Reproducibility ensures consistent 
+results from an ML workflow under identical conditions, hinging on the 
+``Holy Trinity'': input data, code and parameters, and the execution 
 environment~\cite{schubotz2022caching}. Challenges arise from:
-
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+does this itemsize make sense  i need to reed ig again if the message is clear and the placement etc
+\end{minipage}
+}
+\end{center}
 \begin{itemize}
-    \item \textbf{Lack of Records and Hyperparameter Inconsistency:}
+    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
           Unrecorded decisions or parameter changes hinder replication.
-    \item \textbf{Data and Environment Volatility:} Dataset alterations,
-          framework updates, and inconsistent compute environments cause
-          divergent outcomes~\cite{idowu2024empirical}.
-    \item \textbf{Inherent Randomness:} Random initializations, data
-          shuffling, and non-deterministic GPU operations make consistent
-          replication challenging~\cite{semmelrock2023reproducibility}.
+    
+    \item \textbf{Data and Environment Volatility:} Dataset alterations, 
+          framework updates, and inconsistent compute environments cause 
+          divergent outcomes. Empirical analysis shows that 61.8\% of 
+          CI/CD pipeline modifications in ML projects are driven by 
+          such dependency issues~\cite{rzig2024empirical}.
+
+    \item \textbf{Inherent Randomness:} Machine learning algorithms, 
+          particularly Feedforward Neural Networks (FFNNs), exhibit 
+          significant variation due to stochastic model initialization 
+          and training~\cite{raste2022quantifying}. These effects are 
+          further amplified by hardware-level non-determinism; for 
+          instance, NVIDIA's cuDNN routines utilize atomic operations 
+          that introduce "truly random floating point rounding errors" 
+          during execution~\cite{nvidia2024cudnn}.
 \end{itemize}
+
 
 These challenges are particularly acute during iterative experimentation,
 where researchers may run hundreds of configurations before identifying
@@ -90,19 +167,17 @@ Several factors drive this resource consumption:
       k-fold, leave-one-out) multiply training costs by the number of folds.
 \end{itemize}
 
-While caching can help, traditional caching systems (e.g., general-purpose
-key-value stores like Redis or Memcached) often fail to meet ML-specific
-needs~\cite{krishna2025cache}. These systems are typically static and focus
-on reducing latency rather than adapting to experiment configuration changes
-or optimizing for ML-specific access patterns. Such inefficiencies can slow
-research progress and increase costs.
+While caching can help, traditional research in cache management—such as the ML-aided hardware strategies surveyed by Krishna (2025)—focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artifacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+is this actually a good cite as its distroting the goal or what we want to do shoudl we find sth taht goes into our direction not against it ?
+\end{minipage}
+}
+\end{center}
 
-This thesis addresses these inefficiencies through a fingerprint-based
-caching framework specifically designed for iterative ML workflows. By
-encoding complete experiment configurations (including cross-validation
-fold identity) into cryptographic cache keys, the framework enables
-automatic result reuse while maintaining scientific validity and
-reproducibility.
+This thesis addresses these inefficiencies through a deterministic, fingerprint-based caching framework. By encoding complete experiment configurations (including cross-validation fold identity) into cryptographic SHA-256 cache keys, the framework enables automatic result reuse that is mathematically tied to the scientific parameters, ensuring both efficiency and reproducibility.
 
 \section{Technology: Configuration Fingerprinting and Caching}
 
@@ -110,29 +185,38 @@ Efficient ML experimentation depends on configuration management and intelligent
 result reuse. This section reviews technologies directly relevant to the
 fingerprint-based LOSO caching approach developed in this thesis.
 
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+sollten wir ""The adoption of Leave-One-Subject-Out (LOSO) cross-validation is driven by the requirement for algorithmic stability in high-dimensional EEG datasets. As established by Kearns and Ron (1999), leave-one-out estimators provide essential "sanity-check" bounds for generalization error, ensuring that the model does not merely overfit to subject-specific artifacts~\cite{kearns1999}. However, the computational overhead of LOSO remains a significant barrier to iterative research. Jayaram (2018) emphasizes that for EEG-based systems to move beyond the laboratory, processing pipelines must be validated across diverse datasets without requiring constant, redundant retraining~\cite{jayaram2018}. In this thesis, LOSO is utilized not only as a validation metric but as a primary driver for the caching framework: the repetitive nature of the 2,304 required training runs provides a high-volume workload where deterministic fingerprinting can demonstrate maximum efficiency gains.""
+\end{minipage}
+}
+\end{center}
+
 \subsection{Configuration Fingerprinting}
 
-Configuration fingerprinting uses cryptographic hash functions (MD5, SHA-256)
-to create unique identifiers for experiment configurations. By hashing a
-canonical representation of all parameters, these fingerprints enable
-deterministic identification of identical configurations and automatic
+Configuration fingerprinting uses cryptographic hash functions (e.g., SHA-256) 
+to create unique identifiers for experiment configurations. By hashing a 
+canonical representation of all parameters, these fingerprints enable 
+deterministic identification of identical configurations and automatic 
 cache invalidation when parameters change.
 
-Modern MLOps tools employ this approach:
+Modern MLOps tools employ variants of this approach:
 \begin{itemize}
-\item \textbf{DVC} logs pipeline signatures combining dependency contents,
-      parameters, and commands~\cite{dvc2022inproceedings}
-\item \textbf{MLflow} tracks experiment metadata and enables visual
-      comparison~\cite{zaharia2018mlflow}
-\item \textbf{MLXP} uses Hydra-based configuration logging with Git
-      hashes~\cite{arbel2024mlxp}
+    \item \textbf{DVC} logs pipeline signatures combining dependency contents, 
+          parameters, and commands~\cite{dvc_pipelines}.
+    \item \textbf{MLflow} tracks experiment metadata to enable versioning and 
+          visual comparison~\cite{zaharia2018mlflow}.
+    \item \textbf{MLXP} enforces reproducibility by linking Hydra-based 
+          configurations with specific Git commit hashes~\cite{arbel2024mlxp}.
 \end{itemize}
 
 \subsection{Hash-Based Caching in MLOps}
 
 MLOps pipeline caching implements content-addressable storage: when pipeline
 inputs and code match previous runs (verified through hash comparison),
-cached outputs are reused~\cite{dvc2022inproceedings}. DVC's run cache,
+cached outputs are reused~\cite{dvc_pipelines}. DVC's run cache,
 for example, combines dependency hashes with parameter configurations to
 create cache keys. When a match is found, execution is skipped and previous
 results are restored.
@@ -140,6 +224,14 @@ results are restored.
 This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note (2.3.2):}
+Bezugnahme auf Google's MLOps-Reifegradmodell \cite{googlemlops2023}. Hash-basiertes Caching ist eine Kernkomponente, um von "Level 0" (manueller Prozess) zu einer automatisierten Pipeline zu gelangen. Es dient nicht nur der Effizienz, sondern ist die technische Umsetzung von \textit{Traceability} und \textit{Continuous Training} (CT), da nur durch eindeutige Konfigurations-Fingerprints sichergestellt werden kann, welche Daten- und Code-Versionen zu einem spezifischen Artefakt geführt haben.
+\end{minipage}
+}
+\end{center}
 
 \subsection{Related Caching Approaches}
 
@@ -184,14 +276,13 @@ where cache validity depends on both configuration parameters and fold identity.
 Despite fingerprinting, perfect reproducibility remains challenging. Sources
 of non-determinism include random seed variation, software version differences,
 hardware-specific floating-point operations, and non-deterministic GPU
-algorithms~\cite{semmelrock2023reproducibility}.
+algorithms. \missingcite[]
 
-\begin{todobox}
-TODO Lennart: Verify the 0.2--0.5\% variance statistic in the paragraph below.
+\textcolor{red}{TODO Lennart: Verify the 0.2--0.5\% variance statistic in the paragraph below.
 Check whether this is from Semmelrock~(2023) or requires a separate citation
 (possibly Pham et al.\ 2020 on variance in deep learning systems, or
 Bouthillier et al.\ 2019 on unreproducible ML).
-\end{todobox}
+}.
 
 Empirical studies suggest that even with controlled random seeds, small
 variance (approximately 0.2--0.5\%) may persist between runs due to hardware-level
@@ -257,7 +348,7 @@ A typical adult night consists of 4--6 sleep cycles of approximately 90 minutes
 each, with N3 predominating early and REM periods lengthening toward morning.
 
 \subsection{Electroencephalography Basics}
-
+\textcolor{red}{[TODO: Add bib entry]}
 Electroencephalography (EEG) measures electrical potentials generated by
 synchronized postsynaptic currents in cortical pyramidal neurons. Scalp
 electrodes record the summed activity of millions of neurons, providing
@@ -272,7 +363,7 @@ channels from the 10-20 system: F3, F4 (frontal), C3, C4 (central), O1, O2
 visual cortices.
 
 \subsection{AASM Scoring and the Need for Automation}
-
+\textcolor{red}{[TODO: Add bib entry]}
 Clinical polysomnography (PSG) combines EEG with electro-oculography (EOG)
 and electromyography (EMG) for comprehensive sleep staging. A trained sleep
 technologist manually scores each 30-second epoch according to AASM criteria.
@@ -299,7 +390,7 @@ Suggested: Niedermeyer, E.\ \& da Silva, F.L. (2011).
 and Related Fields}, 6th ed. Wolters Kluwer. Or a more recent biomedical
 signal processing textbook.
 \end{missingref}
-
+\textcolor{red}{[TODO: Add bib entry]}
 \subsection{Frequency Bands}
 
 EEG signals are conventionally decomposed into frequency bands, each
