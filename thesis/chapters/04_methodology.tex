@@ -149,6 +149,14 @@ This two-dimensional framework enables systematic evaluation of caching benefits
 
 \subsection{Dataset Overview}
 
+\begin{todobox}
+TODO Lennart: Generate a \textbf{Sleep Stage Distribution Bar Chart} showing
+the class distribution across all 128 subjects (Wake/N1/N2/N3/REM percentages).
+This is standard for any classification thesis and shows the class imbalance
+problem (N1 underrepresented, N2 dominant). Save as
+\texttt{figures/fig\_sleep\_stage\_distribution.pdf} and add it here.
+\end{todobox}
+
 This research utilizes the Bitbrain Open Access Sleep (BOAS) dataset, a 
 comprehensive polysomnographic database specificallydesigned for evaluating sleep staging algorithms across a diverse subject pool \cite{esparza2026automatic}. With 128 subjects, it provides a robust foundation for testing the scalability and validity of the proposed LOSO caching framework. Table 1 summarizes the key characteristics of the PSG recordings used in this study, as the BOAS dataset provides both clinical PSG and wearable headband data \cite{esparza2026automatic} Table~\ref{tab:dataset_overview} summarizes the 
 key characteristics of the dataset used in this study.
@@ -946,6 +954,18 @@ dramatically smaller cache footprint. Figure~\ref{fig:speedup_bar} visualises
 the speedup comparison, and Figure~\ref{fig:cache_efficiency} shows cold start
 vs.\ warm run time distribution.
 
+\begin{plotsuggestion}
+A \textbf{grouped bar chart} comparing XGBoost vs.\ Random Forest across all
+9 configurations (accuracy on y-axis, configuration on x-axis) would make the
+performance gap immediately visual. Currently only shown in a table.
+\end{plotsuggestion}
+
+\begin{plotsuggestion}
+A \textbf{cache size comparison plot} (XGBoost $\sim$185~MB vs.\ RF $\sim$18.5~GB)
+on a logarithmic y-axis would dramatically illustrate why RF caching is borderline
+viable. A simple two-bar chart would be highly effective here.
+\end{plotsuggestion}
+
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig1_speedup_bar.pdf}
@@ -963,6 +983,14 @@ Random Forest (128-fold LOSO).}
 
 \subsection{Classification Performance}
 \label{sec:results_classification}
+
+\begin{todobox}
+TODO Lennart: Generate a \textbf{Confusion Matrix} ($5\times5$, aggregated across
+all 128 LOSO folds) for the best XGBoost configuration (corr=None, k=None, 149
+features). This is standard for any classification thesis. Shows where
+misclassifications occur (expect N1 confused with W and N2).
+Save as \texttt{figures/fig\_confusion\_matrix.pdf} and add it here.
+\end{todobox}
 
 Table~\ref{tab:performance_18configs} presents the full classification performance
 across all 18 experimental configurations, ranked by accuracy.
