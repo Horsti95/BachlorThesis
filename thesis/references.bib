@@ -78,7 +78,8 @@ ISSN={2504-0537},
   volume={11},
   number={6},
   pages={1427--1453},
-  year={1999}
+  year={1999},
+  url={https://www.cis.upenn.edu/~mkearns/papers/multi.pdf}
 }
 
 @inproceedings{rahnama2020,
@@ -95,7 +96,8 @@ ISSN={2504-0537},
   volume={15},
   number={1},
   pages={1778--1789},
-  year={2025}
+  year={2025},
+  url={https://ijsra.net/sites/default/files/fulltext_pdf/IJSRA-2025-1159.pdf}
 }
 
 %CRITICAL: Nur als "Enabler-Vision" für Caching nutzen!
@@ -163,7 +165,6 @@ ISSN={1662-453X},
 
 
 %scource and papaer for my dataset
-
 @article{esparza2026automatic,
   author  = {Esparza-Iaizzo, Mart{\'i}n and Sierra-Torralba, Mar{\'i}a and Klinzing, Jens G. and Minguez, Javier and Montesano, Luis and L{\'o}pez-Larraz, Eduardo},
   title   = {Automatic sleep scoring for real-time monitoring and stimulation in individuals with and without sleep apnea},
@@ -171,7 +172,8 @@ ISSN={1662-453X},
   volume  = {192},
   year    = {2026},
   doi     = {10.1016/j.compbiomed.2026.111560},
-  note    = {Primary reference for the BOAS dataset (128 subjects).}
+  url     = {https://doi.org/10.1016/j.compbiomed.2026.111560},
+  note    = {Primary reference for the Bitbrain Open Access Sleep (BOAS) dataset.}
 }
 
 
@@ -212,7 +214,8 @@ ISSN={1662-453X},
   author    = {Semmelrock, Harald and Ross-Hellauer, Tony and Kopeinik, Simone and others},
   title     = {Reproducibility in Machine Learning-based Research: Overview, Barriers and Drivers},
   journal   = {arXiv preprint arXiv:2406.14325v3},
-  year      = {2025}
+  year      = {2025},
+  url       = {https://arxiv.org/abs/2406.14325}
 }
 
 
@@ -277,7 +280,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   title     = {Empirical Analysis on {CI/CD} Pipeline Evolution in Machine Learning Projects},
   booktitle = {Proceedings of the 21st IEEE/ACM International Conference on Mining Software Repositories},
   year      = {2024},
-  doi       = {10.1145/3643991.3644910}
+  doi       = {arXiv:2403.12199},
+  url       = {https://doi.org/10.48550/arXiv.2403.12199}
 }
 
 @manual{nvidia2024cudnn,
@@ -308,7 +312,9 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   year      = {2000},
   url       = {https://www.kde.cs.uni-kassel.de/wp-content/uploads/lehre/ws2012-13/kdd/files/CRISPWP-0800.pdf}
 }
-
+% CRISP-ML(Q) - Machine Learning specific extension
+ % COMMENT: Erweitert CRISP-DM für ML mit Quality Assurance. Fügt ML-spezifische Phasen hinzu:
+  % Experiment Tracking, Model Monitoring, Data Quality Checks. Brücke zu modernem MLOps.
 @article{studer2021crispmlq,
   author       = {Studer, Stefan and Bui, Thanh Binh and Drescher, Christian and Hanuschkin, Alexander and Winkler, Ludwig and Peters, Steven and M{\"u}ller, Klaus-Robert},
   title        = {Towards {CRISP-ML(Q)}: A Machine Learning Process Model with Quality Assurance Methodology},
@@ -320,11 +326,12 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   publisher    = {MDPI},
   doi          = {10.3390/make3020020},
   url          = {https://www.mdpi.com/2504-4990/3/2/20}
-% CRISP-ML(Q) - Machine Learning specific extension
- % COMMENT: Erweitert CRISP-DM für ML mit Quality Assurance. Fügt ML-spezifische Phasen hinzu:
-  % Experiment Tracking, Model Monitoring, Data Quality Checks. Brücke zu modernem MLOps.
+
 }
 
+  % COMMENT: Umfassender MLOps-Überblick (LitReview+Tools+Interviews). Definiert Prinzipien,
+  % Komponenten (Feature Store, Experimentation), Rollen (ML Engineer) und End-to-End-Architektur.
+  % Kern: 85% ML POCs scheitern bei Production → MLOps löst durch Automation/CI/CD.
 % MLOps systematic literature review
 @article{kreuzberger2023mlops,
   author  = {Kreuzberger, Dominik and K{\"u}hl, Niklas and Hirschl, Sebastian},
@@ -334,9 +341,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   pages   = {31866--31879},
   year    = {2023},
   doi     = {10.1109/ACCESS.2023.3262138},
-  % COMMENT: Umfassender MLOps-Überblick (LitReview+Tools+Interviews). Definiert Prinzipien,
-  % Komponenten (Feature Store, Experimentation), Rollen (ML Engineer) und End-to-End-Architektur.
-  % Kern: 85% ML POCs scheitern bei Production → MLOps löst durch Automation/CI/CD.
+  url={https://www.researchgate.net/publication/369566050_Machine_Learning_Operations_MLOps_Overview_Definition_and_Architecture}
+
 }
 
 % Google MLOps Best Practices Guide
@@ -359,7 +365,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   year         = {2021},
   publisher    = {Elsevier},
   doi          = {10.1016/j.procs.2021.01.199},
-  note         = {CENTERIS 2020 - International Conference on ENTERprise Information Systems}
+  note         = {CENTERIS 2020 - International Conference on ENTERprise Information Systems},
+  url           = {https://www.sciencedirect.com/science/article/pii/S1877050921002416}
 }
 
 % EEG textbook reference (cited in Ch2 Section 2.5)
@@ -370,8 +377,9 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   year      = {2011},
   publisher = {Lippincott Williams \& Wilkins},
   address   = {Philadelphia, PA},
-  isbn      = {978-0-7817-8942-4}
+  isbn      = {978-0-7817-8942-4},
 }
+
 
 % EEG frequency bands / functional connectivity in sleep staging (cited in Ch2 Section 2.5)
 @article{huang2021eeg,
@@ -386,11 +394,11 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
 
 % AASM Scoring Manual (cited in Ch2 yellow box note)
 @manual{berry2017aasm,
-  author       = {Berry, Richard B. and Brooks, Rita and Gamaldo, Charlene and Harding, Susan M. and Lloyd, Robin M. and Quan, Stuart F. and Troester, Matthew M. and Vaughn, Bradley V.},
-  title        = {The {AASM} Manual for the Scoring of Sleep and Associated Events: Rules, Terminology and Technical Specifications},
-  edition      = {Version 2.4},
-  organization = {American Academy of Sleep Medicine},
-  year         = {2017},
-  address      = {Darien, IL}
+  title={The AASM Manual for the Scoring of Sleep and Associated Events: Rules, Terminology and Technical Specifications},
+  author={Berry, R.B. and Quan, S.F. and Abreu, A.R. and American Academy of Sleep Medicine and Bibbs, M.L. and DelRosso, L. and Harding, S.M. and Mao, M.M. and Plante, D.T. and Pressman, M.R. and others},
+  url={https://books.google.at/books?id=XT3dzQEACAAJ},
+  year={2020},
+  publisher={American Academy of Sleep Medicine}
 }
+
 
