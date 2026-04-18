@@ -933,7 +933,7 @@ Verdict: \textbf{BORDERLINE}, meaningful speedup but GB-scale storage makes this
 impractical for repeated experimentation without large-capacity storage.
 
 \subsubsection{XGBoost vs.\ Random Forest Comparison}
-\textcolor{red}{we should say for with combination}
+% TODO Lennart: specify which configuration combination these averages refer to
 \begin{table}[htbp]
 \centering
 \caption{XGBoost vs.\ Random Forest cache performance summary.}
@@ -943,7 +943,8 @@ impractical for repeated experimentation without large-capacity storage.
 \textbf{Metric} & \textbf{XGBoost} & \textbf{Random Forest} \\
 \midrule
 Average cache size   & $\sim$185~MB  & $\sim$18.5~GB \\
-Average speedup      & 208$\times$   & \textcolor{red}{28$\times$}    \\
+Average speedup      & 208$\times$   & 28$\times$    \\
+% TODO Lennart: verify RF average speedup value (28x)
 Average warm time    & 7.1~s         & 330~s         \\
 Best accuracy        & 85.5\%        & 81.9\%        \\
 Best Cohen's $\kappa$ & 0.745        & 0.666         \\
@@ -952,7 +953,7 @@ Cache verdict        & \textbf{VIABLE} & \textbf{BORDERLINE} \\
 \bottomrule
 \end{tabular}
 \end{table}
-\textcolor{red}{we should say for with combination}
+% TODO Lennart: specify which configuration combination these results refer to
 XGBoost dominates on all dimensions: higher accuracy, higher speedup, and
 dramatically smaller cache footprint. Figure~\ref{fig:speedup_bar} visualises
 the speedup comparison, and Figure~\ref{fig:cache_efficiency} shows cold start
