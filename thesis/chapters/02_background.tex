@@ -1,6 +1,13 @@
 
 \chapter{Background}
 
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Lenghth goal 8 pages currently reached  including yellow to does
+\end{minipage}}
+\end{center}
 \section{Domain: Machine Learning Research Methodology}
 The landscape of Machine Learning (ML) research and development is
 characterized by rapid iteration and experimentation. According to the
@@ -17,7 +24,7 @@ and researcher productivity~\cite{schubotz2022caching}.
 
 To manage this complexity, standardized process models have emerged.
 CRISP-DM (Cross-Industry Standard Process for Data Mining), developed in
-1996, remains widely adopted~\cite{wirth2000crispdm}. However, its limitations
+1996, remains widely adopted~\cite{crispdm2000}. However, its limitations
 for modern ML---particularly lack of emphasis on model monitoring and
 maintenance---led to CRISP-ML(Q), which extends CRISP-DM with quality assurance
 methodology tailored for ML applications~\cite{studer2021crispmlq}. This
@@ -149,23 +156,27 @@ This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}. When applied to LOSO cross-validation, this approach additionally enables partial pipeline recovery: if a 128-fold experiment is interrupted, the framework can resume from the exact point of failure by loading cached results for all previously completed folds---a capability that remains cumbersome to implement in standard, coarse-grained pipeline tools.
 \begin{center}
-\colorbox{yellow!20}{%
+\colorbox{yellow!20}{% <--- Added opening brace
 \begin{minipage}{0.9\textwidth}
 \textbf{Working Draft Note (2.3.2):}
 Bezugnahme auf Google's MLOps-Reifegradmodell \cite{googlemlops2023}. Hash-basiertes Caching ist eine Kernkomponente, um von "Level 0" (manueller Prozess) zu einer automatisierten Pipeline zu gelangen. Es dient nicht nur der Effizienz, sondern ist die technische Umsetzung von \textit{Traceability} und \textit{Continuous Training} (CT), da nur durch eindeutige Konfigurations-Fingerprints sichergestellt werden kann, welche Daten- und Code-Versionen zu einem spezifischen Artefakt geführt haben.
-\end{minipage}
+\end{minipage}%
 }
 \end{center}
 
 \subsection{Related Caching Approaches}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
 
-\begin{todobox}
 TODO Lennart: Add bib entries for the three systems cited below.
 (1)~vLLM/PagedAttention paper (60--80\% memory reduction, 24$\times$ throughput claim).
 (2)~GATI learned caching paper (7.69$\times$ latency reduction at 97\% accuracy).
 (3)~XRootD/XCache infrastructure report (10.8~PB network savings statistic).
 Papers are in your download folder but not yet in references.bib.
-\end{todobox}
+\end{minipage}}
+\end{center}
 
 While this thesis focuses on hash-based caching for ML experiments, other
 caching paradigms exist in adjacent domains:
@@ -200,7 +211,15 @@ where cache validity depends on both configuration parameters and fold identity.
 Despite fingerprinting, perfect reproducibility remains challenging. Sources
 of non-determinism include random seed variation, software version differences,
 hardware-specific floating-point operations, and non-deterministic GPU
-algorithms. % TODO Lennart: add citation for GPU non-determinism variance
+algorithms. 
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Add and find a cite
+\end{minipage}}
+\end{center}
 
 \textcolor{red}{TODO Lennart: Verify the 0.2--0.5\% variance statistic in the paragraph below.
 Check whether this is from Semmelrock~(2023) or requires a separate citation
@@ -222,8 +241,11 @@ numerical differences may occur due to non-deterministic hardware operations.
 \label{sec:sleep_medicine}
 % ============================================================================
 
-\begin{missingref}
-TODO Lennart: Find and add citations for this entire section. Suggested references:
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Add and find a cite
 \begin{itemize}
 \item AASM scoring manual: Berry, R.B. et al.\ (2017). \textit{The AASM Manual for
       the Scoring of Sleep and Associated Events}, Version 2.4. American Academy
@@ -233,9 +255,22 @@ TODO Lennart: Find and add citations for this entire section. Suggested referenc
       \textit{Principles and Practice of Sleep Medicine}, 5th ed., pp.~16--26.
 \item A recent review on automated sleep staging (2020--2026).
 \end{itemize}
-\end{missingref}
+\end{minipage}   }
+\end{center}
+
+
+
 
 \subsection{Sleep Stages and Their Characteristics}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+we are doing caching nothing medical should we shorten this?
+ideas:
+ What to REMOVE (The "Sleep Lab" stuff)The 30-second epoch manual scoring bottleneck: You don't need to describe how long a human takes (250 hours). Just say: "Manual scoring is computationally replaced by automated staging to enable large-scale analysis."Detailed biology of Pyramidal Neurons: Unless you are building a bio-inspired Neural Network, this is "fluff."EOG/EMG details: Since you are only using EEG for your caching logic, don't confuse the reader with sensors you aren't using.2. What to KEEP (The "Data Science" stuff)The 5 Stages (W, N1, N2, N3, REM): You need this because these are your Labels ($y$-variables).The Frequency Bands Table: You need this because these are your Features ($X$-variables). If you change the frequency range in your code, your cache is invalidated. That is the core of your thesis.The 10-20 System (Channels): You need this because F3, C4, etc., are parameters in your Fingerprint.
+\end{minipage}   }
+\end{center}
 
 Human sleep follows a structured architecture of recurring cycles, each
 comprising distinct physiological states identified by characteristic brain
@@ -270,6 +305,16 @@ five sleep stages scored in 30-second epochs:
 
 A typical adult night consists of 4--6 sleep cycles of approximately 90 minutes
 each, with N3 predominating early and REM periods lengthening toward morning.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+
+idae Combine 
+2.4.2 and 2.4.3 as the Focus is cahing not Sleep lab? or shouild we Keep the Details 
+The raw input data consists of 6-channel EEG signals recorded via the international 10-20 system. These signals are segmented into 30-second epochs and labeled according to AASM scoring criteria \cite{berry2017aasm}. In the context of the proposed caching architecture, these labels serve as the categorical ground truth, while the physical electrode locations (F3, F4, C3, C4, O1, O2) are treated as immutable metadata in the SHA-256 fingerprint generation.
+\end{minipage}   }
+\end{center}
 
 \subsection{Electroencephalography Basics}
 \textcolor{red}{[TODO: Add bib entry]}
@@ -311,44 +356,34 @@ point for evaluating classifier accuracy.
 A \textbf{sample EEG epoch plot} showing raw signals from the 6 channels
 (F3, F4, C3, C4, O1, O2) for one representative 30-second epoch per sleep
 stage (W, N1, N2, N3, REM) would help readers understand the input data.
-This is standard in EEG/sleep theses and makes the preprocessing motivation
-concrete. MNE-Python can generate this directly from the BOAS dataset.
+MNE-Python can generate this directly from the BOAS dataset.
 \end{plotsuggestion}
 
-\begin{missingref}
-TODO Lennart: Add an EEG signal processing reference for this section.
-Suggested: Niedermeyer, E.\ \& da Silva, F.L. (2011).
-\textit{Electroencephalography: Basic Principles, Clinical Applications,
-and Related Fields}, 6th ed. Wolters Kluwer. Or a more recent biomedical
-signal processing textbook.
-\end{missingref}
-\textcolor{red}{[TODO: Add bib entry]}
+EEG signals are complex, non-stationary time series that require transformation into the frequency domain to extract physiologically relevant information. The foundational principle of sleep staging relies on the identification of specific oscillatory patterns within these signals \cite{niedermeyer2011}.
+
 \subsection{Frequency Bands}
 
-EEG signals are conventionally decomposed into frequency bands, each
-associated with distinct brain states:
+In this work, EEG signals are decomposed into distinct frequency bands. While specific boundaries vary slightly in literature, this study utilizes the ranges specified in \autoref{tab:eeg_bands}, which align with standard AASM guidelines and recent functional connectivity research in sleep staging \cite{huang2021eeg}.
 
 \begin{table}[htbp]
 \centering
-\caption{Standard EEG frequency bands and their sleep-relevant associations.}
+\caption{EEG frequency bands used for feature extraction and their sleep-relevant associations (adapted from \cite{huang2021eeg}).}
 \label{tab:eeg_bands}
-\begin{tabular}{llll}
+\begin{tabular}{lll}
 \toprule
 \textbf{Band} & \textbf{Range (Hz)} & \textbf{Sleep Stage Association} \\
 \midrule
-Delta    & 0.5--4   & N3 (slow-wave sleep); power increases with sleep depth \\
-Theta    & 4--8     & N1, REM; drowsiness and light sleep \\
-Alpha    & 8--13    & Relaxed wakefulness (eyes closed); suppressed in sleep \\
-Sigma    & 12--15   & Sleep spindles in N2; key N2 marker \\
-Beta     & 13--30   & Active wakefulness, cognitive processing \\
-Gamma    & 30--40   & High-level cognitive processing; minimal in sleep \\
+Delta    & 0.5--4.0   & Predominant in N3 (Deep sleep); indicates sleep pressure \\
+Theta    & 4.0--8.0   & Associated with N1 and REM stages; drowsiness \\
+Alpha    & 8.0--13.0  & Hallmarked by relaxed wakefulness; key for Stage W \\
+Sigma    & 12.0--16.0 & Sleep spindles; the definitive marker for N2 sleep \\
+Beta     & 13.0--30.0 & Active wakefulness; power decreases during NREM sleep \\
+Gamma    & 30.0--45.0 & High-frequency processing; typically minimal in sleep \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Power spectral density (PSD) in these bands, computed via Welch's method or
-the Fast Fourier Transform (FFT), forms the core of frequency-domain feature
-extraction for sleep staging.
+Power spectral density (PSD) in these bands, computed via Welch's method, forms the core of the frequency-domain feature extraction pipeline. By quantifying the relative power in these specific ranges, the XGBoost and Random Forest models can distinguish between the synchronized, high-amplitude waves of deep sleep and the desynchronized, low-amplitude patterns of wakefulness.
 
 \subsection{Standard Preprocessing Pipeline}
 
@@ -376,15 +411,23 @@ producing clean 30-second epochs ready for feature extraction.
 \section{Machine Learning Ensemble Methods}
 \label{sec:ensemble_methods}
 % ============================================================================
-
-\begin{missingref}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Add and find a cite
 TODO Lennart: Add a machine learning textbook reference for this section.
 Suggested: Hastie, T., Tibshirani, R., \& Friedman, J.\ (2009).
 \textit{The Elements of Statistical Learning}, 2nd ed., Springer.
 (Free PDF available at hastie.su.domains/ElemStatLearn/)
 Or: Breiman, L.\ (2001). ``Random Forests.'' \textit{Machine Learning},
 45(1), 5--32. (primary source for Random Forest).
-\end{missingref}
+\end{minipage}   }
+\end{center}
+
+
+
+
 
 Ensemble methods combine multiple weaker models to produce a stronger
 predictor. They are particularly effective for tabular and feature-based
