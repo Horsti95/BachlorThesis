@@ -9,46 +9,11 @@ The standard evaluation protocol for this domain, Leave-One-Subject-Out (LOSO) c
 
 The central question shifted from "how can the classifier be improved?" to "why are models being retrained when their underlying configurations remain unchanged?" In a LOSO sweep, the vast majority of models remain valid if only a subset of parameters is modified. This realized computational waste was identified not as a classification failure, but as a systematic failure in caching and state management. Consequently, the focus of this research shifted from the classification task itself to the development of a caching optimization framework, using sleep staging as the primary validation vehicle for addressing redundant computation in iterative ML experimentation.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-do wee need to cite 2025 that often
-\end{minipage}
-}
-\end{center}
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note (1.1):}
-Hier die Brücke schlagen: ML-Projekte scheitern oft nicht an der Mathematik, sondern an der Infrastruktur. Laut \cite{rzig2024empirical} entfallen 61,8% der CI/CD-Pipeline-Anpassungen auf das Beheben von Build-Policies und Abhängigkeiten. Das unterstreicht den von \cite{googlemlops2023} beschriebenen \textit{hidden technical debt}, bei dem der eigentliche ML-Code nur einen Bruchteil des Gesamtsystems ausmacht. Das Framework in dieser Arbeit zielt darauf ab, diese Schulden durch automatisiertes Caching zu reduzieren.
-\end{minipage}
-}
-\end{center}
-The broader landscape reinforces the urgency of this work. The field of Artificial Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth in both academic output and industrial application~\cite{AIIndex2023, AIIndex2025}. While the Stanford AI Index Report 2023 highlighted that AI-related publications had increased 2.3 times since 2015~\cite{AIIndex2023}, the 2025 report reveals a more concerning trend: the training compute for notable AI models is now doubling approximately every five months~\cite{AIIndex2025}. As AI's share of all computer science publications has risen to nearly 42\%,
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-weirrder übergang ggf den block einmal neu schreiben
-\end{minipage}
-}
-\end{center}the associated carbon footprint has scaled dramatically, with large-scale models now emitting thousands of tons of $CO_2$~\cite{AIIndex2025}. As ML systems grow more complex and resource-intensive, MLOps (Machine Learning Operations) pipelines must move beyond simple standardization to incorporate deterministic caching frameworks that mitigate the environmental and financial costs of redundant research.
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Should we incorporate this ? Working Draft Note (Motivation - The "Manual" Problem):} \\
-\textbf{1. Manual MLOps:} Kreuzberger notes that in many settings, data scientists still manage workflows "manually to a great extent," leading to errors and failure to progress past Proof of Concept (PoC). \\
-\textbf{2. The Argument:} My initial frustration with the 8-hour sleep staging runs is a textbook example of "Manual ML" failure. By automating the "caching decision," I am moving the project from a "Manual PoC" to an "Operationalized Workflow" as advocated by the paper. or sth like this The broader landscape reinforces the urgency of this work. The field of Artificial Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth in both academic output and industrial application~\cite{AIIndex2023, AIIndex2025}. While the Stanford AI Index Report 2023 highlighted that AI-related publications had increased 2.3 times since 2015~\cite{AIIndex2023}, the 2025 report reveals a more concerning trend: the training compute for notable AI models is now doubling approximately every five months~\cite{AIIndex2025}. 
+ML projects frequently fail not due to algorithmic limitations but due to infrastructure deficiencies. Rzig et al.\ report that 61.8\% of CI/CD pipeline modifications in ML projects address build policies and dependency management rather than model logic~\cite{rzig2024empirical}. This aligns with the concept of \textit{hidden technical debt} in ML systems, where the actual model code constitutes only a small fraction of the overall system~\cite{googlemlops2023}. The framework developed in this thesis aims to reduce this technical debt through automated, deterministic caching.
 
-This exponential growth in resource demand highlights a critical gap in current development practices. As \cite{kreuzberger2023mlops} observes, many data science projects remain "manual to a great extent," functioning as experimental Proofs of Concept (PoC) that fail to operationalize efficiently. The initial manual iteration cycle encountered in this research—where simple parameter changes triggered 21-hour re-training runs—is a textbook example of this "Manual ML" failure. By automating the caching decision and state persistence through a deterministic framework, this thesis moves the classification pipeline from a manual PoC to an operationalized workflow that aligns with the principles of sustainable and reproducible AI.
-\end{minipage}
-}
-\end{center}
-MLOps (Machine Learning Operations) pipelines aim to
-standardize development, boost productivity, and enable reproducible
-experimentation~\cite{kreuzberger2023mlops}, but caching for cross-validation
-workflows remains an unaddressed gap.
+The broader landscape reinforces the urgency of this work. The field of Artificial Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth: AI-related publications have increased 2.3 times since 2015, now comprising nearly 42\% of all computer science publications~\cite{AIIndex2023}. More critically, the training compute for notable AI models is doubling approximately every five months, and the associated carbon footprint has scaled dramatically, with large-scale models emitting thousands of tons of $CO_2$~\cite{AIIndex2025}. As ML systems grow more complex and resource-intensive, Machine Learning Operations (MLOps) pipelines must move beyond simple standardization to incorporate deterministic caching frameworks that mitigate the environmental and financial costs of redundant computation.
+
+This growth highlights a critical gap in current development practices. As Kreuzberger et al.\ observe, many data science projects remain ``manual to a great extent,'' functioning as experimental Proofs of Concept that fail to operationalize efficiently~\cite{kreuzberger2023mlops}. The initial manual iteration cycle encountered in this research---where simple parameter changes triggered 21-hour re-training runs---is a textbook example of this failure mode. By automating the caching decision through a deterministic framework, this thesis moves the pipeline from a manual prototype to an operationalized workflow aligned with the principles of sustainable and reproducible AI. Despite these advances in MLOps standardization, caching for cross-validation workflows remains an unaddressed gap.
 
 
 

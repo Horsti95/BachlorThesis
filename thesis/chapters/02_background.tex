@@ -1,68 +1,7 @@
 
 \chapter{Background}
 
-% TODO: Entscheidung treffen: Gehört dieser Abschnitt eher in 
-% Kapitel 2 (State of the Art) zur Problemdefinition oder 
-% Kapitel 3 (Related Work) zur Einordnung der Lösung?
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-
-Entscheidung: SOTA oder Related Work? Aktuell tendiere ich zu SOTA.
-
-Despite the availability of experiment tracking tools, the level of 
-reproducibility in ML-driven research remains unsatisfactory, leading to 
-a classification of barriers into categories such as data, code, and 
-experiment reproducibility~\cite{semmelrock2024reproducibility}. 
-Semmelrock et al. identify \textit{technology-driven drivers} as a 
-foundational step toward overcoming these challenges. However, they also 
-warn that the rise of automation and tools for non-experts could introduce 
-new barriers if not handled rigorously~\cite{semmelrock2024reproducibility}. 
-The framework presented in this thesis directly aligns with these 
-findings by providing a technology-driven solution that ensures 
-experimental integrity through deterministic configuration fingerprinting.
-Despite the availability of experiment tracking tools, the level of 
-reproducibility in ML-driven research remains unsatisfactory, leading to 
-a classification of barriers into categories such as data, code, and 
-experiment reproducibility~\cite{semmelrock2024reproducibility}. 
-Semmelrock et al. identify \textit{technology-driven drivers} as a 
-foundational step toward overcoming these challenges. However, they also 
-warn that the rise of automation and tools for non-experts could introduce 
-new barriers if not handled rigorously~\cite{semmelrock2024reproducibility}. 
-The framework presented in this thesis directly aligns with these 
-findings by providing a technology-driven solution that ensures 
-experimental integrity through deterministic configuration fingerprinting.
-\end{minipage}
-}
-\end{center}
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-i want to add this at the right spot 
-Rather than replacing general-purpose DAG-based orchestration, this thesis introduces a LOSO-aware caching layer. By injecting the held-out subject identity directly into the cryptographic fingerprint, the system enables fine-grained, fold-level reuse. This allows for 'partial pipeline recovery'—where a researcher can resume a crashed 128-fold experiment from the exact point of failure—a feature that remains cumbersome to implement in standard, coarse-grained pipeline tools.
-
-\end{minipage}
-}
-\end{center}
 \section{Domain: Machine Learning Research Methodology}
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Should we incorporate this more ? Working Draft Note (Background - Kreuzberger Hooks):} \\
-\textbf{1. Definition:} Use their formal definition: MLOps is a paradigm aiming to "eliminate the gap between development and operations." \\
-\textbf{2. The 3-Way Versioning (P4):} The paper insists on versioning \textit{Data, Model, and Code}. My SHA-256 fingerprint is the technical implementation of this "Trinity." \\
-\textbf{3. Metadata Tracking (P7):} Cite this to justify the "Canonical JSON" state. They define P7 as tracking "model lineage" (data + code used). My framework automates this tracking to ensure full traceability. \\
-\textbf{4. Reproducibility (P3):} They define it as the "ability to obtain the exact same results." Use this to justify why I compare Accuracy/Predictions of cached vs. retrained models.
-
-shoule we also add To manage this complexity, modern MLOps principles emphasize automation and reproducibility throughout the ML lifecycle~\cite{kreuzberger2023mlops}. A key requirement for achieving this is the implementation of what is often termed the "Holy Trinity" of versioning: consistent tracking of input data, code, and parameters~\cite{schubotz2022caching, kreuzberger2023mlops}. 
-
-Specifically, \cite{kreuzberger2023mlops} defines reproducibility as the "ability to obtain the exact same results" (Principle P3) and highlights the necessity of metadata tracking to maintain model lineage (Principle P7). The framework proposed in this thesis implements these principles by utilizing a canonical JSON representation to capture the complete experiment state. By hashing this state into a SHA-256 fingerprint, the framework automates lineage tracking and ensures that the execution environment remains transparent and reproducible, directly addressing the gap between experimental development and operational efficiency.
-\end{minipage}
-}
-\end{center}
 The landscape of Machine Learning (ML) research and development is
 characterized by rapid iteration and experimentation. According to the
 AI Index Report 2023, AI-related publications have more than doubled since
@@ -94,14 +33,6 @@ research~\cite{semmelrock2025reproducibility}. Reproducibility ensures consisten
 results from an ML workflow under identical conditions, hinging on the 
 ``Holy Trinity'': input data, code and parameters, and the execution 
 environment~\cite{schubotz2022caching}. Challenges arise from:
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-does this itemsize make sense  i need to reed ig again if the message is clear and the placement etc
-\end{minipage}
-}
-\end{center}
 \begin{itemize}
     \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
           Unrecorded decisions or parameter changes hinder replication.
@@ -131,7 +62,7 @@ This observation motivates the central contribution of this thesis: a
 fingerprint-based caching framework that persists and reuses computational
 artifacts (extracted features and trained models) across iterative modeling
 phases while maintaining reproducibility through cryptographic configuration
-fingerprinting.
+fingerprinting. Specifically, Kreuzberger et al.\ define reproducibility as the ``ability to obtain the exact same results'' (Principle~P3) and highlight metadata tracking for maintaining model lineage (Principle~P7)~\cite{kreuzberger2023mlops}. The fingerprint-based framework implements these principles by hashing a canonical JSON representation of the complete experiment state---including data configuration, code version, model parameters, and held-out subject identifier---into a SHA-256 fingerprint that simultaneously automates lineage tracking and provides a deterministic cache key.
 
 \section{Context: Computational Efficiency in Research}
 
@@ -185,14 +116,7 @@ Efficient ML experimentation depends on configuration management and intelligent
 result reuse. This section reviews technologies directly relevant to the
 fingerprint-based LOSO caching approach developed in this thesis.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-sollten wir ""The adoption of Leave-One-Subject-Out (LOSO) cross-validation is driven by the requirement for algorithmic stability in high-dimensional EEG datasets. As established by Kearns and Ron (1999), leave-one-out estimators provide essential "sanity-check" bounds for generalization error, ensuring that the model does not merely overfit to subject-specific artifacts~\cite{kearns1999}. However, the computational overhead of LOSO remains a significant barrier to iterative research. Jayaram (2018) emphasizes that for EEG-based systems to move beyond the laboratory, processing pipelines must be validated across diverse datasets without requiring constant, redundant retraining~\cite{jayaram2018}. In this thesis, LOSO is utilized not only as a validation metric but as a primary driver for the caching framework: the repetitive nature of the 2,304 required training runs provides a high-volume workload where deterministic fingerprinting can demonstrate maximum efficiency gains.""
-\end{minipage}
-}
-\end{center}
+The adoption of Leave-One-Subject-Out (LOSO) cross-validation is driven by the requirement for algorithmic stability in high-dimensional EEG datasets. As established by Kearns and Ron (1999), leave-one-out estimators provide essential ``sanity-check'' bounds for generalisation error, ensuring that the model does not merely overfit to subject-specific artefacts~\cite{kearns1999}. However, the computational overhead of LOSO remains a significant barrier to iterative research. Jayaram (2018) emphasises that for EEG-based systems to move beyond the laboratory, processing pipelines must be validated across diverse datasets without requiring constant, redundant retraining~\cite{jayaram2018}. In this thesis, LOSO is utilised not only as a validation metric but as a primary driver for the caching framework: the repetitive nature of the 2{,}304 required training runs provides a high-volume workload where deterministic fingerprinting can demonstrate maximum efficiency gains.
 
 \subsection{Configuration Fingerprinting}
 
@@ -223,7 +147,7 @@ results are restored.
 
 This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
-parameters~\cite{schubotz2022caching}.
+parameters~\cite{schubotz2022caching}. When applied to LOSO cross-validation, this approach additionally enables partial pipeline recovery: if a 128-fold experiment is interrupted, the framework can resume from the exact point of failure by loading cached results for all previously completed folds---a capability that remains cumbersome to implement in standard, coarse-grained pipeline tools.
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
