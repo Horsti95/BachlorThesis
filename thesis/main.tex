@@ -63,27 +63,35 @@ The framework specifically extends this mechanism to Leave-One-Subject-Out (LOSO
 
 Validation is conducted via a sleep stage classification case study using the Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, approximately 120,000 epochs). The feature extraction module computes 149 features per epoch across six EEG channels, which are cached persistently to isolate the performance evaluation to the computationally intensive model training phase. 
 
-The contributions of this thesis are: (1) a fingerprint-based LOSO model caching framework that ensures cache correctness and prevents cross-fold contamination; (2) quantified efficiency gains, demonstrating peak speedups of up to 498.3x for XGBoost (median 178x) and 109.8x for Random Forest (median 17.7x) across 128 LOSO folds; and (3) validated reproducibility, where all cached models yielded identical classification results to those obtained through cold retraining.
+The contributions of this thesis are: (1) a fingerprint-based LOSO model caching framework that ensures cache correctness and prevents cross-fold contamination; (2) quantified efficiency gains, demonstrating a median speedup of 178x for XGBoost and 17.7x for Random Forest across 128 LOSO folds; and (3) validated reproducibility, where all cached models yielded identical classification results to those obtained through cold retraining.
 \end{abstract}
 
 % 3. THE AI TABLE & THANKS to HImanshu (This is where the Acknowledgements go!)
 \begin{acknowledgements}
-    I would like to thank...
-    
+    I would like to express my sincere gratitude to my supervisor, Prof.\ Himanshu Buckchash, for his continuous guidance, constructive feedback, and patience throughout the development of this thesis. His expertise in machine learning and his emphasis on methodological rigour shaped both the research direction and my understanding of scientific work.
+
+    I also wish to thank the IMC University of Applied Sciences Krems for providing the academic environment and resources that made this research possible. The structured curriculum in the Computer Science programme laid the foundation for the interdisciplinary skills required in this project.
+
+    Finally, I would like to thank my family and friends for their support and encouragement during the writing of this thesis.
+
     \vspace{1cm}
     \section*{AI Usage Disclosure (per FHR-5-0044)}
     \begin{center}
     \colorbox{yellow!20}{%
-    \begin{minipage}{0.9\textwidth}
-    \begin{tabular}{|p{0.22\textwidth}|p{0.22\textwidth}|p{0.22\textwidth}|p{0.22\textwidth}|}
+    \begin{minipage}{0.95\textwidth}
+    \small
+    In accordance with the IMC examination regulations, the following AI-assisted tools were used during the preparation of this thesis. In all cases, the underlying research, analysis, and scientific argumentation were performed independently by the author. AI tools were used exclusively in a supporting capacity as permitted under FHR-5-0044. Original texts and prompts are available upon request.
+
+    \vspace{0.3cm}
+    \begin{tabular}{|p{0.18\textwidth}|p{0.25\textwidth}|p{0.25\textwidth}|p{0.22\textwidth}|}
         \hline
         \textbf{KI-Tool} & \textbf{Wie?} & \textbf{Warum?} & \textbf{An welcher Stelle?} \\ \hline
-        Gemini & Technical LaTeX Debugging & Error resolution & Entire Document \\ \hline
-        Claude / Copilot & Implementation support & Refactoring and debugging & Chapter 4: Methodology \\ \hline
-        DeepL & Linguistic Polish & Grammar improvement & All Chapters \\ \hline
+        DeepL & Translation and linguistic polishing of self-written German drafts into English & Grammar and fluency improvement of author-written text & All chapters \\ \hline
+        GitHub Copilot & Code completion suggestions during implementation & Accelerating routine coding tasks (boilerplate, syntax) & Python caching framework (Ch.~4) \\ \hline
+        Claude (Anthropic) & Code refactoring assistance and debugging support & Identifying bugs in caching logic; restructuring existing code & Python pipeline code (Ch.~4) \\ \hline
+        Gemini (Google) & \LaTeX{} template debugging and formatting assistance & Resolving compilation errors in document formatting & Document template \\ \hline
     \end{tabular}
     \end{minipage}}
-
     \end{center}
 \end{acknowledgements}
 
