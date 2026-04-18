@@ -1,6 +1,12 @@
-
 \chapter{Related Works}
 
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Length goal 5 Pages
+\end{minipage}}
+\end{center}
 
 This chapter reviews existing solutions for ML experiment caching and sleep
 stage classification, and identifies the specific gap this thesis addresses:
@@ -25,7 +31,11 @@ the requirements of cross-validation experiments, where cache validity depends
 on explicit encoding of data splits. The challenge of fold-aware cache key
 generation remains unaddressed in the literature.
 
-\begin{todobox}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+
 TODO Lennart: Only 2 papers (Krishna 2025, Schubotz 2022) are currently cited
 in this section. Find and add 3--5 more ML caching papers. Look for:
 \begin{itemize}
@@ -37,7 +47,8 @@ in this section. Find and add 3--5 more ML caching papers. Look for:
 \end{itemize}
 Search terms: ``ML experiment caching'', ``pipeline artifact reuse'',
 ``memoization machine learning'', ``computational reproducibility caching''.
-\end{todobox}
+\end{minipage}}
+\end{center}
 
 % ============================================================================
 \section{Commercial MLOps Tools}
@@ -83,11 +94,15 @@ Despite the widespread adoption of CRISP-DM as the standard process model for da
 
 Table~\ref{tab:related_works_comparison} compares caching capabilities of
 existing tools relevant to this thesis.
-
-\begin{todobox}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
 TODO Lennart: Verify table contents against latest tool versions before
 final submission. DVC, ZenML, and MLflow update frequently.
-\end{todobox}
+\end{minipage}}
+\end{center}
+
 
 \begin{table}[htbp]
 \centering
@@ -137,7 +152,11 @@ techniques to cross-validation contexts.
 \label{sec:related_sleep}
 % ============================================================================
 
-\begin{missingref}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Add and find a cite
 TODO Lennart: Find additional references for this section before final submission:
 \begin{itemize}
 \item 2--3 feature-based sleep classification papers (2020--2026) beyond
@@ -148,7 +167,8 @@ TODO Lennart: Find additional references for this section before final submissio
 \item 1 class imbalance handling reference for sleep staging (N1 underrepresentation).
       Search: ``class imbalance sleep staging'', ``macro F1 sleep classification''.
 \end{itemize}
-\end{missingref}
+\end{minipage}   }
+\end{center}
 
 Sleep stage classification is a well-studied problem in biomedical signal
 processing. Methods are broadly grouped into two categories: feature-based
@@ -231,7 +251,10 @@ parameter search.
 \label{sec:related_industrial}
 % ============================================================================
 
-\begin{todobox}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
 TODO Lennart: The professor explicitly requires an industrial research section.
 Find 2--3 references on industrial ML deployment or commercial sleep technology:
 \begin{itemize}
@@ -243,7 +266,10 @@ Find 2--3 references on industrial ML deployment or commercial sleep technology:
 \end{itemize}
 Search: ``production machine learning systems'', ``commercial sleep staging device'',
 ``wearable EEG sleep monitoring accuracy''.
-\end{todobox}
+\end{minipage}}
+\end{center}
+
+
 
 The gap between academic sleep staging research and industrial deployment
 reflects broader challenges in production machine learning. Academic studies
