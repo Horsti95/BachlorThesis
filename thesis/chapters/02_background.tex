@@ -180,50 +180,33 @@ validity depends on configuration and fold identity.
 Despite fingerprinting, perfect reproducibility remains challenging. Sources
 of non-determinism include random seed variation, software version differences,
 hardware-specific floating-point operations, and non-deterministic GPU
-algorithms. 
+algorithms~\cite{raste2022quantifying,nvidia2024cudnn}.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Add and find a cite
-\end{minipage}}
-\end{center}
+Bouthillier et al.\ (2021) demonstrate that variance from data sampling,
+parameter initialization, and hyperparameter choice markedly impacts benchmark
+results across deep learning architectures, and that these sources of variation
+are routinely underestimated in published
+comparisons~\cite{bouthillier2021variance}. Raste et al.\ (2022) quantify
+inherent randomness specifically in tree-based methods (Random Forests, GBMs)
+and Feedforward Neural Networks, finding that variation from data splitting
+exceeds variation from model training, while FFNNs exhibit the largest
+training-induced variance~\cite{raste2022quantifying}. NVIDIA's cuDNN
+documentation explicitly states that certain GPU reduction operations use
+atomic operations that introduce non-deterministic floating-point rounding
+errors~\cite{nvidia2024cudnn}.
 
-% TODO Lennart: Verify the 0.2--0.5% variance statistic. Check Semmelrock (2023),
-% Pham et al. 2020, or Bouthillier et al. 2019.
-
-Empirical studies suggest that even with controlled random seeds, small
-variance (approximately 0.2--0.5\%) may persist between runs due to hardware-level
-floating-point non-determinism. Configuration
-% TODO Lennart: Add bib entry for variance statistic
-fingerprinting addresses controllable factors (seeds, software versions, data
-splits) while accepting that hardware-induced variance cannot be eliminated
-through software means. For caching purposes, cached results are considered
-valid if configuration fingerprints match, with the understanding that minor
-numerical differences may occur due to non-deterministic hardware operations.
+Configuration fingerprinting addresses the controllable factors (seeds,
+hyperparameters, data splits, software versions) while accepting
+hardware-induced variance as irreducible. For caching purposes, cached
+results are considered valid if fingerprints match, with the understanding
+that minor numerical differences may occur when reproducing results across
+different hardware environments.
 
 % ============================================================================
 \section{Sleep Medicine Fundamentals}
 \label{sec:sleep_medicine}
 % ============================================================================
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Add and find a cite
-\begin{itemize}
-\item AASM scoring manual: Berry, R.B. et al.\ (2017). \textit{The AASM Manual for
-      the Scoring of Sleep and Associated Events}, Version 2.4. American Academy
-      of Sleep Medicine.
-\item Sleep medicine overview: Carskadon, M.A.\ \& Dement, W.C. (2011).
-      ``Normal human sleep: an overview.'' In Kryger, M.H. et al.\ (Eds.),
-      \textit{Principles and Practice of Sleep Medicine}, 5th ed., pp.~16--26.
-\item A recent review on automated sleep staging (2020--2026).
-\end{itemize}
-\end{minipage}   }
-\end{center}
 
 
 
