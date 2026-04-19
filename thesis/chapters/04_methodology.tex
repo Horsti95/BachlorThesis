@@ -914,6 +914,7 @@ The best configuration (all 149 features, no correlation filtering) achieved
 \textbf{498$\times$ speedup}, reducing a 3{,}683-second cold run to 7.4 seconds.
 Across all 9 configurations, the average speedup was \textbf{208$\times$} with
 consistent warm-load times around 7 seconds regardless of model complexity.
+All 1{,}152 warm-cache operations (9 configurations $\times$ 128 folds) achieved a \textbf{100\% cache hit rate}: every fold produced a fingerprint match and loaded the cached model without retraining.
 Cache storage remained compact at approximately 185--189~MB per configuration.
 Verdict: \textbf{CACHE VIABLE} for XGBoost across all configurations.
 
@@ -945,7 +946,8 @@ corr=None, k=50  & 50  & 5{,}465.4  & 305.2 & 17.9$\times$ & 17.5 \\
 
 Random Forest caching provides significant time savings (up to 110$\times$ speedup)
 but at substantially higher storage cost ($\sim$18.5~GB per configuration vs.\ $\sim$185~MB
-for XGBoost). Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
+for XGBoost). As with XGBoost, all 1{,}152 warm-cache operations achieved a 100\% cache hit rate.
+Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
 Verdict: \textbf{BORDERLINE}, meaningful speedup but GB-scale storage makes this
 impractical for repeated experimentation without large-capacity storage.
 
