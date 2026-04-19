@@ -440,19 +440,13 @@ fingerprint = hashlib.sha256(canonical.encode()).hexdigest()[:32]
 cache_key = f"{fingerprint}_{held_out_subject}"
 \end{verbatim}
 
-\textbf{Partial cache reuse across experiment sweeps.} Because the
-fingerprint is computed independently per configuration--subject pair,
-experiment runs that share a subset of configurations automatically
-benefit from cached results. For example, if a first sweep trains
-configurations $\{A_1, A_2, B_1, B_2\}$ and a second sweep trains
-$\{B_1, B_2, C_1, C_2\}$, the models for $B_1$ and $B_2$ produce
-identical fingerprints in both runs and are loaded from cache, while
-$C_1$ and $C_2$ are trained fresh. This behaviour was verified
-experimentally in the benchmark suite
-(\texttt{experiment\_b\_fingerprint\_invalidation} in
-\texttt{run\_thesis\_benchmark.py}), where overlapping configurations
-across successive sweeps correctly produced cache hits for shared
-configurations and cache misses for new ones.
+\textbf{Partial cache reuse across experiment sweeps.} Configurations sharing
+identical hyperparameters and subject folds produce matching fingerprints,
+enabling automatic reuse. For example, sweeps $\{A_1, A_2, B_1, B_2\}$ and
+$\{B_1, B_2, C_1, C_2\}$ reuse cached $B_1$, $B_2$ models while training
+$C_1$, $C_2$ fresh. This was verified in
+\texttt{experiment\_b\_fingerprint\_invalidation} of
+\texttt{run\_thesis\_benchmark.py}.
 
 \textbf{Version control safety.} The \texttt{code\_version} parameter
 (set to the current semantic version or Git commit hash) ensures that
@@ -463,26 +457,27 @@ models.
 
 \subsection{Cache Storage Structure}
 
-The cache uses a directory structure organized by fingerprint:
+Table~\ref{tab:cache_structure} summarises the two-layer directory layout.
+Layer~1 filenames carry no fingerprint because features are
+configuration-independent. Layer~2 filenames embed the fingerprint, so any
+hyperparameter or subject change produces a different key and forces a cache
+miss---preventing accidental reuse of a stale model.
 
-\begin{verbatim}
-cache/
-+-- features/ # Extracted features (all 195, config-independent)
-| +-- subject_sub-1_full.npz  # NO fingerprint - always valid
-| +-- subject_sub-2_full.npz
-| +-- ...
-+-- loso_model_cache/ # Trained models (config-dependent)
-  +-- {fingerprint}_sub-1.joblib  # WITH fingerprint
-  +-- {fingerprint}_sub-2.joblib
-  +-- cache_registry.json  # Fingerprint metadata
-\end{verbatim}
-
-\textbf{Critical Design Decision:} Layer 1 (features) uses filenames 
-\textit{without} fingerprints because features are configuration-independent, they 
-remain valid regardless of model hyperparameters or feature selection settings. 
-Layer 2 (models) includes fingerprints in filenames because models become invalid 
-when training configurations change. This naming convention prevents accidental 
-cache misuse and enables visual inspection of cache validity.
+\begin{table}[htbp]
+\centering
+\caption{Cache directory structure. Layer~1 features are fingerprint-free
+(always valid); Layer~2 models are fingerprint-keyed (invalidated on config change).}
+\label{tab:cache_structure}
+\begin{tabular}{llp{5.5cm}}
+\toprule
+\textbf{Path} & \textbf{Fingerprint} & \textbf{Description} \\
+\midrule
+\texttt{features/sub-N\_full.npz}          & None & 149 features per subject, config-independent \\
+\texttt{loso\_model\_cache/\{fp\}\_sub-N.joblib} & SHA-256 prefix & Trained model, invalidated on any config change \\
+\texttt{loso\_model\_cache/cache\_registry.json} & --- & Fingerprint $\to$ config metadata index \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Cache Hit/Miss Logic}
 
