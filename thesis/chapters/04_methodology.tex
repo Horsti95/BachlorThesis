@@ -292,8 +292,25 @@ After extracting all 149 features, optional feature selection is applied using a
 \begin{itemize}
 \item Ranks features by class-discriminative power using F-statistic (\texttt{f\_classif})
 \item Top-K options: 30, 50, or None (retain all 149 features)
-\item ANOVA selected over Mutual Information based on a dedicated benchmark: ANOVA was 174$\times$ faster (0.022s vs.\ 3.74s) \textit{and} 3.68 percentage points more accurate (84.26\% vs.\ 80.58\%) on a 10-subject pilot with 5-fold CV\footnote{ANOVA vs.\ MI benchmark: ANOVA \texttt{f\_classif} 0.022s, 84.26\% accuracy; MI 3.74s, 80.58\% accuracy. The accuracy advantage of ANOVA on this dataset is attributed to the linear discriminative structure of EEG frequency-domain features, which ANOVA's F-statistic captures more directly than MI's nonparametric estimation.}. ANOVA is therefore not a speed--accuracy trade-off but strictly dominates MI for this feature set
+\item ANOVA selected over Mutual Information based on a pilot benchmark (10 subjects, 5-fold CV): ANOVA was 174$\times$ faster \textit{and} 3.68 percentage points more accurate, giving strict dominance with no trade-off (Table~\ref{tab:anova_vs_mi}).
 \end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption[ANOVA vs.\ Mutual Information feature selection comparison]{ANOVA F-statistic vs.\ Mutual Information feature selection
+(10-subject pilot, 5-fold CV). ANOVA strictly dominates on both speed and accuracy.}
+\label{tab:anova_vs_mi}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Method} & \textbf{Time (s)} & \textbf{Accuracy} \\
+\midrule
+ANOVA (f\_classif)  & 0.022 & 84.26\% \\
+Mutual Information  & 3.74  & 80.58\% \\
+\midrule
+\textbf{Difference} & \textbf{174$\times$ faster} & \textbf{$+$3.68\% ANOVA} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \textbf{Implementation Note:} Feature selection is performed \textbf{globally} (not per-fold) to enable consistent cache fingerprinting. This design choice prioritizes caching efficiency while accepting minimal impact on cross-validation purity. The Stage 2 cache stores all 149 features, and selection parameters only affect the final model training step.
 
@@ -1037,31 +1054,6 @@ this scaling behaviour.
 \label{fig:svm_scaling}
 \end{figure}
 
-\subsection{Feature Selection: ANOVA vs.\ Mutual Information}
-\label{sec:results_anova}
-
-\begin{table}[htbp]
-\centering
-\caption{ANOVA F-statistic vs.\ Mutual Information feature selection (10 subjects,
-5-fold CV). ANOVA is both faster and more accurate.}
-\label{tab:anova_vs_mi}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Method} & \textbf{Time (s)} & \textbf{Accuracy} \\
-\midrule
-ANOVA (f\_classif)  & 0.022 & 84.26\% \\
-Mutual Information  & 3.74  & 80.58\% \\
-\midrule
-\textbf{Difference} & \textbf{174$\times$ faster} & \textbf{$+$3.68\% ANOVA} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-ANOVA is strictly superior for this dataset: 174$\times$ faster \textit{and}
-3.68 percentage points more accurate than Mutual Information. This is not a
-trade-off but a clear dominance, making ANOVA the justified choice for feature
-selection.
-
 \subsection{Reproducibility Validation}
 \label{sec:results_reproducibility}
 
@@ -1070,10 +1062,9 @@ representative configurations.
 
 \input{tables/tab5_fingerprint_integrity}
 
-Reproducibility was validated across all 18 configurations and 128 LOSO folds.
-All models are CPU-based sklearn estimators with fixed \texttt{random\_state},
-so GPU-level non-determinism (cuDNN atomic operations) does not apply to this
-evaluation---determinism is guaranteed by the fixed seed alone.
+Reproducibility was validated across all 18 configurations and 128 LOSO folds
+(CPU-based sklearn estimators with fixed \texttt{random\_state}; GPU-level
+non-determinism~\cite{nvidia2024cudnn} does not apply here).
 
 \begin{itemize}
 \item \textbf{100\% fingerprint determinism:} Identical configurations always
@@ -1103,10 +1094,6 @@ systematic experimentation:
       \texttt{accuracy\_match = True} for all 18 configurations. Fingerprint-based
       cache keys guarantee that retrieved models correspond exactly to the
       requested configuration, ensuring scientific validity.
-
-\item \textbf{ANOVA is strictly superior to Mutual Information for this task.}
-      174$\times$ faster with $+$3.68\% higher accuracy. Justified by the
-      linear discriminative structure of EEG frequency-domain features.
 
 \item \textbf{Cache benefit scales with dataset size.}
       SVM-RBF speedup grows from 9$\times$ (10 subjects) to 201$\times$
