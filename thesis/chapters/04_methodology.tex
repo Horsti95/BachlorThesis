@@ -61,7 +61,7 @@ Layer 2 & Trained LOSO models & 1--150 MB & Fingerprint Cache \\
 \end{tabular}
 \caption{Storage hierarchy distinguishing persistent storage from intelligent
 caching. Both layers are operational. Full-scale verification: XGBoost achieved
-122--498$\times$ speedup (avg 208$\times$); Random Forest 12--110$\times$ (avg 28$\times$).}
+122--498$\times$ speedup (median 178$\times$); Random Forest 12--110$\times$ (median 17.7$\times$).}
 \label{tab:storage_hierarchy}
 \end{table}
 
@@ -89,9 +89,9 @@ comprehensive testing (see Section~\ref{sec:verification}) and the full-scale
 
 \textbf{Full-Scale Results:} The caching system achieved 100\% cache hit rate
 across all 18 configurations and 128 LOSO folds (2{,}304 total operations).
-Measured speedups for XGBoost ranged from 122$\times$ to 498$\times$ (average
-208$\times$) with cache sizes of $\sim$185~MB. Random Forest achieved 12--110$\times$
-speedup (average 28$\times$) but required $\sim$18.5~GB of cache storage.
+Measured speedups for XGBoost ranged from 122$\times$ to 498$\times$ (median
+178$\times$) with cache sizes of $\sim$185~MB. Random Forest achieved 12--110$\times$
+speedup (median 17.7$\times$) but required $\sim$18.5~GB of cache storage.
 
 \textbf{Why LOSO-Level Caching, Not Just Model Caching?}
 
@@ -830,14 +830,14 @@ corr=None, k=30  & 30  & 918.5   & 7.30 & 125.9$\times$ & 176.6 \\
 corr=None, k=50  & 50  & 1{,}277.1 & 7.16 & 178.4$\times$ & 178.3 \\
 \textbf{corr=None, k=None} & \textbf{149} & \textbf{3{,}683.3} & \textbf{7.39} & \textbf{498.3$\times$} & \textbf{188.2} \\
 \midrule
-\textbf{Average} & -- & -- & 7.1 & \textbf{208$\times$} & \textbf{$\sim$185} \\
+\textbf{Median} & -- & -- & 7.3 & \textbf{178$\times$} & \textbf{$\sim$185} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The best configuration (all 149 features, no correlation filtering) achieved
 \textbf{498$\times$ speedup}, reducing a 3{,}683-second cold run to 7.4 seconds.
-Across all 9 configurations, the average speedup was \textbf{208$\times$} with
+Across all 9 configurations, the median speedup was \textbf{178$\times$} with
 consistent warm-load times around 7 seconds regardless of model complexity.
 All 1{,}152 warm-cache operations (9 configurations $\times$ 128 folds) achieved a \textbf{100\% cache hit rate}: every fold produced a fingerprint match and loaded the cached model without retraining.
 Cache storage remained compact at approximately 185--189~MB per configuration.
@@ -864,7 +864,7 @@ corr=None, k=30* & 30  & 11{,}331.1 & 356.0 & 31.8$\times$ & 20.4 \\
 corr=None, k=50  & 50  & 5{,}465.4  & 305.2 & 17.9$\times$ & 17.5 \\
 \textbf{corr=None, k=None} & \textbf{149} & \textbf{31{,}679.5} & \textbf{288.6} & \textbf{109.8$\times$} & \textbf{16.3} \\
 \midrule
-\textbf{Average} & -- & -- & 330 & \textbf{$\sim$28$\times$} & \textbf{$\sim$18.5} \\
+\textbf{Median} & -- & -- & 346 & \textbf{17.7$\times$} & \textbf{$\sim$18.5} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -882,16 +882,16 @@ cache footprint.
 
 \begin{table}[htbp]
 \centering
-\caption{XGBoost vs.\ Random Forest cache performance summary (averages
+\caption{XGBoost vs.\ Random Forest cache performance summary (medians
 across all 9 configurations, 128-fold LOSO).}
 \label{tab:xgb_rf_comparison}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Metric} & \textbf{XGBoost} & \textbf{Random Forest} \\
 \midrule
-Average cache size   & $\sim$185~MB  & $\sim$18.5~GB \\
-Average speedup      & 208$\times$   & 28$\times$    \\
-Average warm time    & 7.1~s         & 330~s         \\
+Median cache size    & $\sim$185~MB  & $\sim$18.5~GB \\
+Median speedup       & 178$\times$   & 17.7$\times$  \\
+Median warm time     & 7.3~s         & 346~s         \\
 Best accuracy        & 85.5\%        & 81.9\%        \\
 Best Cohen's $\kappa$ & 0.745        & 0.666         \\
 Best F1-macro        & 0.690         & 0.607         \\
@@ -1081,7 +1081,7 @@ systematic experimentation:
 
 \begin{enumerate}
 \item \textbf{Cache provides significant LOSO speedup.}
-      XGBoost: 122--498$\times$ (average 208$\times$).
+      XGBoost: 122--498$\times$ (median 178$\times$).
       SVM-Linear: 1{,}550--3{,}093$\times$ scaling with dataset size.
       The framework delivers order-of-magnitude reductions in experiment time.
 
@@ -1121,7 +1121,7 @@ systematic experimentation:
 
 XGBoost outperforms Random Forest on every measured dimension in this study:
 higher classification accuracy (85.5\% vs.\ 81.9\%), higher cache speedup
-(208$\times$ vs.\ 28$\times$), and dramatically smaller cache storage
+(178$\times$ vs.\ 17.7$\times$), and dramatically smaller cache storage
 (185~MB vs.\ 18.5~GB). This result challenges the common assumption that
 Random Forest and XGBoost are interchangeable ensemble alternatives. For
 LOSO-style experimentation with repeated runs, XGBoost is the clearly
