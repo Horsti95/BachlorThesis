@@ -171,80 +171,44 @@ TODO Lennart: Find additional references for this section before final submissio
 \end{center}
 
 Sleep stage classification is a well-studied problem in biomedical signal
-processing. Methods are broadly grouped into two categories: feature-based
-approaches that extract handcrafted signal descriptors, and deep learning
-approaches that learn representations directly from raw signals.
+processing, with methods broadly grouped into feature-based and deep learning
+approaches.
 
 \subsection{Feature-Based Approaches}
 
 Feature-based sleep staging extracts domain-informed descriptors from EEG
-signals and feeds them to classical machine learning classifiers. Features
-typically span time-domain statistics (mean, variance, RMS), frequency-domain
-band powers (delta, theta, alpha, sigma, beta), and signal complexity measures
-(Hjorth parameters, Hurst exponent, sample entropy).
+signals---time-domain statistics, frequency-domain band powers, and signal
+complexity measures---and feeds them to classical ML
+classifiers. Satapathy et al.\ (2024) demonstrate that multi-modality feature
+sets with ensemble classifiers achieve competitive performance, particularly
+in cross-subject settings where training data per subject is
+limited~\cite{satapathy2024multimodal}.
 
-Satapathy et al.\ (2024) demonstrate that multi-modality feature sets combining
-EEG, EOG, and EMG signals with ensemble classifiers achieve competitive
-performance on standard sleep staging benchmarks~\cite{satapathy2024multimodal}.
-Their work highlights that carefully engineered features remain competitive with
-deep learning methods, particularly in cross-subject generalisation settings
-where training data is limited per subject.
-
-The approach taken in this thesis follows this feature-based paradigm: 149
-handcrafted features are extracted per 30-second epoch across 6 EEG channels,
-then classified using XGBoost and Random Forest. Feature-based approaches have
-the advantage of interpretability (feature importance scores identify which EEG
-descriptors drive classification) and compatibility with tabular ML models that
-are well-suited to caching (compact serialised representations).
-
-LOSO cross-validation is the standard evaluation protocol in this domain,
-reflecting the fundamental challenge of subject variability: EEG patterns
-differ substantially between individuals, and a model trained on one subject
-pool may not generalise to unseen subjects. LOSO evaluation provides an
-unbiased estimate of cross-subject performance.
+This thesis follows the feature-based paradigm: 149 handcrafted features per
+30-second epoch across 6 EEG channels, classified using XGBoost and Random
+Forest. Feature-based models have the advantage of compact serialized
+representations well-suited to fingerprint-based caching.
 
 \subsection{Deep Learning Approaches}
 
-Deep learning methods for sleep staging learn feature representations directly
-from raw EEG signals, eliminating the need for manual feature engineering.
-Perslev et al.\ (2021) present U-Sleep, a fully convolutional network trained
-on diverse polysomnographic recordings that achieves robust cross-hardware sleep
-staging~\cite{perslev2021usleep}. Zhang et al.\ (2025) address domain
-generalisation through adversarial residual attention
-networks~\cite{zhang2025adg}, and Li et al.\ (2025) explore few-shot sleep
-classification using spatial-temporal hypergraph
-meta-learning~\cite{li2025metasth}.
-
-While these architectures push classification boundaries, recent comparative
-analysis by Siddiqui et al.\ (2025) confirms that deep models require
-``substantially more computational resources'' compared to traditional
-ensembles~\cite{siddiqui2025}. Ensemble classifiers such as Random Forest
-remain highly competitive, offering a superior balance between interpretability
-and computational efficiency. This trade-off is central to the framework
-proposed here: deep models typically serialise to hundreds of megabytes or
-gigabytes and their training is dominated by GPU utilisation, making them poor
-candidates for granular caching. The feature-based XGBoost and Random Forest
-models used in this thesis are compact and well-suited to fingerprint-based
-fold-level caching. None of the cited deep learning papers address caching
-strategies for iterative LOSO experimentation, motivating the caching-oriented
-framework developed here.
+Deep learning methods learn representations directly from raw EEG signals.
+Perslev et al.\ (2021) present U-Sleep, achieving robust cross-hardware
+staging~\cite{perslev2021usleep}. However, Siddiqui et al.\ (2025) confirm
+that deep models require ``substantially more computational resources''
+compared to traditional ensembles~\cite{siddiqui2025}, while ensemble
+classifiers remain highly competitive. Deep models typically serialise to
+hundreds of megabytes and require GPU training, making them poor candidates
+for granular fold-level caching. None of the cited deep learning papers
+address caching strategies for iterative LOSO experimentation.
 
 \subsection{LOSO Evaluation in EEG Research}
 
-Leave-One-Subject-Out cross-validation is preferred over standard k-fold
-cross-validation in EEG and sleep research for a fundamental reason: EEG
-signals contain strong subject-specific signatures. If training and test data
-from the same subject appear in the same fold (as in random k-fold splits),
-the classifier learns subject-specific patterns rather than generalisable
-sleep stage indicators. LOSO ensures the model is evaluated on data from
-subjects it has never seen, providing a conservative and clinically meaningful
-estimate of generalisation.
-
-The computational cost of LOSO scales directly with subject pool size. For
-128 subjects, LOSO requires 128 separate model training runs per configuration.
-With 18 configurations, this yields 2{,}304 training operations per complete
-experiment---making caching not merely convenient but essential for practical
-parameter search.
+LOSO cross-validation is preferred in EEG research because EEG signals
+contain strong subject-specific signatures. LOSO ensures the model is
+evaluated on subjects it has never seen, providing a conservative estimate
+of generalisation. The computational cost scales directly with subject pool
+size: 128 subjects $\times$ 18 configurations yields 2{,}304 training
+operations, making caching essential for practical parameter search.
 
 % ============================================================================
 \section{Industrial Research and Applications}
