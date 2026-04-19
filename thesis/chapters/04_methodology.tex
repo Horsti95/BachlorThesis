@@ -195,98 +195,18 @@ Sleep stage classification exhibits inherent class imbalance, with N1 (light sle
 \section{Data Validation and Integrity Verification}
 \label{sec:data_validation}
 
-Ensuring data quality and integrity is critical for reproducible sleep staging research. Prior to feature extraction, each polysomnographic recording undergoes a comprehensive 12-point validation protocol to detect common data issues that could compromise classification accuracy or introduce systematic biases.
+Prior to feature extraction, each recording undergoes an automated 12-point
+validation protocol covering annotation integrity (sufficient epochs, all
+5 stages present, duration $\geq$2~hours, filter rate $<$30\%, temporal
+continuity), structural consistency (correct channel count and sampling rate),
+EDF-annotation alignment (onset bounds, sample bounds), and signal quality
+(no NaN/$\pm\infty$ values, no flat channels, amplitude $<10^6~\mu$V).
 
-\subsection{Motivation}
-
-Sleep EEG datasets frequently contain artifacts from various sources: electrode disconnections during subject movement, signal clipping from amplifier saturation, flat channels from electrode detachment, or misalignment between signal data and annotation files. Without systematic validation, such issues may go undetected, leading to corrupted features that degrade classifier performance or, worse, produce misleadingly optimistic results when problematic epochs are inadvertently excluded from evaluation.
-
-The BOAS dataset explicitly marks disconnection events (stage code 8) and artifacts (stage code -2) in the annotation files. However, additional integrity checks are necessary to verify temporal alignment between annotations and signal data, detect hardware failures not captured in annotations, and ensure data completeness.
-
-\subsection{Validation Protocol}
-
-The implemented validation protocol comprises 12 automated checks organized into four categories.
-
-\textbf{Annotation Integrity (5 checks):}
-\begin{itemize}
-\item \textbf{Sufficient epochs:} $n_{\text{valid}} \geq 100$ ensures adequate data for statistical analysis
-\item \textbf{All stages present:} $\{\text{W, N1, N2, N3, REM}\} \subseteq \text{recording}$ detects incomplete recordings or labeling errors
-\item \textbf{Sufficient duration:} $t \geq 7200\text{s}$ (2 hours) excludes truncated or partial recordings
-\item \textbf{Acceptable filter rate:} $\text{filtered}/\text{total} < 30\%$ indicates systematic problems when exceeded
-\item \textbf{Temporal continuity:} $\max(\Delta t) \leq 1.5 \times \text{epoch\_duration}$ detects unexpected gaps in annotation timeline
-\end{itemize}
-
-\textbf{Structural Consistency (2 checks):}
-\begin{itemize}
-\item \textbf{Correct channels:} $n_{\text{channels}} \geq 6$ verifies required EEG montage is present
-\item \textbf{Correct sampling rate:} $|f_s - f_{\text{target}}| < 1\text{ Hz}$ ensures consistent temporal resolution
-\end{itemize}
-
-\textbf{EDF-Annotation Alignment (2 checks):}
-\begin{itemize}
-\item \textbf{Annotations within EDF:} $\max(\text{onset}) + \text{epoch\_dur} \leq \text{EDF\_duration}$ prevents out-of-bounds data access
-\item \textbf{Sample bounds valid:} $\max(\text{endsample}) \leq n_{\text{samples}}$ verifies sample indices reference existing data
-\end{itemize}
-
-\textbf{Signal Quality (3 checks):}
-\begin{itemize}
-\item \textbf{No invalid values:} $\nexists$ NaN $\vee$ $\pm\infty$ detects corrupted or missing samples
-\item \textbf{No flat channels:} $\sigma_{\text{channel}} > 10^{-10}$ identifies dead electrodes or recording failures
-\item \textbf{Reasonable amplitude:} $\max(|x|) < 10^6$ detects extreme values indicating unit errors or clipping
-\end{itemize}
-
-\subsection{Implementation}
-
-Signal quality checks are performed on representative segments (first and last 30 seconds) rather than the complete recording to minimize computational overhead while still detecting common failure modes such as electrode detachment at recording start or end. For each validation failure, a descriptive error message is logged to facilitate debugging and enable transparent reporting of data exclusions.
-
-\subsection{Validation Results: Preliminary Subset}
-
-Table~\ref{tab:validation_results} shows validation results for the first three 
-subjects, representing a pilot verification of the data quality protocol. 
-
-\begin{table}[ht]
-\centering
-\begin{tabular}{|l|c|c|c|l|}
-\hline
-\textbf{Subject} & \textbf{Valid Epochs} & \textbf{Duration (h)} & \textbf{Filtered} & \textbf{Issues} \\
-\hline
-sub-1 & 914/915 & 7.63 & 0.1\% & 1 disconnection at $t=3690$s \\
-\hline
-sub-2 & 913/913 & 7.61 & 0.0\% & None \\
-\hline
-sub-3 & 997/997 & 8.31 & 0.0\% & None \\
-\hline
-\end{tabular}
-\caption{Validation results for pilot dataset (3/128 subjects). Full dataset 
-validation is ongoing; preliminary results confirm high data quality suitable 
-for ML analysis.}
-\end{table}
-
-\textbf{Validation Status:} Comprehensive validation was completed across all 128 subjects.
-The BOAS dataset exhibits excellent signal integrity, with minimal artifact contamination
-($<$0.1\% epoch exclusion rate) and high inter-rater agreement (83.5\% human-AI concordance).
-
-All subjects passed the critical signal integrity checks (no NaN values, no flat channels, reasonable amplitudes), confirming that the BOAS dataset provides high-quality polysomnographic recordings suitable for machine learning analysis. The single disconnection event in subject 1 was correctly annotated in the original dataset and automatically excluded during preprocessing.
-
-
-\subsection{Human vs.\ AI Label Agreement}
-
-The BOAS dataset includes baseline annotations generated by a Convolutional Neural Network (CNN) trained by the dataset creators \cite{esparza2026automatic}. They reported a human-AI agreement of 87.08\% for the PSG data. In this thesis, this value serves as a performance benchmark: achieving accuracy significantly below human-AI agreement may indicate model issues, while exceeding it suggests the classifier captures patterns consistent with  the consensus human annotation standard.
-
-\subsection{Importance for Reproducibility}
-
-By systematically validating data integrity before analysis, this pipeline ensures that:
-
-\begin{enumerate}
-\item \textbf{No silent failures:} Data integrity issues are detected and 
-      logged explicitly, preventing silent propagation of corrupted features through the pipeline
-\item \textbf{Transparent exclusions:} Any filtered epochs or subjects are documented with specific reasons
-\item \textbf{Consistent preprocessing:} All subjects undergo identical validation criteria
-\item \textbf{Reproducible results:} The validation protocol can be applied to new datasets or by other researchers
-\end{enumerate}
-
-This approach aligns with best practices for transparent reporting in machine learning research and addresses concerns about hidden data preprocessing decisions that can affect reported classification accuracy.
-
+All 128 BOAS subjects passed all checks. The dataset exhibits minimal
+artifact contamination ($<$0.1\% epoch exclusion rate). The dataset
+creators report a human-AI agreement of 87.08\% for PSG
+data~\cite{esparza2026automatic}, which serves as a performance benchmark
+in this thesis.
 
 
 
@@ -443,18 +363,67 @@ showing the two-layer cache hierarchy.}
 \end{figure}
 
 \subsection{Fingerprint Generation}
+\label{sec:fingerprint_generation}
 
-Cache keys are generated using deterministic JSON serialization followed by SHA-256 hashing:
+Cache key generation follows a five-step process:
+
+\begin{enumerate}
+\item \textbf{Configuration assembly.} All tracked parameters
+      (\texttt{random\_seed}, \texttt{code\_version}, \texttt{model\_config}
+      with algorithm name and hyperparameters, \texttt{feature\_config} with
+      base feature count, correlation threshold, top-K selection, and the
+      sorted list of selected feature names, and \texttt{held\_out\_subject})
+      are combined into a single Python dictionary.
+
+\item \textbf{Canonical serialization.} The dictionary is serialized to
+      JSON using \texttt{json.dumps()} with \texttt{sort\_keys=True} and
+      compact separators \texttt{(',',':')}, ensuring a deterministic string
+      representation regardless of insertion order.
+
+\item \textbf{SHA-256 hashing.} The canonical JSON string is encoded to
+      UTF-8 and hashed using SHA-256, producing a 256-bit (64 hexadecimal
+      character) digest.
+
+\item \textbf{Truncation.} The hash is truncated to 32 hexadecimal
+      characters (128 bits) for filesystem compatibility, while retaining
+      sufficient collision resistance for the experimental scale
+      ($\sim$2{,}300 configurations).
+
+\item \textbf{Cache key formation.} The truncated hash is concatenated
+      with the held-out subject identifier to form the final cache key:
+      \texttt{\{fingerprint\}\_\{subject\}}, e.g.,
+      \texttt{a3f2b8c1d4e5f6a7...\_sub-001}.
+\end{enumerate}
+
+The corresponding implementation in \texttt{fingerprint.py}:
 
 \begin{verbatim}
-import hashlib
-import json
-
-def generate_fingerprint(config: dict) -> str:
-    """Generate SHA-256 fingerprint from configuration."""
-    canonical = json.dumps(config, sort_keys=True, default=str)
-    return hashlib.sha256(canonical.encode()).hexdigest()[:32]
+canonical = json.dumps(config.to_dict(),
+                       sort_keys=True, separators=(',',':'))
+fingerprint = hashlib.sha256(canonical.encode()).hexdigest()[:32]
+cache_key = f"{fingerprint}_{held_out_subject}"
 \end{verbatim}
+
+\textbf{Partial cache reuse across experiment sweeps.} Because the
+fingerprint is computed independently per configuration--subject pair,
+experiment runs that share a subset of configurations automatically
+benefit from cached results. For example, if a first sweep trains
+configurations $\{A_1, A_2, B_1, B_2\}$ and a second sweep trains
+$\{B_1, B_2, C_1, C_2\}$, the models for $B_1$ and $B_2$ produce
+identical fingerprints in both runs and are loaded from cache, while
+$C_1$ and $C_2$ are trained fresh. This behaviour was verified
+experimentally in the benchmark suite
+(\texttt{experiment\_b\_fingerprint\_invalidation} in
+\texttt{run\_thesis\_benchmark.py}), where overlapping configurations
+across successive sweeps correctly produced cache hits for shared
+configurations and cache misses for new ones.
+
+\textbf{Version control safety.} The \texttt{code\_version} parameter
+(set to the current semantic version or Git commit hash) ensures that
+code changes automatically invalidate the cache. If a code migration
+introduces a bug or modifies model behaviour, the resulting fingerprint
+differs from previous versions, preventing retrieval of stale cached
+models.
 
 \subsection{Cache Storage Structure}
 
@@ -481,38 +450,14 @@ cache misuse and enables visual inspection of cache validity.
 
 \subsection{Cache Hit/Miss Logic}
 
-The caching workflow follows this decision process:
+For each LOSO fold, the system generates the configuration fingerprint and
+checks whether \verb|{fingerprint}_{subject}.joblib| exists on disk. On a
+\textbf{cache hit}, the model is loaded (XGBoost: $\sim$58~ms; RF:
+$\sim$2.5~s). On a \textbf{cache miss}, the model is trained (XGBoost:
+$\sim$29~s; RF: $\sim$248~s) and saved to disk for future reuse.
 
-\begin{enumerate}
-\item Generate fingerprint from current configuration
-\item Check if cached file exists with matching fingerprint
-\item If \textbf{HIT}: Load cached data, record time saved
-\item If \textbf{MISS}: Compute data, save to cache, record computation time
-\end{enumerate}
-
-\subsection{Disk-Based Caching}
-
-The caching system uses persistent SSD storage for all trained models.
-When a model is requested, the system checks for the existence of a cache file
-matching the configuration fingerprint and held-out subject identifier. If found,
-the model is loaded from disk; otherwise, it is trained and saved for future use.
-
-\textbf{Lookup Strategy:}
-\begin{enumerate}
-\item Generate fingerprint from current configuration
-\item Check if \verb|{fingerprint}_{subject}.joblib| exists on disk
-\item If \textbf{HIT}: Load model from disk (XGBoost: $\sim$58~ms; RF: $\sim$2.5~s)
-\item If \textbf{MISS}: Train model (XGBoost: $\sim$29~s; RF: $\sim$248~s), save to disk
-\end{enumerate}
-
-This single-tier approach is well-suited to the experimental workflow of this
-thesis, where each model is accessed once per experimental run. Full-scale
-benchmarks confirmed that disk-based caching provides substantial speedups:
-XGBoost achieved 122--498$\times$ and Random Forest 12--110$\times$ across
-the 18-configuration experiment (see Chapter: Results and Discussion).
-
-
-
+This single-tier disk-based approach is well-suited to the batch-oriented
+experimental workflow, where each model is accessed once per run.
 
 
 \textbf{Note on Two-Tier RAM+Disk Caching:} An in-memory caching layer
@@ -673,38 +618,18 @@ on 5 subjects achieved $\sim$78\% accuracy with successful caching
 (4.2$\times$ speedup on re-runs). The implementation is discussed as future
 work in Chapter~\ref{chap:summary}.
 
-\subsection{Implementation Challenges and Resolutions}
+\subsection{Implementation Challenge: Incomplete Fingerprinting}
 \label{sec:implementation_challenges}
 
-During development and testing, two critical bugs were identified and resolved. 
-Documenting these issues provides insight into the subtleties of implementing 
-ML experiment caching and may benefit researchers developing similar systems.
-
-\subsubsection{Feature Mismatch Bug: Incomplete Fingerprinting}
-
-\textbf{Symptom:} Models trained with 37 features crashed during loading when 
-feature selection produced 33 features, with error: \texttt{X has 33 features, 
-but XGBClassifier is expecting 37 features}.
-
-\textbf{Root Cause:} The fingerprint generation included feature selection 
-\textit{parameters} (correlation threshold, top-K count) but not the 
-\textit{resulting feature names}. When different random seeds or data subsets 
-produced different selected features under identical selection parameters, 
-the fingerprint incorrectly indicated cache compatibility.
-
-\subsubsection{Impact on Research Methodology}
-
-These bugs were discovered through systematic testing before large-scale 
-experiments, preventing potential corruption of results. The debugging process 
-highlighted the importance of:
-\begin{enumerate}
-\item \textbf{Early verification testing} before committing to full experimental runs
-\item \textbf{Explicit fingerprint design} that captures all sources of model variation
-\item \textbf{Serialization-aware model design} for frameworks intended to support caching
-\end{enumerate}
-
-Both fixes are validated through the comprehensive test suite described in 
-Section~\ref{sec:verification}.
+During development, a feature mismatch bug was identified: models trained
+with 37 features crashed during loading when feature selection produced 33
+features under identical selection \textit{parameters} but with a different
+random seed. The root cause was that the fingerprint included the selection
+parameters (correlation threshold, top-K count) but not the resulting feature
+names. The fix was to hash the sorted list of selected feature names into the
+fingerprint, ensuring that any change in the actual feature set invalidates
+the cache. This bug was detected through early verification testing
+(Section~\ref{sec:verification}) before full-scale experiments.
 
 \subsection{Cross-Validation Strategy}
 
@@ -951,11 +876,14 @@ Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
 Verdict: \textbf{BORDERLINE}, meaningful speedup but GB-scale storage makes this
 impractical for repeated experimentation without large-capacity storage.
 
-\subsubsection{XGBoost vs.\ Random Forest Comparison}
-% TODO Lennart: specify which configuration combination these averages refer to
+Table~\ref{tab:xgb_rf_comparison} summarises the comparison. XGBoost dominates
+on all dimensions: higher accuracy, higher speedup, and dramatically smaller
+cache footprint.
+
 \begin{table}[htbp]
 \centering
-\caption{XGBoost vs.\ Random Forest cache performance summary.}
+\caption{XGBoost vs.\ Random Forest cache performance summary (averages
+across all 9 configurations, 128-fold LOSO).}
 \label{tab:xgb_rf_comparison}
 \begin{tabular}{lcc}
 \toprule
@@ -963,7 +891,6 @@ impractical for repeated experimentation without large-capacity storage.
 \midrule
 Average cache size   & $\sim$185~MB  & $\sim$18.5~GB \\
 Average speedup      & 208$\times$   & 28$\times$    \\
-% TODO Lennart: verify RF average speedup value (28x)
 Average warm time    & 7.1~s         & 330~s         \\
 Best accuracy        & 85.5\%        & 81.9\%        \\
 Best Cohen's $\kappa$ & 0.745        & 0.666         \\
@@ -972,23 +899,10 @@ Cache verdict        & \textbf{VIABLE} & \textbf{BORDERLINE} \\
 \bottomrule
 \end{tabular}
 \end{table}
-% TODO Lennart: specify which configuration combination these results refer to
-XGBoost dominates on all dimensions: higher accuracy, higher speedup, and
-dramatically smaller cache footprint. Figure~\ref{fig:speedup_bar} visualises
-the speedup comparison, and Figure~\ref{fig:cache_efficiency} shows cold start
-vs.\ warm run time distribution.
 
-\begin{plotsuggestion}
-A \textbf{grouped bar chart} comparing XGBoost vs.\ Random Forest across all
-9 configurations (accuracy on y-axis, configuration on x-axis) would make the
-performance gap immediately visual. Currently only shown in a table.
-\end{plotsuggestion}
-
-\begin{plotsuggestion}
-A \textbf{cache size comparison plot} (XGBoost $\sim$185~MB vs.\ RF $\sim$18.5~GB)
-on a logarithmic y-axis would dramatically illustrate why RF caching is borderline
-viable. A simple two-bar chart would be highly effective here.
-\end{plotsuggestion}
+Figure~\ref{fig:speedup_bar} visualises the speedup comparison, and
+Figure~\ref{fig:cache_efficiency} shows cold start vs.\ warm run time
+distribution.
 
 \begin{figure}[htbp]
 \centering

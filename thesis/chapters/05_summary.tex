@@ -78,6 +78,44 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
       percentage points more accurate (84.26\% vs.\ 80.58\%).
 \end{enumerate}
 
+\subsection{Research Questions Revisited}
+
+The four research questions posed in Chapter~1 are answered as follows:
+
+\begin{itemize}
+\item \textbf{RQ1 (Efficiency):} The fingerprint-based caching framework
+      achieved a 100\% cache hit rate across all 2{,}304 warm-cache operations
+      (18 configurations $\times$ 128 LOSO folds). Median speedups were
+      178$\times$ for XGBoost and 17.7$\times$ for Random Forest, with peak
+      speedups of 498$\times$ and 110$\times$ respectively. The feature cache
+      (Layer~1) eliminated redundant feature extraction entirely across
+      experimental iterations.
+
+\item \textbf{RQ2 (Reproducibility):} SHA-256 fingerprinting ensures
+      reproducibility by construction: identical configurations produce
+      identical fingerprints, and cached models produce bitwise-identical
+      predictions to freshly trained models (verified via
+      \texttt{numpy.array\_equal()} across all 18 configurations). The
+      fingerprint simultaneously serves as cache key, reproducibility
+      identifier, and experiment label, unifying concerns that are typically
+      handled by separate tools.
+
+\item \textbf{RQ3 (Scalability):} Cache benefit increases with dataset
+      size. SVM-RBF speedup grew from 9$\times$ at 10 subjects to
+      201$\times$ at 128 subjects, because training cost grows with data size
+      while cache loading cost remains constant. This confirms that the
+      framework becomes more valuable as studies scale to larger cohorts.
+
+\item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists.
+      Of 15 evaluated model types, 11 are cache-viable (all boosting methods,
+      SVMs, logistic regression, decision trees). The 4 non-viable models
+      (Random Forest, Extra Trees, KNN) produce serialized representations
+      of 130--1{,}544~MB per fold, negating the loading speed advantage.
+      XGBoost caching requires $\sim$185~MB per 9-configuration run; Random
+      Forest requires $\sim$18.5~GB, making it borderline viable depending
+      on available storage and expected number of re-runs.
+\end{itemize}
+
 The contribution of this thesis is not a new MLOps platform, but a validated
 approach for extending existing fingerprinting techniques to
 cross-validation contexts. The framework demonstrates that simple SHA-256
@@ -159,3 +197,24 @@ high-computation-cost artefacts, automatic cache eviction based on access
 frequency and storage budgets, and potentially hierarchical invalidation
 strategies where upstream changes (e.g., preprocessing code updates)
 automatically invalidate all downstream caches.
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note --- Ideas to expand Ch5 to 5 pages:}
+\begin{itemize}
+\item Add a ``Lessons Learned'' subsection: practical deployment insights
+      (fingerprint debugging, the importance of including selected feature
+      names in the hash, partial cache reuse across sweeps, version control
+      as automatic invalidation).
+\item Add a ``Comparison with Existing Tools'' paragraph in Summary: briefly
+      contrast the thesis framework with DVC/ZenML/MLflow capabilities
+      (forward-reference to Table~3.1) and state what the thesis adds.
+\item Expand FNN Future Work: discuss expected challenges (GPU non-determinism,
+      large model serialization, epoch-level vs.\ fold-level caching for
+      neural networks).
+\item Add a closing paragraph connecting the thesis to broader reproducibility
+      initiatives (FAIR principles, open science).
+\end{itemize}
+\end{minipage}}
+\end{center}

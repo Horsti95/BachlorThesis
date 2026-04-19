@@ -256,104 +256,59 @@ Add and find a cite
 
 
 \subsection{Sleep Stages and Their Characteristics}
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-we are doing caching nothing medical should we shorten this?
-ideas:
- What to REMOVE (The "Sleep Lab" stuff)The 30-second epoch manual scoring bottleneck: You don't need to describe how long a human takes (250 hours). Just say: "Manual scoring is computationally replaced by automated staging to enable large-scale analysis."Detailed biology of Pyramidal Neurons: Unless you are building a bio-inspired Neural Network, this is "fluff."EOG/EMG details: Since you are only using EEG for your caching logic, don't confuse the reader with sensors you aren't using.2. What to KEEP (The "Data Science" stuff)The 5 Stages (W, N1, N2, N3, REM): You need this because these are your Labels ($y$-variables).The Frequency Bands Table: You need this because these are your Features ($X$-variables). If you change the frequency range in your code, your cache is invalidated. That is the core of your thesis.The 10-20 System (Channels): You need this because F3, C4, etc., are parameters in your Fingerprint.
-\end{minipage}   }
-\end{center}
 
-Human sleep follows a structured architecture of recurring cycles, each
-comprising distinct physiological states identified by characteristic brain
-activity patterns. The American Academy of Sleep Medicine (AASM) defines
-five sleep stages scored in 30-second epochs:
+The American Academy of Sleep Medicine (AASM) defines five sleep stages,
+scored in 30-second epochs from polysomnographic recordings~\cite{berry2017aasm}.
+These stage labels constitute the classification targets ($y$-variables) in this
+thesis:
 
 \begin{itemize}
-\item \textbf{Wake (W):} Characterised by low-amplitude, high-frequency EEG
-      activity, voluntary eye movements, and sustained muscle tone. Alpha waves
-      (8--13~Hz) are prominent when the subject is relaxed with eyes closed.
+\item \textbf{Wake (W):} Low-amplitude, high-frequency EEG; alpha waves
+      (8--13~Hz) predominate during relaxed wakefulness.
 
-\item \textbf{N1 (Light Sleep):} The transition from wakefulness. EEG shows
-      low-amplitude mixed-frequency activity, with slow rolling eye movements.
-      N1 is brief (typically 1--5 minutes) and the most difficult stage to
-      classify automatically due to its transitional nature.
+\item \textbf{N1 (Light Sleep):} Mixed-frequency, low-amplitude activity.
+      The most difficult stage to classify automatically due to its
+      transitional nature (typically 1--5 minutes).
 
-\item \textbf{N2 (Sleep):} The most abundant stage, comprising 45--55\% of
-      total sleep time. Defined by the presence of sleep spindles (11--16~Hz
-      bursts) and K-complexes (large slow waves). Muscle tone decreases and
-      eye movements cease.
+\item \textbf{N2 (Sleep):} Comprises 45--55\% of total sleep time. Defined
+      by sleep spindles (11--16~Hz) and K-complexes.
 
-\item \textbf{N3 (Deep Sleep / Slow-Wave Sleep):} Dominated by high-amplitude
-      delta waves (0.5--4~Hz) comprising $\geq$20\% of the epoch. Associated
-      with memory consolidation and physical restoration. Most prevalent in
-      the first third of the night.
+\item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves
+      (0.5--4~Hz, $\geq$20\% of epoch). Most prevalent in the first third
+      of the night.
 
-\item \textbf{REM (Rapid Eye Movement):} Characterised by mixed-frequency
-      low-amplitude EEG similar to wakefulness, rapid conjugate eye movements,
-      and near-complete skeletal muscle atonia (preventing acting out dreams).
-      Associated with dreaming and emotional memory processing.
+\item \textbf{REM:} Mixed-frequency low-amplitude EEG similar to wakefulness,
+      with rapid eye movements and skeletal muscle atonia.
 \end{itemize}
 
-A typical adult night consists of 4--6 sleep cycles of approximately 90 minutes
-each, with N3 predominating early and REM periods lengthening toward morning.
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
+\subsection{EEG Acquisition and the Need for Automation}
 
-idae Combine 
-2.4.2 and 2.4.3 as the Focus is cahing not Sleep lab? or shouild we Keep the Details 
-The raw input data consists of 6-channel EEG signals recorded via the international 10-20 system. These signals are segmented into 30-second epochs and labeled according to AASM scoring criteria \cite{berry2017aasm}. In the context of the proposed caching architecture, these labels serve as the categorical ground truth, while the physical electrode locations (F3, F4, C3, C4, O1, O2) are treated as immutable metadata in the SHA-256 fingerprint generation.
-\end{minipage}   }
-\end{center}
+The raw input data consists of 6-channel EEG signals recorded via the
+international 10-20 electrode placement system~\cite{niedermeyer2011}.
+Labels indicate brain region (F=frontal, C=central, O=occipital) and
+hemisphere (odd=left, even=right). This thesis uses channels F3, F4, C3,
+C4, O1, O2, providing bilateral coverage of frontal, sensorimotor, and
+visual cortices. In the context of the caching architecture, these channel
+identifiers and the 30-second epoch duration are treated as immutable
+metadata in the SHA-256 fingerprint.
 
-\subsection{Electroencephalography Basics}
-% TODO Lennart: Consider adding a dedicated EEG textbook cite here
-Electroencephalography (EEG) measures electrical potentials generated by
-synchronized postsynaptic currents in cortical pyramidal neurons. Scalp
-electrodes record the summed activity of millions of neurons, providing
-a non-invasive window into brain state.
-
-Electrode placement follows the international 10-20 system, which defines
-standardised positions relative to anatomical landmarks. Labels indicate
-brain region (F=frontal, C=central, O=occipital, T=temporal, P=parietal)
-and hemisphere (odd=left, even=right, z=midline). This thesis uses 6 EEG
-channels from the 10-20 system: F3, F4 (frontal), C3, C4 (central), O1, O2
-(occipital), providing bilateral coverage of frontal, sensorimotor, and
-visual cortices.
-
-\subsection{AASM Scoring and the Need for Automation}
-% TODO Lennart: Add AASM manual cite (berry2017aasm already in bib)
-Clinical polysomnography (PSG) combines EEG with electro-oculography (EOG)
-and electromyography (EMG) for comprehensive sleep staging. A trained sleep
-technologist manually scores each 30-second epoch according to AASM criteria.
-A full night's recording (typically 7--9 hours) produces 840--1080 epochs,
-requiring approximately 1.5--2 hours of expert annotation time per recording.
-
-For research studies with large cohorts, manual scoring becomes a significant
-bottleneck. The BOAS dataset (128 subjects) would require over 250 hours of
-manual annotation. Automated sleep staging using machine learning directly
-addresses this scalability problem. Importantly, inter-rater agreement between
-human scorers is typically 80--90\% even among certified experts, providing
-a natural performance ceiling for automated systems and a meaningful reference
-point for evaluating classifier accuracy.
+Manual sleep scoring by certified technologists requires approximately
+1.5--2 hours per recording. For large cohorts such as the BOAS dataset
+(128 subjects), manual annotation becomes prohibitively expensive,
+motivating automated classification. Inter-rater agreement among human
+experts is typically 80--90\%, providing a natural performance ceiling
+for automated systems.
 
 % ============================================================================
 \section{EEG Signal Processing Basics}
 \label{sec:eeg_processing}
 % ============================================================================
 
-\begin{plotsuggestion}
-A \textbf{sample EEG epoch plot} showing raw signals from the 6 channels
-(F3, F4, C3, C4, O1, O2) for one representative 30-second epoch per sleep
-stage (W, N1, N2, N3, REM) would help readers understand the input data.
-MNE-Python can generate this directly from the BOAS dataset.
-\end{plotsuggestion}
-
-EEG signals are complex, non-stationary time series that require transformation into the frequency domain to extract physiologically relevant information. The foundational principle of sleep staging relies on the identification of specific oscillatory patterns within these signals \cite{niedermeyer2011}.
+EEG signals are non-stationary time series whose classification relies on
+identifying characteristic oscillatory patterns in specific frequency
+bands~\cite{niedermeyer2011}. These frequency bands form the basis of the
+feature extraction pipeline and, consequently, a core parameter in the
+cache fingerprint.
 
 \subsection{Frequency Bands}
 
