@@ -195,6 +195,23 @@ frequency and storage budgets, and potentially hierarchical invalidation
 strategies where upstream changes (e.g., preprocessing code updates)
 automatically invalidate all downstream caches.
 
+A practical constraint not addressed by the framework itself is
+\textit{configuration space governance}. Because every unique parameter
+combination produces a unique SHA-256 fingerprint, an unconstrained
+parameter space---for example, a correlation threshold swept in steps of
+0.01 across 50 values, combined with arbitrary top-K choices---yields
+thousands of distinct cache keys, each populated at most once and therefore
+providing zero reuse. In such settings, the framework remains technically
+correct but delivers no speedup. In clinical or institutional deployments,
+this requires an accompanying governance policy: a defined set of
+approved parameter values (e.g., correlation thresholds from
+$\{0.75, 0.90, \text{None}\}$, feature counts from $\{30, 50, 149\}$)
+that is agreed upon before experimentation begins. The fingerprinting
+mechanism then guarantees that any re-run within that approved grid is
+fully cached, while deviations outside it are treated as new experiments.
+This policy responsibility sits outside the framework and with the
+research team or institution operating it.
+
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
