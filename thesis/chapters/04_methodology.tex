@@ -948,8 +948,7 @@ achieved \textbf{84.9\% accuracy} ($\kappa = 0.726$, F1-macro $= 0.629$) in LOSO
 cross-validation across 128 subjects. XGBoost occupies the top 7 positions in the
 ranking, with Random Forest configurations placing 8th--18th. The N1 sleep stage
 consistently shows lower per-class F1 due to its transitional nature and similarity
-to adjacent stages. Figure~\ref{fig:per_class_f1} shows the per-class breakdown,
-and Figure~\ref{fig:feature_importance} shows which features drive the classifier.
+to adjacent stages. Figure~\ref{fig:per_class_f1} shows the per-class F1 breakdown.
 
 \begin{figure}[htbp]
 \centering
@@ -959,15 +958,10 @@ N1 shows lowest F1 due to transitional stage characteristics.}
 \label{fig:per_class_f1}
 \end{figure}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig7_feature_importance.pdf}
-\caption{Top feature importances for the best-performing XGBoost configuration.}
-\label{fig:feature_importance}
-\end{figure}
-
 \subsection{Multi-Model Cache Viability}
 \label{sec:results_viability}
+
+XGBoost and Random Forest were chosen as primary models for the EEG sleep staging task, but the fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. To validate this generalizability, cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families.
 
 Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
 tested on the full 128-subject dataset (5 LOSO folds).
@@ -992,6 +986,8 @@ Models above the viability threshold (dashed line) are classified as cache-viabl
 
 \subsection{Cache Scaling with Dataset Size}
 \label{sec:results_scaling}
+
+SVM models are used here because their well-characterised training complexity---O($n$) for linear kernels, O($n^2$) for RBF---provides a theoretically grounded test case: as subjects increase, training cost grows predictably while cache loading stays constant, isolating the scaling effect cleanly.
 
 \begin{table}[htbp]
 \centering
