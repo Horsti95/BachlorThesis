@@ -316,72 +316,51 @@ producing clean 30-second epochs ready for feature extraction.
 \section{Machine Learning Ensemble Methods}
 \label{sec:ensemble_methods}
 % ============================================================================
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Add and find a cite
-TODO Lennart: Add a machine learning textbook reference for this section.
-Suggested: Hastie, T., Tibshirani, R., \& Friedman, J.\ (2009).
-\textit{The Elements of Statistical Learning}, 2nd ed., Springer.
-(Free PDF available at hastie.su.domains/ElemStatLearn/)
-Or: Breiman, L.\ (2001). ``Random Forests.'' \textit{Machine Learning},
-45(1), 5--32. (primary source for Random Forest).
-\end{minipage}   }
-\end{center}
-
-
-
-
-
-Ensemble methods combine multiple weaker models to produce a stronger
-predictor. They are particularly effective for tabular and feature-based
-classification tasks, which motivates their use in this thesis for
-EEG feature-based sleep staging.
+Ensemble methods combine multiple decision trees to produce a stronger
+predictor~\cite{hastie2009elements}. They are particularly effective for
+tabular classification tasks, which motivates their use in this thesis.
+This section covers the two ensemble families evaluated: bagging (Random
+Forest) and boosting (XGBoost).
 
 \subsection{Decision Trees}
 
 A decision tree recursively partitions the feature space by selecting
-feature thresholds that maximise class separation (measured by criteria
-such as Gini impurity or information gain). Individual trees are fast to
-train but prone to overfitting on small datasets. Ensemble methods address
-this by combining many trees trained under different conditions.
+feature thresholds that maximise class separation (measured by Gini
+impurity or information gain). Individual trees are fast to train but
+prone to overfitting. Ensemble methods address this by combining many
+trees trained under different conditions~\cite{hastie2009elements}.
 
 \subsection{Bagging: Random Forest}
 
-Bootstrap Aggregating (Bagging) trains each tree on a random bootstrap
-sample of the training data (sampling with replacement) and restricts
-each split to a random subset of features. The final prediction is
-the majority vote across all trees. This randomization reduces variance
-without substantially increasing bias.
+Random Forest~\cite{breiman2001random} trains each tree on a bootstrap
+sample of the training data and restricts each split to a random subset
+of features. The final prediction is the majority vote across all trees,
+reducing variance without substantially increasing bias.
 
-Random Forest is the canonical bagging ensemble. It typically achieves
-strong out-of-the-box performance on tabular data but produces large
-serialized model files when trained on high-dimensional data with many
-trees---a key factor in its caching viability, as discussed in Chapter~4.
+Random Forest typically achieves strong out-of-the-box performance on
+tabular data but produces large serialized model files (600--1{,}544~MB
+per fold for 149 features and 127 training subjects). This storage
+overhead is a key factor in its caching viability, as discussed in
+Chapter~4.
 
-\subsection{Boosting: Gradient Boosting and XGBoost}
+\subsection{Boosting: XGBoost}
 
 Boosting trains trees sequentially, where each new tree corrects the
-residual errors of the previous ensemble. Gradient Boosting minimises a
-differentiable loss function via gradient descent in function space.
-XGBoost (Extreme Gradient Boosting) extends this with regularisation
-terms, sparsity-aware splitting, and cache-efficient tree construction,
-achieving state-of-the-art performance on many tabular benchmarks.
+residual errors of the previous ensemble~\cite{hastie2009elements}.
+XGBoost (Extreme Gradient Boosting) extends gradient boosting with
+regularisation terms, sparsity-aware splitting, and cache-efficient tree
+construction. Unlike Random Forest, boosting models use shallow trees
+(depth 3--6) with aggressive regularisation, producing compact serialized
+representations of 1--2~MB per fold---making them highly cache-viable.
 
-Boosting models typically use shallow trees (depth 3--6) with aggressive
-regularisation, producing compact serialized representations. This property
-makes them highly cache-viable: a complete XGBoost model for 128-subject
-LOSO training serialises to approximately 1--2~MB, compared to
-600--1544~MB for a comparable Random Forest.
+\subsection{Why These Models for EEG Feature Classification}
 
-\subsection{Why Ensembles for EEG Feature Classification}
-
-Ensemble methods are preferred over single models for EEG feature-based
-sleep staging for three reasons: (1) the feature space (149 features) is
-high-dimensional relative to training set size ($\sim$120{,}000 epochs across
-127 subjects per fold), and ensembles regularise effectively; (2) sleep
-stage boundaries are non-linear and interact across multiple frequency bands,
-which tree-based models capture without feature engineering; and (3) ensemble
-methods are interpretable through feature importance scores, enabling
-post-hoc analysis of which EEG features most discriminate sleep stages.
+Random Forest and XGBoost are selected for this thesis because they
+represent two contrasting ensemble strategies (bagging vs.\ boosting)
+with fundamentally different serialization characteristics. This contrast
+directly serves the caching evaluation: XGBoost produces compact models
+that are fast to cache and load, while Random Forest produces large models
+that stress-test the caching framework's viability boundaries.
+Additionally, both models handle the 149-dimensional feature space
+effectively and provide interpretable feature importance scores for
+post-hoc analysis.
