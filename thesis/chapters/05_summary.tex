@@ -57,9 +57,9 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
 
 \item \textbf{Clear model viability spectrum.}
       A 15-model viability study identified 11 cache-viable models
-      (including all boosting methods and SVMs) and 4 non-viable models
-      (Random Forest, Extra Trees, KNN) whose large serialised
-      representations negate caching benefits. Viability verdicts were
+      (including all boosting methods and SVMs) and 4 non-viable model
+      types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) whose
+      large serialised representations negate caching benefits. Viability verdicts were
       consistent across two different hardware configurations.
 
 \item \textbf{Cache benefit scales with dataset size.}
@@ -104,8 +104,9 @@ The four research questions posed in Chapter~1 are answered as follows:
 
 \item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists.
       Of 15 evaluated model types, 11 are cache-viable (all boosting methods,
-      SVMs, logistic regression, decision trees). The 4 non-viable models
-      (Random Forest, Extra Trees, KNN) produce serialized representations
+      SVMs, logistic regression, decision trees). The 4 non-viable model
+      types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) produce
+      serialized representations
       of 130--1{,}544~MB per fold, negating the loading speed advantage.
       XGBoost caching requires $\sim$185~MB per 9-configuration run; Random
       Forest requires $\sim$18.5~GB, making it borderline viable depending

@@ -165,8 +165,9 @@ results.}
 \end{figure}
 
 
-This research utilizes the Bitbrain Open Access Sleep (BOAS) dataset, a 
-comprehensive polysomnographic database specificallydesigned for evaluating sleep staging algorithms across a diverse subject pool \cite{esparza2026automatic}. With 128 subjects, it provides a robust foundation for testing the scalability and validity of the proposed LOSO caching framework. Table 1 summarizes the key characteristics of the PSG recordings used in this study, as the BOAS dataset provides both clinical PSG and wearable headband data \cite{esparza2026automatic} Table~\ref{tab:dataset_overview} summarizes the 
+This research utilizes the Bitbrain Open Access Sleep (BOAS) dataset, a
+comprehensive polysomnographic database specifically designed for evaluating
+sleep staging algorithms across a diverse subject pool~\cite{esparza2026automatic,boas_dataset}. With 128 subjects, it provides a robust foundation for testing the scalability and validity of the proposed LOSO caching framework. Table 1 summarizes the key characteristics of the PSG recordings used in this study, as the BOAS dataset provides both clinical PSG and wearable headband data \cite{esparza2026automatic} Table~\ref{tab:dataset_overview} summarizes the 
 key characteristics of the dataset used in this study.
 
 \begin{table}[ht]
@@ -997,10 +998,10 @@ tested on the full 128-subject dataset (5 LOSO folds).
 
 \input{tables/tab4_cache_viability}
 
-\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable models
-(Random Forest, KNN-5, KNN-10, Extra Trees) share a common characteristic: large
-serialized model sizes (130--1544~MB per fold) and slow deserialization times,
-which eliminate the loading speed advantage over retraining. The top-performing
+\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable model
+types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common
+characteristic: large serialized model sizes (130--1{,}544~MB per fold) and slow
+deserialization times, which eliminate the loading speed advantage over retraining. The top-performing
 viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
 speedup at only 0.4~MB per fold. Figure~\ref{fig:viability_scatter} visualises
 the viability spectrum.
@@ -1035,11 +1036,15 @@ is constant while training cost grows with data size.}
 \end{tabular}
 \end{table}
 
-Cache speedup \textit{increases} with dataset size. SVM-RBF scaling illustrates
-this clearly: at 10 subjects the speedup is 9$\times$; at 128 subjects it reaches
-201$\times$. Training cost grows with data size (quadratically for SVM-RBF) while
-cache loading cost remains constant. This makes caching increasingly valuable as
-datasets grow. Figures~\ref{fig:cache_scaling} and~\ref{fig:svm_scaling} visualise
+Cache speedup increases with dataset size for models whose training cost scales
+super-linearly. SVM-RBF illustrates this cleanly: its O($n^2$) training complexity
+causes cold run time to grow quadratically with subjects, while warm loading
+remains constant, producing a monotonically growing speedup from 9$\times$
+(10 subjects) to 201$\times$ (128 subjects). SVM-Linear, being O($n$), shows
+approximately stable speedup across scales (1{,}736$\times$ to 3{,}093$\times$
+with minor measurement variance at the 30-subject point), confirming that the
+cache loading cost remains negligible relative to even linear training costs
+at dataset scales above 30 subjects. Figures~\ref{fig:cache_scaling} and~\ref{fig:svm_scaling} visualise
 this scaling behaviour.
 
 The same principle holds for the primary models when the feature space grows.
@@ -1110,6 +1115,10 @@ systematic experimentation:
       cache keys guarantee that retrieved models correspond exactly to the
       requested configuration, ensuring scientific validity.
 
+\item \textbf{ANOVA is strictly superior to Mutual Information for this task.}
+      174$\times$ faster with $+$3.68\% higher accuracy. Justified by the
+      linear discriminative structure of EEG frequency-domain features.
+
 \item \textbf{Cache benefit scales with dataset size.}
       SVM-RBF speedup grows from 9$\times$ (10 subjects) to 201$\times$
       (128 subjects), because training cost grows quadratically while cache
@@ -1117,9 +1126,9 @@ systematic experimentation:
 
 \item \textbf{A clear model viability spectrum exists.}
       11 of 15 models are cache-viable. Boosting-based models (GBM, XGBoost,
-      AdaBoost) achieve extreme speedups with compact cache sizes. Tree ensembles
-      (RF, ET) and distance-based models (KNN) are not viable due to
-      GB-scale serialized sizes.
+      AdaBoost) achieve extreme speedups with compact cache sizes. Four model
+      types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) are not viable
+      due to GB-scale serialized sizes.
 
 \item \textbf{Viability verdicts are hardware-portable.}
       The same models are VIABLE/NOT\_VIABLE regardless of machine. Speedup
@@ -1185,9 +1194,13 @@ selection strategy --- global selection versus per-fold selection.
 \input{tables/tab8_global_vs_fold}
 
 Global feature selection (used in this thesis) introduces minor label leakage
-($<$1\%) but enables a consistent fingerprint across all folds, simplifying
-cache key design. The accuracy difference is negligible (0.3--0.8\%), making
-global selection the pragmatic choice for caching-oriented workflows.
+but enables a consistent fingerprint across all folds, simplifying cache key
+design. The leakage mechanism is structural: with 128 subjects, each LOSO fold
+holds out 1 subject whose labels nonetheless contributed to the global feature
+ranking, representing $1/128 \approx 0.8\%$ of the selection data. The
+empirical consequence is a negligible 0.3--0.8\% accuracy advantage for global
+over per-fold selection (Table~\ref{tab:global_vs_fold}), making global
+selection the pragmatic choice for caching-oriented workflows.
 
 \subsection{Limitations}
 

@@ -70,10 +70,11 @@ caching but are agnostic to the internal structure of cross-validation. While th
       definition to parameterise fold indices---a process not documented in
       standard DVC workflows.
 
-\item \textbf{ZenML:} Implements hash-based step caching with automatic
-      invalidation when inputs or code change. However, ZenML's caching
-      abstractions do not provide explicit support for encoding held-out
-      subject identifiers, requiring users to implement custom materializers.
+\item \textbf{ZenML~\cite{zenml2024docs}:} Implements hash-based step caching
+      with automatic invalidation when inputs or code change. However,
+      ZenML's caching abstractions do not provide explicit support for
+      encoding held-out subject identifiers, requiring users to implement
+      custom materializers.
 
 \item \textbf{Neptune AI and Weights \& Biases:} While these platforms excel at 
       metric visualization and experiment logging~\cite{wandb2024docs}, 
@@ -215,52 +216,50 @@ operations, making caching essential for practical parameter search.
 \label{sec:related_industrial}
 % ============================================================================
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-TODO Lennart: The professor explicitly requires an industrial research section.
-Find 2--3 references on industrial ML deployment or commercial sleep technology:
-\begin{itemize}
-\item Industrial MLOps / production ML systems (e.g., Google's ML production
-      paper, Facebook/Meta's production ML infrastructure)
-\item Commercial sleep monitoring devices (Dreem headband, Fitbit sleep staging,
-      Apple Watch sleep tracking accuracy papers)
-\item Industry-academic gap in sleep staging deployment
-\end{itemize}
-Search: ``production machine learning systems'', ``commercial sleep staging device'',
-``wearable EEG sleep monitoring accuracy''.
-\end{minipage}}
-\end{center}
-
-
-
 The gap between academic sleep staging research and industrial deployment
-reflects broader challenges in production machine learning. Academic studies
-typically report results on controlled datasets under ideal acquisition
-conditions, while commercial sleep monitoring must cope with consumer-grade
-hardware, motion artefacts, and users who do not follow electrode placement
-protocols.
+reflects broader challenges in production machine learning~\cite{kreuzberger2023mlops}.
+Academic studies typically report results on controlled datasets under ideal
+acquisition conditions, while commercial sleep monitoring must cope with
+consumer-grade hardware, motion artefacts, and variable electrode contact
+quality.
 
-\textbf{Commercial Sleep Monitoring:} Consumer wearables (smartwatches,
-fitness bands) incorporate simplified sleep staging using accelerometers and
-optical heart rate sensors rather than full EEG. While convenient, these
-devices sacrifice staging accuracy, particularly for distinguishing N1 from
-N2 and accurately identifying REM. Medical-grade consumer EEG headbands
-(such as the Dreem headband) have demonstrated PSG-comparable performance
-in controlled studies, suggesting that the accuracy gap is closeable with
-sufficient EEG channel coverage.
+\textbf{Commercial Sleep Monitoring:}
+Consumer wearables---smartwatches, fitness trackers, and optical heart rate
+bands---incorporate simplified sleep staging primarily from accelerometer
+and photoplethysmography signals rather than full EEG. This hardware
+simplification substantially reduces staging accuracy, particularly for
+discriminating N1 from N2 and for reliably identifying REM. The
+industry-standard approach currently accepts this accuracy trade-off in
+exchange for user convenience and mass-market scalability.
+Medical-grade consumer EEG headbands represent an intermediate tier,
+providing dry-electrode frontal EEG channels at a fraction of clinical
+PSG complexity. Devices in this category have narrowed the accuracy gap
+relative to clinical PSG, but introduce a different deployment challenge:
+models trained on full clinical EEG (such as those in this thesis, using
+6 channels at 256~Hz) must be retrained or adapted for the reduced channel
+count and placement, requiring the exact kind of iterative experimentation
+that fingerprint-based caching accelerates.
 
-\textbf{Production ML Challenges:} Deploying ML models in clinical and
-consumer contexts introduces requirements not typically addressed in academic
-research: model versioning, inference latency constraints, regulatory approval,
-and the need for reproducible audit trails. Caching and fingerprinting
-frameworks like the one developed in this thesis address the reproducibility
-and computational efficiency aspects of this deployment challenge, particularly
-for iterative model development and validation cycles.
+\textbf{Production ML Challenges:}
+Deploying ML models in clinical and consumer contexts introduces requirements
+rarely addressed in academic benchmarks: model versioning across firmware
+updates, inference latency constraints for real-time feedback, regulatory
+approval requiring full audit trails, and reproducibility across device
+batches with sensor variability. As Kreuzberger et al.\ observe, fewer than
+15\% of ML proof-of-concept projects successfully reach production
+deployment~\cite{kreuzberger2023mlops}, with reproducibility and experiment
+management identified as primary barriers.
 
-\textbf{Research-to-Production Gap:} The transition from research prototype
-to production deployment requires systematic experiment management, including
-the ability to reproduce any prior result on demand and to resume interrupted
-experiments without restarting from scratch. These requirements directly
-motivate the fingerprint-based caching approach developed in this thesis.
+\textbf{Research-to-Production Gap:}
+The transition from research prototype to production deployment requires
+systematic experiment management: the ability to reproduce any prior result
+on demand, resume interrupted experiments, and compare model versions
+without retraining from scratch. These requirements are precisely what
+fingerprint-based caching provides. A researcher iterating a sleep staging
+model toward clinical deployment---adjusting feature sets, testing on new
+subject populations, validating on different hardware---benefits directly
+from a framework that caches each validated configuration and prevents
+re-running computations when only downstream parameters change. The
+framework developed in this thesis addresses this gap at the experimental
+stage, providing the infrastructure foundation that production deployment
+requires.

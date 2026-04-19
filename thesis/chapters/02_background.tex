@@ -44,20 +44,26 @@ environment~\cite{schubotz2022caching}. Challenges arise from:
     \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
           Unrecorded decisions or parameter changes hinder replication.
     
-    \item \textbf{Data and Environment Volatility:} Dataset alterations, 
-          framework updates, and inconsistent compute environments cause 
-          divergent outcomes. Empirical analysis shows that 61.8\% of 
-          CI/CD pipeline modifications in ML projects are driven by 
-          such dependency issues~\cite{rzig2024empirical}.
+    \item \textbf{Data and Environment Volatility:} Dataset alterations,
+          framework updates, and inconsistent compute environments cause
+          divergent outcomes. Rzig et al.\ find that 61.8\% of CI/CD
+          pipeline modifications in ML projects address build policies and
+          dependency management rather than model logic~\cite{rzig2024empirical},
+          indicating that infrastructure concerns dominate ML maintenance effort
+          over algorithmic improvement.
 
-    \item \textbf{Inherent Randomness:} Machine learning algorithms, 
-          particularly Feedforward Neural Networks (FFNNs), exhibit 
-          significant variation due to stochastic model initialization 
-          and training~\cite{raste2022quantifying}. These effects are 
-          further amplified by hardware-level non-determinism; for 
-          instance, NVIDIA's cuDNN routines utilize atomic operations 
-          that introduce "truly random floating point rounding errors" 
-          during execution~\cite{nvidia2024cudnn}.
+    \item \textbf{Inherent Randomness:} Machine learning algorithms,
+          particularly Feedforward Neural Networks (FFNNs), exhibit
+          significant variation due to stochastic model initialization
+          and training~\cite{raste2022quantifying}. These effects are
+          further amplified by hardware-level non-determinism; for
+          instance, NVIDIA's cuDNN routines utilize atomic operations
+          that introduce ``truly random floating point rounding errors''
+          during execution~\cite{nvidia2024cudnn}. These non-determinism
+          concerns are most acute for GPU-accelerated deep learning; the
+          classical ensemble models used in this thesis (sklearn, XGBoost,
+          fixed \texttt{random\_state=42}) are deterministic by construction
+          and are unaffected by hardware-level rounding variation.
 \end{itemize}
 
 
