@@ -147,60 +147,33 @@ results are restored.
 This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}. When applied to LOSO cross-validation, this approach additionally enables partial pipeline recovery: if a 128-fold experiment is interrupted, the framework can resume from the exact point of failure by loading cached results for all previously completed folds---a capability that remains cumbersome to implement in standard, coarse-grained pipeline tools.
-\begin{center}
-\colorbox{yellow!20}{% <--- Added opening brace
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note (2.3.2):}
-Bezugnahme auf Google's MLOps-Reifegradmodell \cite{googlemlops2023}. Hash-basiertes Caching ist eine Kernkomponente, um von "Level 0" (manueller Prozess) zu einer automatisierten Pipeline zu gelangen. Es dient nicht nur der Effizienz, sondern ist die technische Umsetzung von \textit{Traceability} und \textit{Continuous Training} (CT), da nur durch eindeutige Konfigurations-Fingerprints sichergestellt werden kann, welche Daten- und Code-Versionen zu einem spezifischen Artefakt geführt haben.
-\end{minipage}%
-}
-\end{center}
+
+In the context of Google's MLOps maturity model~\cite{googlemlops2023}, hash-based caching is a core component for progressing from Level~0 (manual processes) to an automated pipeline. It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability} and \textit{continuous training}: only through unique configuration fingerprints can the exact data and code versions that produced a specific artifact be identified with certainty.
 
 \subsection{Related Caching Approaches}
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-
-TODO Lennart: Add bib entries for the three systems cited below.
-(1)~vLLM/PagedAttention paper (60--80\% memory reduction, 24$\times$ throughput claim).
-(2)~GATI learned caching paper (7.69$\times$ latency reduction at 97\% accuracy).
-(3)~XRootD/XCache infrastructure report (10.8~PB network savings statistic).
-Papers are in your download folder but not yet in references.bib.
-\end{minipage}}
-\end{center}
 
 While this thesis focuses on hash-based caching for ML experiments, other
 caching paradigms exist in adjacent domains:
 
 \textbf{Large Language Model (LLM) Inference Caching} addresses inference
-latency by caching attention key-value tensors during autoregressive generation.
-Systems like vLLM's PagedAttention reportedly reduce memory waste from 60--80\%
-to under 4\% and enable up to 24$\times$ higher throughput.
-% TODO Lennart: Add vLLM/PagedAttention bib entry
-Prefix caching can achieve up to 85\% latency reduction and 90\% cost savings
-for repeated system prompts. These techniques
-% TODO Lennart: Add prefix caching bib entry
-are specific to LLM inference and not directly applicable to experiment result caching.
+latency by managing attention key-value tensors during autoregressive
+generation. vLLM's PagedAttention~\cite{kwon2023pagedattention} solves
+memory fragmentation by treating the KV cache as a virtual memory system
+with non-contiguous blocks.
 
 \textbf{Learned Caching for Deep Networks} employs neural networks to predict
-hidden layer outputs, enabling layer skipping during inference. GATI, for
-example, achieves up to 7.69$\times$ latency reduction at 97\% accuracy.
-% TODO Lennart: Add GATI bib entry
-This represents a different caching
-philosophy---using ML to make cache decisions---but applies only to inference scenarios.
+hidden layer outputs, enabling layer skipping during inference.
+GATI~\cite{balasubramanian2021accelerating} uses learned models to make
+sophisticated cache eviction decisions.
 
 \textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale
-for raw data files. Systems like XRootD/XCache achieve cache hit rates exceeding
-85\% by request count. The Southern California Cache infrastructure reportedly
-saved 10.8~PB of network traffic in a single year.
-% TODO Lennart: Add XRootD/XCache bib entry
-However, these systems are optimized for data distribution, not experiment
-configuration management.
+for experimental data distribution.
+XRootD/XCache~\cite{sim2023xcache} provides distributed file caching across
+global collaborations through locality-aware placement.
 
-In contrast to these approaches, this thesis implements deterministic,
-hash-based caching specifically designed for cross-validation experiments,
-where cache validity depends on both configuration parameters and fold identity.
+In contrast to these domain-specific approaches, this thesis implements
+deterministic, hash-based caching for cross-validation experiments where
+validity depends on configuration and fold identity.
 
 \subsection{Reproducibility Considerations}
 
