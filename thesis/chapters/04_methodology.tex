@@ -942,7 +942,9 @@ Random Forest (128-fold LOSO).}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
-\caption{Cache efficiency: cold start vs.\ warm run times across configurations.}
+\caption{Cache efficiency scatter: cache size per fold (MB, log scale) vs.\ time
+saved per fold (seconds, log scale). Points above the dashed viability boundary
+save more compute time than they cost in storage I/O.}
 \label{fig:cache_efficiency}
 \end{figure}
 
@@ -1009,8 +1011,9 @@ the viability spectrum.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig4b_viability_scatter.pdf}
-\caption{Cache viability across 15 model types. Speedup vs.\ cache size per fold.
-Models above the viability threshold (dashed line) are classified as cache-viable.}
+\caption{Cache viability across 15 model types, ranked by MB per second of
+compute saved (lower = more efficient). Green bars are cache-viable; red bars
+are not viable because loading time approaches retraining time.}
 \label{fig:viability_scatter}
 \end{figure}
 

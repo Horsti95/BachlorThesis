@@ -34,19 +34,20 @@ generation remains unaddressed in the literature.
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
+\textbf{Working Draft Note --- Section 3.1 only has 2 academic papers.}
 
-TODO Lennart: Only 2 papers (Krishna 2025, Schubotz 2022) are currently cited
-in this section. Find and add 3--5 more ML caching papers. Look for:
+Option A (find papers): Search for 2--3 papers on:
 \begin{itemize}
-\item Pipeline caching in ML workflows (e.g., papers on DVC internals,
-      ZenML caching design, or MLflow artifact management)
-\item Experiment result reuse and memoization in scientific computing
-\item Computational artifact management for iterative ML
-\item Content-addressable storage for ML pipelines
+\item ``computational reproducibility caching'' or ``memoization scientific computing''
+\item Samuel et al.\ (2020) on ML pipeline provenance~\cite{samuel2020provenance}
+      may already fit --- add it here to reach 3 papers.
 \end{itemize}
-Search terms: ``ML experiment caching'', ``pipeline artifact reuse'',
-``memoization machine learning'', ``computational reproducibility caching''.
+Option B (reframe without new papers): Add a paragraph explicitly connecting
+to the adjacent-domain caching reviewed in Chapter~2 (Section~2.3 --- LLM
+inference caching, HEP data caching, learned caching). Frame these as evidence
+that content-addressed caching is a validated engineering pattern across
+computational domains, making the absence of a validated LOSO-specific approach
+the research gap this thesis fills. This requires no new sources.
 \end{minipage}}
 \end{center}
 
@@ -60,9 +61,10 @@ caching but are agnostic to the internal structure of cross-validation. While th
 
 \begin{itemize}
 \item \textbf{MLflow:} Provides experiment tracking, model registry, and
-      basic result caching~\cite{zaharia2018mlflow}. Pipeline caching requires
-      the MLflow Recipes module, which caches individual steps but does not
-      natively encode fold assignments in cache keys.
+      artifact logging~\cite{zaharia2018mlflow}. While pipeline caching is
+      available through extension modules, standard MLflow workflows are
+      not documented to encode fold assignments in cache keys, requiring
+      custom implementation for LOSO scenarios.
 
 \item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable
       pipeline stage reuse~\cite{dvc_pipelines}. While DVC can cache
@@ -70,7 +72,7 @@ caching but are agnostic to the internal structure of cross-validation. While th
       definition to parameterise fold indices---a process not documented in
       standard DVC workflows.
 
-\item \textbf{ZenML~\cite{zenml2024docs}:} Implements hash-based step caching
+\item \textbf{ZenML:} Implements hash-based step caching
       with automatic invalidation when inputs or code change. However,
       ZenML's caching abstractions do not provide explicit support for
       encoding held-out subject identifiers, requiring users to implement

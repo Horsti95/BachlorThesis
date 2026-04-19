@@ -28,8 +28,8 @@ This thesis addresses three interconnected challenges in managing these LOSO wor
 \item \textbf{Redundant Computation Across Experimental Iterations:}
 ML experimentation requires repeatedly modifying specific components
 (hyperparameters, feature subsets, model architectures) while keeping others
-constant. Existing MLOps tools such as DVC~\cite{dvc_pipelines} and
-ZenML~\cite{zenml2024docs} provide hierarchical pipeline caching, where downstream changes do not
+constant. Commercial MLOps tools such as DVC~\cite{dvc_pipelines} and ZenML provide
+hierarchical pipeline caching, where downstream changes do not
 invalidate upstream artifacts. However, adapting these tools to LOSO workflows
 requires explicit parameterisation of the held-out subject and careful cache
 key design, a process that is neither standardised nor validated in existing
