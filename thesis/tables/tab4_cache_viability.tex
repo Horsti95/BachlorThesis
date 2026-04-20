@@ -1,27 +1,26 @@
-\begin{table}[ht]
-\centering
-\caption[Cache viability across 15 model architectures]{Cache viability analysis across 15 model architectures (128 subjects, 5-fold LOSO, RTX~5090). Benchmarked using cold starts vs.\ warm artifact retrieval.}
+\begin{table}
+\caption{Cache viability across 15 model types (128 subjects, 5 LOSO folds, RTX 5090 machine).}
 \label{tab:cache_viability}
-\small
-\begin{tabular}{rlrlrrrccl}
+\begin{tabular}{rlllrrrrccl}
 \toprule
-Rank & Model & Category & Cold (s) & Warm (s) & Speedup & Storage (MB) & Acc. & Match & Verdict \\
+ & Model & Category & Cold/fold (s) & Warm/fold (s) & Speedup & Cache/fold (MB) & Accuracy & Match & Verdict \\
+# &  &  &  &  &  &  &  &  &  \\
 \midrule
-1  & Gradient Boosting   & Boosting  & 1{,}707.8 & 0.095  & $18{,}030\times$ & 0.40  & 0.810 & Yes & VIABLE   \\
-2  & AdaBoost            & Boosting  &   194.4   & 0.074  & $2{,}616\times$  & 0.02  & 0.656 & Yes & VIABLE   \\
-3  & SVM (Linear)        & SVM       &   514.6   & 0.264  & $1{,}950\times$  & 0.01  & 0.751 & Yes & VIABLE   \\
-4  & Decision Tree       & Tree      &    25.7   & 0.057  & $453\times$      & 0.46  & 0.684 & Yes & VIABLE   \\
-5  & CatBoost            & Boosting  &    18.6   & 0.113  & $165\times$      & 0.52  & 0.734 & Yes & VIABLE   \\
-6  & SVM (RBF)           & SVM       & 1{,}422.8 & 10.307 & $138\times$      & 62.0  & 0.711 & Yes & VIABLE   \\
-7  & XGBoost             & Boosting  &    20.0   & 0.169  & $118\times$      & 1.51  & 0.836 & Yes & VIABLE   \\
-8  & LightGBM            & Boosting  &    12.5   & 0.139  & $90\times$       & 1.57  & 0.801 & Yes & VIABLE   \\
-9  & Logistic Regression & Linear    &    17.6   & 0.243  & $73\times$       & 0.01  & 0.678 & Yes & VIABLE   \\
-10 & Random Forest       & Ensemble  &    38.4   & 2.653  & $14\times$       & 130.8 & 0.797 & Yes & LOW EFF. \\
-11 & Naive Bayes         & Prob.     &     0.3   & 0.058  & $5\times$        & 0.01  & 0.443 & Yes & VIABLE   \\
-12 & k-NN ($k=5$)        & Distance  &     5.2   & 1.035  & $5\times$        & 117.5 & 0.763 & Yes & LOW EFF. \\
-13 & k-NN ($k=10$)       & Distance  &     4.9   & 0.992  & $5\times$        & 117.5 & 0.776 & Yes & LOW EFF. \\
-14 & Extra Trees         & Ensemble  &    19.6   & 4.585  & $4\times$        & 308.8 & 0.792 & Yes & LOW EFF. \\
-15 & Ridge Classifier    & Linear    &     0.5   & 0.242  & $2\times$        & 0.01  & 0.618 & Yes & VIABLE   \\
+1 & gradient_boosting & boosting & 1707.83 & 0.095 & 18030x & 0.40 & 0.810 & True & VIABLE \\
+2 & adaboost & boosting & 194.38 & 0.074 & 2616x & 0.02 & 0.656 & True & VIABLE \\
+3 & svm_linear & svm & 514.58 & 0.264 & 1950x & 0.01 & 0.751 & True & VIABLE \\
+4 & decision_tree & tree & 25.70 & 0.057 & 453x & 0.46 & 0.684 & True & VIABLE \\
+5 & catboost & boosting & 18.58 & 0.113 & 165x & 0.52 & 0.734 & True & VIABLE \\
+6 & svm_rbf & svm & 1422.83 & 10.307 & 138x & 61.99 & 0.711 & True & VIABLE \\
+7 & xgboost & boosting & 19.98 & 0.169 & 118x & 1.51 & 0.836 & True & VIABLE \\
+8 & lightgbm & boosting & 12.54 & 0.139 & 90x & 1.57 & 0.801 & True & VIABLE \\
+9 & logistic_regression & linear & 17.62 & 0.243 & 73x & 0.01 & 0.678 & True & VIABLE \\
+10 & random_forest & tree_ensemble & 38.43 & 2.653 & 14x & 130.79 & 0.797 & True & NOT_VIABLE \\
+11 & naive_bayes & probabilistic & 0.29 & 0.058 & 5x & 0.01 & 0.443 & True & VIABLE \\
+12 & knn_5 & distance & 5.16 & 1.035 & 5x & 117.51 & 0.763 & True & NOT_VIABLE \\
+13 & knn_10 & distance & 4.88 & 0.992 & 5x & 117.51 & 0.776 & True & NOT_VIABLE \\
+14 & extra_trees & tree_ensemble & 19.55 & 4.585 & 4x & 308.82 & 0.792 & True & NOT_VIABLE \\
+15 & ridge_classifier & linear & 0.50 & 0.242 & 2x & 0.01 & 0.618 & True & VIABLE \\
 \bottomrule
 \end{tabular}
 \end{table}
