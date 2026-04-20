@@ -362,7 +362,7 @@ Mutual Information  & 3.74  & 80.58\% \\
 \end{tabular}
 \end{table}
 
-\textbf{Implementation Note:} Feature selection is performed \textbf{globally} (not per-fold) to enable consistent cache fingerprinting. This design choice prioritizes caching efficiency while accepting minimal impact on cross-validation purity. The Stage 2 cache stores all 149 features, and selection parameters only affect the final model training step.
+\textbf{Implementation Note:} Feature selection is performed \textbf{globally} (not per-fold) to enable a stable cache fingerprint across all LOSO folds. An empirical benchmark confirmed this choice incurs negligible accuracy loss ($\leq 1.1\%$, no consistent direction) while preserving the full warm-run speedup advantage of the caching framework (see Section~\ref{sec:experiment_setup} and Figure~\ref{fig:global_vs_perfold}).
 
 \subsection{Feature Extraction Optimization}
 
@@ -1251,19 +1251,38 @@ cost-effective compared to full recomputation.}
 \label{fig:crossover}
 \end{figure}
 
-Table~\ref{tab:global_vs_fold} presents the analogous tradeoff for feature
-selection strategy --- global selection versus per-fold selection.
+Table~\ref{tab:global_vs_fold} presents the empirical tradeoff for feature
+selection strategy --- global selection versus per-fold selection, measured
+across $N \in \{3, 5, 10, 20\}$ subjects with both XGBoost and Random Forest.
 
 \input{tables/tab8_global_vs_fold}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_global_vs_perfold.pdf}
+\caption{Global vs.\ per-fold ANOVA: accuracy difference (left) and warm-run
+  speedup (right) across subject counts. The accuracy difference is negligible
+  ($\leq 1.1\%$, no consistent direction). The warm-run speedup advantage of
+  global scope is substantial for XGBoost: at $N=20$ it retains 22.9$\times$
+  speedup vs.\ only 4.4$\times$ for per-fold, because per-fold selection must
+  re-run once per fold even on cache hits.}
+\label{fig:global_vs_perfold}
+\end{figure}
+
 Global feature selection (used in this thesis) introduces minor label leakage
-but enables a consistent fingerprint across all folds, simplifying cache key
-design. The leakage mechanism is structural: with 128 subjects, each LOSO fold
-holds out 1 subject whose labels nonetheless contributed to the global feature
-ranking, representing $1/128 \approx 0.8\%$ of the selection data. The
-empirical consequence is a negligible 0.3--0.8\% accuracy advantage for global
-over per-fold selection (Table~\ref{tab:global_vs_fold}), making global
-selection the pragmatic choice for caching-oriented workflows.
+but enables a stable fingerprint across all folds. The leakage mechanism is
+structural: with 128 subjects, each LOSO fold holds out 1 subject whose labels
+nonetheless contributed to the global feature ranking, representing
+$1/128 \approx 0.8\%$ of the selection data. An empirical benchmark
+(Figure~\ref{fig:global_vs_perfold}) measured this effect directly: the
+mean accuracy difference across all configurations and subject counts is
+$\pm 0.4\%$ with a maximum of $1.1\%$, and the direction is inconsistent
+(per-fold occasionally outperforms global, confirming the effect is noise not
+bias). The warm-run speedup benefit of global scope is more significant: XGBoost
+retains its full 14--23$\times$ warm speedup, whereas per-fold scope degrades to
+4--9$\times$ because feature selection re-runs for every fold even on cache
+hits. Global selection is therefore the pragmatic choice for caching-oriented
+workflows.
 
 \subsection{Limitations}
 
@@ -1273,9 +1292,12 @@ selection the pragmatic choice for caching-oriented workflows.
       other EEG datasets or non-EEG domains requires further validation.
 
 \item \textbf{Global feature selection:} Feature selection is performed across
-      all subjects before LOSO splits, introducing minor information leakage
-      ($<$1\% label overlap). A strictly correct implementation would perform
-      selection within each fold, at the cost of increased complexity.
+      all subjects before LOSO splits, introducing minor label leakage
+      ($1/128 \approx 0.8\%$ of selection data per fold). An empirical benchmark
+      showed the resulting accuracy difference is $\leq 1.1\%$ with no
+      consistent direction (Section~\ref{sec:experiment_setup}). A strictly
+      correct per-fold implementation would eliminate this leakage at the cost
+      of reduced warm-run cache speedup.
 
 \item \textbf{No deep learning comparison:} The framework was evaluated only
       on traditional ML models. Deep learning models (e.g., U-Sleep, CNNs)

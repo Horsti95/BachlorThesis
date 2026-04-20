@@ -1,24 +1,25 @@
 % Global vs. Fold-Specific Feature Selection Tradeoff
-% Include this in the Discussion chapter.
-%
-% Data source: ANOVA benchmark (10 subjects), thesis design decision
+% Data source: benchmark_global_vs_perfold.py
+%   N={3,5,10,20} subjects × XGBoost + RF × 3 corr thresholds, top-k=50
 %
 \begin{table}[h]
 \centering
-\caption{Global vs.\ fold-specific feature selection tradeoff.
-         Global selection fits once on all data (minor leakage);
-         fold-specific fits per fold (correct but slower).}
+\caption{Global vs.\ fold-specific ANOVA feature selection: empirical comparison
+         across subject counts (XGBoost and Random Forest, top-$k=50$, 3 correlation
+         thresholds each).}
 \label{tab:global_vs_fold}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Aspect} & \textbf{Global} & \textbf{Fold-Specific} \\
 \midrule
-Selection fitted on    & All subjects        & Training fold only \\
-Data leakage           & Minor ($<$1\%)      & None \\
-Accuracy difference    & $+$0.3--0.8\%       & Baseline \\
-Runtime (128 folds)    & 1$\times$ (single fit) & 128$\times$ (per fold) \\
-Cache compatibility    & Excellent (one fingerprint) & Complex (per-fold keys) \\
-Thesis choice          & \checkmark           & --- \\
+Selection fitted on        & All subjects (once)         & Training fold only \\
+Data leakage               & Minor ($<$0.01 of data)     & None \\
+Accuracy difference        & $\pm$0.4\% mean, $\leq$1.1\% max & Baseline \\
+XGBoost warm speedup       & 14--23$\times$              & 4--9$\times$ \\
+Random Forest warm speedup & 3--5$\times$                & 2.5--2.8$\times$ \\
+Speedup degrades with $N$? & No (fingerprint stable)     & Yes (re-select per fold) \\
+Cache key complexity       & One key per config          & One key per fold \\
+Thesis choice              & \checkmark                  & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
