@@ -138,38 +138,65 @@ test whether the fingerprint-based caching approach generalises to
 gradient-based optimisers with non-deterministic training dynamics.
 
 \subsection{Lazy Per-Fold Feature Selection Cache}
+\label{sec:future_work}
 
 The global ANOVA feature selection used in this thesis introduces minor
-information leakage: with 128 subjects, each LOSO fold's held-out subject
-contributes $1/128 \approx 0.8\%$ of the data used to fit the global
-feature ranking. A scientifically correct implementation would fit ANOVA
-independently within each fold, on the 127 training subjects only.
-Na\"ively, this requires re-running feature selection on every warm run
-before the cache key can even be computed, increasing warm time from
-$\sim$7~s to $\sim$75~s and reducing the XGBoost speedup from
-$498\times$ to $\sim$49$\times$.
+information leakage: each LOSO fold's held-out subject contributes
+$1/128 \approx 0.8\%$ of the data used to fit the global feature ranking.
+A scientifically correct implementation would fit ANOVA independently within
+each fold on the 127 training subjects only.
+Na\"ively, this requires re-running ANOVA on every warm run before the cache
+key can even be computed --- because the current fingerprint includes the
+selected feature names, which are only known \emph{after} ANOVA has run.
+Our benchmark (Figure~\ref{fig:global_vs_perfold}) quantifies the consequence:
+without a fix, the XGBoost warm-run speedup degrades from 22.9$\times$
+(global) to 4.4$\times$ (na\"ive per-fold) at $N=20$ subjects, because ANOVA
+re-runs 20 times even on a full cache hit.
 
 A \textit{lazy selection cache} resolves this without any accuracy cost.
-ANOVA (\texttt{f\_classif}) is a fully deterministic computation: given
-the same 127 training subjects and the same selection parameters, it
-always produces the same ranked feature list. Its result can therefore
-be memoized in a lightweight selection registry:
+ANOVA (\texttt{f\_classif}) is a fully deterministic computation: given the
+same training subjects and selection parameters, it always produces the same
+ranked feature list. Two implementation variants are conceivable.
 
-\begin{enumerate}
-\item \textbf{Cold run:} Fit ANOVA per fold, store the sorted selected
-      feature names in a registry keyed by
-      $\text{SHA-256}(\textit{corr} + \textit{top\_k} + \textit{subject\_i})$.
-\item \textbf{Warm run:} Look up the registry ($\sim$1~ms), retrieve the
-      stored feature list, compute the full model fingerprint, and load
-      the cached model.
-\end{enumerate}
+\textbf{Version A --- Determinism-based key (recommended).}
+Remove the selected feature names from the model-cache fingerprint and
+introduce a lightweight \emph{selection registry} keyed solely by experiment
+configuration and fold identity:
+%
+\begin{equation*}
+  k_{\text{sel}} = \text{SHA-256}\!\left(
+    \textit{corr} \;\Vert\; \textit{top\_k} \;\Vert\; \textit{method}
+    \;\Vert\; \textit{held\_out\_subject}
+  \right)
+\end{equation*}
+%
+On a cold run, ANOVA is fitted, and the sorted selected feature names are
+stored under $k_{\text{sel}}$.
+On a warm run, the registry is queried first (${\sim}1$~ms); if found, the
+feature list is retrieved, the full model fingerprint is assembled, and the
+cached model is loaded --- \emph{without running ANOVA at all}.
+This restores warm-run time to ${\approx}7$~s (registry lookup + model load),
+matching current global-selection performance.
+The cold-run overhead is $128 \times 22~\text{ms} \approx 2.8~\text{s}$.
+Version A is the preferred design for an immutable dataset such as BOAS:
+the held-out subject uniquely identifies the training fold, and because the
+dataset is frozen, the same key always maps to the same training data.
 
-Warm-run time returns to approximately 7~s (registry lookup $+$ model
-load), matching current global-selection performance. The cold run
-increases by only $128 \times 22~\text{ms} \approx 2.8~\text{s}$ (one
-ANOVA fit per fold). This extension would eliminate the $0.8\%$ leakage
-limitation identified in Section~\ref{sec:discussion} by construction,
-without sacrificing the speedup that makes the framework practical.
+\textbf{Version B --- Data-aware key.}
+Add an explicit training-set fingerprint to $k_{\text{sel}}$, for example a
+hash of the sorted training subject IDs or a checksum of the feature matrix.
+This makes the registry entry unambiguously bound to a specific data snapshot
+and protects against stale cache hits if subjects are later removed,
+preprocessing changes, or fold construction is modified.
+Version B is the safer long-term design for evolving datasets or shared
+multi-user caches, but adds hashing overhead and is unnecessary for the static
+BOAS benchmark setting.
+
+In summary, a global-scope fast-screening run (current design) and a per-fold
+final-reporting run (Version A registry) can coexist in the same framework:
+the global run uses a single fingerprint shared by all folds; the per-fold run
+adds one registry lookup per fold and eliminates the residual $0.8\%$ leakage
+by construction.
 
 \subsection{Two-Tier RAM+Disk Caching}
 
