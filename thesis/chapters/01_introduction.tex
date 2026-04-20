@@ -1,6 +1,30 @@
 
 \chapter{Introduction}
 
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Global Pre-Submission Formatting Checklist (remove before final):}
+\begin{itemize}
+  \item \textbf{Dashes:} Search for lone \texttt{-} used as a dash (should be
+        \texttt{--} for ranges and \texttt{---} for em-dashes). Also check
+        \texttt{--} used where \texttt{---} is needed (sentence breaks,
+        parenthetical clauses).
+  \item \textbf{Bold (\texttt{\textbackslash textbf}):} Confirm every bold
+        instance is a defined term, table header, or finding label.
+        Remove decorative bold from running prose.
+  \item \textbf{Italic (\texttt{\textbackslash textit} / \texttt{\textbackslash emph}):}
+        Italics are for first-use technical terms and titles only.
+        Remove italic emphasis used for rhetorical stress.
+  \item \textbf{Yellow boxes:} Remove all \texttt{Working Draft Note} boxes
+        before submission.
+  \item \textbf{Figures missing:} \texttt{fig\_sleep\_stage\_distribution.pdf}
+        and \texttt{fig\_confusion\_matrix.pdf} must be generated on the
+        benchmark desktop (\texttt{python generate\_missing\_figures.py}).
+\end{itemize}
+\end{minipage}}
+\end{center}
+
 \section{Introduction and Motivation}
 
 This thesis originated from a practical challenge encountered during a subject-independent sleep stage classification project. The task involved training machine learning models to automatically label 30-second EEG epochs as Wake, N1, N2, N3, or REM. While the classification performance was successful, the iteration speed proved to be a significant bottleneck.
