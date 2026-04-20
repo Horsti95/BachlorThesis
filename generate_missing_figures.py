@@ -3,15 +3,16 @@ Generate Missing Thesis Figures
 ================================
 
 Generates the confusion matrix figure (fig_confusion_matrix.pdf).
-The sleep stage distribution figure is now handled by generate_distribution_figure.py.
 
 Prerequisites:
   - Feature cache populated (128 subject_N_full.npz files)
-  - Model cache populated (warm run already executed for best XGBoost config)
+  - Optional: model cache from a previous full training run (makes this ~7s
+    instead of ~43 min via warm cache hits)
 
 Usage:
-    python generate_missing_figures.py
-    python generate_missing_figures.py --cache "C:/Users/DerHo/Desktop/BachlorThesis/results/features_cache_global"
+    python generate_missing_figures.py --cache "C:/path/to/features_cache_global"
+    python generate_missing_figures.py --cache "C:/path/to/features_cache_global" \
+                                       --model-cache "C:/path/to/model_cache"
 
 Output:
     thesis/figures/fig_confusion_matrix.pdf
@@ -44,11 +45,10 @@ BEST_CONFIG = {
 
 
 def get_subject_ids(cache_dir: Path) -> list:
-    """Extract numeric subject IDs from subject_N_full.npz filenames."""
     files = sorted(cache_dir.glob("subject_*_full.npz"))
     ids = []
     for f in files:
-        parts = f.stem.split("_")  # subject_N_full
+        parts = f.stem.split("_")
         if len(parts) >= 2 and parts[1].isdigit():
             ids.append(int(parts[1]))
     return sorted(ids)
@@ -60,7 +60,7 @@ def check_cache(cache_dir: Path) -> bool:
     return len(list(cache_dir.glob("subject_*_full.npz"))) >= 128
 
 
-def fig_confusion_matrix(cache_dir: Path) -> None:
+def fig_confusion_matrix(cache_dir: Path, model_cache_dir: Path = None) -> None:
     import tempfile
     sys.path.insert(0, str(REPO))
     from run_training import load_cached_features
@@ -86,13 +86,21 @@ def fig_confusion_matrix(cache_dir: Path) -> None:
         random_state=BEST_CONFIG["random_state"],
     )
 
+    use_model_cache = model_cache_dir is not None and model_cache_dir.exists()
+    if use_model_cache:
+        print(f"  Model cache: {model_cache_dir} (warm run, ~7s)")
+    else:
+        print("  No model cache — cold run (~43 min). Pass --model-cache to speed up.")
+
     with tempfile.TemporaryDirectory() as tmp:
         pipeline = TrainingPipeline(
             features_df, labels, subject_id_array,
             output_dir=Path(tmp),
+            model_cache_dir=str(model_cache_dir) if use_model_cache else None,
+            enable_model_cache=use_model_cache,
         )
-        print("  Running warm-cache LOSO pipeline (~7s)...")
-        result = pipeline.run_single_config(config)
+        print("  Running LOSO pipeline...")
+        result = pipeline.run_single_config(config, show_progress=True)
 
     y_true_all, y_pred_all = [], []
     for fold_result in result.fold_results:
@@ -133,9 +141,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", default=str(DEFAULT_CACHE),
                         help="Path to features_cache_global directory")
+    parser.add_argument("--model-cache", default=None,
+                        help="Path to model cache dir from a previous training run "
+                             "(warm run ~7s instead of cold run ~43 min)")
     args = parser.parse_args()
 
     cache_dir = Path(args.cache)
+    model_cache_dir = Path(args.model_cache) if args.model_cache else None
 
     if not check_cache(cache_dir):
         print(f"ERROR: Feature cache not found or incomplete at:\n  {cache_dir}")
@@ -143,9 +155,9 @@ def main():
         print('Usage: python generate_missing_figures.py --cache "C:/path/to/features_cache_global"')
         sys.exit(1)
 
-    print(f"Using cache: {cache_dir}")
-    fig_confusion_matrix(cache_dir)
-    print("\nDone.")
+    print(f"Feature cache: {cache_dir}")
+    fig_confusion_matrix(cache_dir, model_cache_dir)
+    print("\nDone. Commit thesis/figures/fig_confusion_matrix.pdf and push.")
 
 
 if __name__ == "__main__":
