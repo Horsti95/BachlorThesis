@@ -144,23 +144,13 @@ This two-dimensional framework enables systematic evaluation of caching benefits
 
 \subsection{Dataset Overview}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} Run \texttt{python generate\_missing\_figures.py}
-on the benchmark desktop (requires populated feature cache) to produce
-\texttt{figures/fig\_sleep\_stage\_distribution.pdf}.
-\end{minipage}   }
-\end{center}
-
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig_sleep_stage_distribution.pdf}
 \caption[Sleep stage distribution across all 128 BOAS subjects]{Sleep stage
-epoch distribution across all 128 BOAS subjects. N1 is substantially
-underrepresented relative to N2, reflecting the natural structure of healthy
-adult sleep and explaining the lower per-class F1 for N1 in classification
-results.}
+epoch distribution across all 128 BOAS subjects (119,759 epochs total).
+N2 dominates at 60.3\% and N1 is severely underrepresented at 3.7\%,
+reflecting the natural structure of healthy adult sleep.}
 \label{fig:sleep_distribution}
 \end{figure}
 
@@ -196,9 +186,60 @@ Labeling Process & 4-Expert Consensus (128 nights) \\
 \subsection{Dataset Selection Justification}
 Unlike older datasets, BOAS provides a consensus label derived from three independent experts and a fourth senior arbitrator \cite{esparza2026automatic}, reducing the impact of inter-scorer variability on model training.
 
-\subsection{Expected Class Distribution}
+\subsection{Class Distribution and LOSO Justification}
 
-Sleep stage classification exhibits inherent class imbalance, with N1 (light sleep) typically underrepresented. Based on literature and analysis of the BOAS dataset, the distribution is approximately: Wake (15--20\%), N1 (5--10\%), N2 (45--50\%), N3 (15--20\%), REM (15--20\%). This imbalance was addressed through macro-averaged metrics in the evaluation.
+Table~\ref{tab:stage_distribution} reports the exact epoch counts across the
+full 128-subject dataset. N2 dominates at 60.3\% while N1 is severely
+underrepresented at 3.7\%---nearly 16$\times$ less frequent than N2.
+This imbalance motivates the use of macro-averaged F1 as the primary
+classification metric, giving equal weight to each stage regardless of
+frequency.
+
+\begin{table}[htbp]
+\centering
+\caption{Sleep stage epoch distribution across the full BOAS dataset
+(128 subjects, 119,759 epochs).}
+\label{tab:stage_distribution}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Sleep Stage} & \textbf{Epochs} & \textbf{Share} \\
+\midrule
+Wake (W) & 19,137 & 16.0\% \\
+N1       &  4,462 &  3.7\% \\
+N2       & 72,181 & 60.3\% \\
+N3       &  5,225 &  4.4\% \\
+REM      & 18,754 & 15.7\% \\
+\midrule
+\textbf{Total} & \textbf{119,759} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The aggregate distribution masks substantial inter-subject variability.
+Figure~\ref{fig:subject_variation} shows four subjects selected as extreme
+cases from the full 128-subject pool: sub-114 spends 80\% of recorded time
+in N2 with no N3 epochs at all; sub-34 is awake for over half of the
+recording (51.5\% Wake); sub-2 has an unusually high N3 fraction (22.6\%);
+and sub-119 has the highest REM fraction in the dataset (25.2\%).
+A model trained on sub-114 would never observe N3 training examples
+and would generalise poorly to sub-2; conversely, a model trained
+predominantly on Wake-heavy subjects would be poorly calibrated for
+subjects with near-zero Wake epochs.
+This variability is precisely why Leave-One-Subject-Out cross-validation
+is required: each subject must serve as the held-out test set at least
+once, so that evaluation is never contaminated by the subject-specific
+distribution the model was trained on.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/fig_subject_variation.pdf}
+\caption[Inter-subject variability in sleep stage distribution]{Sleep stage
+distribution for four extreme subjects selected from the BOAS dataset.
+Dashed lines indicate the dataset-wide average per stage.
+The pronounced differences across subjects motivate Leave-One-Subject-Out
+evaluation: no single subject's distribution is representative of the pool.}
+\label{fig:subject_variation}
+\end{figure}
 
 
 \section{Data Validation and Integrity Verification}
