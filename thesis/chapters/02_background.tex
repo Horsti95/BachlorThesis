@@ -1,14 +1,18 @@
 
 \chapter{Background}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Lenghth goal 8 pages currently reached  including yellow to does
-\end{minipage}}
-\end{center}
+This chapter provides the background necessary to understand and evaluate
+the fingerprint-based LOSO caching framework. It is organised around three
+pillars: Sections~\ref{sec:mlresearch}--\ref{sec:fingerprinting} establish
+the ML research context, computational bottlenecks, and caching technologies
+the framework builds upon; Sections~\ref{sec:sleep_medicine}--\ref{sec:eeg_processing}
+introduce the sleep medicine domain and EEG signal processing that define
+the validation scenario; and Section~\ref{sec:ensemble_methods} describes
+the two ensemble classifiers whose contrasting serialization characteristics
+are central to the caching viability analysis.
+
 \section{Domain: Machine Learning Research Methodology}
+\label{sec:mlresearch}
 The landscape of Machine Learning (ML) research and development is
 characterized by rapid iteration and experimentation. According to the
 AI Index Report 2023, AI-related publications have more than doubled since
@@ -116,6 +120,7 @@ While caching can help, traditional research in cache management—such as the M
 This thesis addresses these inefficiencies through a deterministic, fingerprint-based caching framework. By encoding complete experiment configurations (including cross-validation fold identity) into cryptographic SHA-256 cache keys, the framework enables automatic result reuse that is mathematically tied to the scientific parameters, ensuring both efficiency and reproducibility.
 
 \section{Technology: Configuration Fingerprinting and Caching}
+\label{sec:fingerprinting}
 
 Efficient ML experimentation depends on configuration management and intelligent
 result reuse. This section reviews technologies directly relevant to the
@@ -154,7 +159,7 @@ This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}. When applied to LOSO cross-validation, this approach additionally enables partial pipeline recovery: if a 128-fold experiment is interrupted, the framework can resume from the exact point of failure by loading cached results for all previously completed folds---a capability that remains cumbersome to implement in standard, coarse-grained pipeline tools.
 
-In the context of Google's MLOps maturity model~\cite{googlemlops2023}, hash-based caching is a core component for progressing from Level~0 (manual processes) to an automated pipeline. It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability} and \textit{continuous training}: only through unique configuration fingerprints can the exact data and code versions that produced a specific artifact be identified with certainty.
+In the context of Google's MLOps maturity model~\cite{googlemlops2023}, hash-based caching is a core component for progressing from Level~0 (manual processes) to an automated pipeline. It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability} and \textit{continuous training}: only through unique configuration fingerprints can the exact data and code versions that produced a specific artifact be identified with certainty. Fingerprinting addresses the controllable sources of irreproducibility---seeds, hyperparameters, data splits, software versions---while for the CPU-based sklearn and XGBoost models used in this thesis (fixed \texttt{random\_state=42}), deterministic outputs are guaranteed by construction.
 
 \subsection{Related Caching Approaches}
 
@@ -181,36 +186,15 @@ In contrast to these domain-specific approaches, this thesis implements
 deterministic, hash-based caching for cross-validation experiments where
 validity depends on configuration and fold identity.
 
-\subsection{Reproducibility Considerations}
-
-Despite fingerprinting, perfect reproducibility remains challenging. Sources
-of non-determinism include random seed variation, software version differences,
-hardware-specific floating-point operations, and non-deterministic GPU
-algorithms~\cite{raste2022quantifying,nvidia2024cudnn}.
-
-Bouthillier et al.\ (2021) demonstrate that variance from data sampling,
-parameter initialization, and hyperparameter choice markedly impacts benchmark
-results across deep learning architectures, and that these sources of variation
-are routinely underestimated in published
-comparisons~\cite{bouthillier2021variance}. Raste et al.\ (2022) quantify
-inherent randomness specifically in tree-based methods (Random Forests, GBMs)
-and Feedforward Neural Networks, finding that variation from data splitting
-exceeds variation from model training, while FFNNs exhibit the largest
-training-induced variance~\cite{raste2022quantifying}. NVIDIA's cuDNN
-documentation explicitly states that certain GPU reduction operations use
-atomic operations that introduce non-deterministic floating-point rounding
-errors~\cite{nvidia2024cudnn}.
-
-Configuration fingerprinting addresses the controllable factors (seeds,
-hyperparameters, data splits, software versions) while accepting
-hardware-induced variance as irreducible. For caching purposes, cached
-results are considered valid if fingerprints match, with the understanding
-that minor numerical differences may occur when reproducing results across
-different hardware environments.
-
 % ============================================================================
 \section{Sleep Medicine Fundamentals}
 \label{sec:sleep_medicine}
+
+The caching framework is domain-agnostic, but its validation in this thesis
+is grounded in a specific application: automatic sleep stage classification
+from EEG signals. The following sections introduce the sleep medicine domain
+and EEG signal processing concepts that define the data, labels, and
+feature space used in the experiments.
 % ============================================================================
 
 

@@ -137,6 +137,40 @@ a dedicated GPU available, evaluating the FNN across all 18 configurations and
 test whether the fingerprint-based caching approach generalises to
 gradient-based optimisers with non-deterministic training dynamics.
 
+\subsection{Lazy Per-Fold Feature Selection Cache}
+
+The global ANOVA feature selection used in this thesis introduces minor
+information leakage: with 128 subjects, each LOSO fold's held-out subject
+contributes $1/128 \approx 0.8\%$ of the data used to fit the global
+feature ranking. A scientifically correct implementation would fit ANOVA
+independently within each fold, on the 127 training subjects only.
+Na\"ively, this requires re-running feature selection on every warm run
+before the cache key can even be computed, increasing warm time from
+$\sim$7~s to $\sim$75~s and reducing the XGBoost speedup from
+$498\times$ to $\sim$49$\times$.
+
+A \textit{lazy selection cache} resolves this without any accuracy cost.
+ANOVA (\texttt{f\_classif}) is a fully deterministic computation: given
+the same 127 training subjects and the same selection parameters, it
+always produces the same ranked feature list. Its result can therefore
+be memoized in a lightweight selection registry:
+
+\begin{enumerate}
+\item \textbf{Cold run:} Fit ANOVA per fold, store the sorted selected
+      feature names in a registry keyed by
+      $\text{SHA-256}(\textit{corr} + \textit{top\_k} + \textit{subject\_i})$.
+\item \textbf{Warm run:} Look up the registry ($\sim$1~ms), retrieve the
+      stored feature list, compute the full model fingerprint, and load
+      the cached model.
+\end{enumerate}
+
+Warm-run time returns to approximately 7~s (registry lookup $+$ model
+load), matching current global-selection performance. The cold run
+increases by only $128 \times 22~\text{ms} \approx 2.8~\text{s}$ (one
+ANOVA fit per fold). This extension would eliminate the $0.8\%$ leakage
+limitation identified in Section~\ref{sec:discussion} by construction,
+without sacrificing the speedup that makes the framework practical.
+
 \subsection{Two-Tier RAM+Disk Caching}
 
 The current implementation uses a single-tier disk-based cache. For interactive
