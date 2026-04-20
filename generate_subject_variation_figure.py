@@ -27,8 +27,9 @@ FIG_DIR = REPO / "thesis" / "figures"
 # Default data location — override with --data argument
 DEFAULT_DATA = Path(r"C:\Users\DerHo\Desktop\Data")
 
-STAGES    = ["Wake", "N1",   "N2",    "N3",    "REM"]
-COLORS    = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#76b7b2"]
+STAGES         = ["Wake", "N1",   "N2",    "N3",    "REM"]
+COLORS         = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#76b7b2"]
+SUBJECT_COLORS = ["#e15759", "#4e79a7", "#f28e2b", "#59a14f"]  # one per subject
 LABEL_MAP = {0: "Wake", 1: "N1", 2: "N2", 3: "N3", 4: "REM"}
 VALID     = set(LABEL_MAP.keys())   # excludes 8=Disconnection, -2=Artifact
 
@@ -117,7 +118,7 @@ def generate_figure(rows: list) -> None:
         vals = [dist.get(s, 0.0) for s in STAGES]
         ax.bar(x + offsets[i], vals, width,
                label=f"{sid} ({profile})",
-               color=COLORS, alpha=0.82,
+               color=SUBJECT_COLORS[i], alpha=0.82,
                edgecolor="black", linewidth=0.5)
 
     # Dataset average as dashed reference lines
