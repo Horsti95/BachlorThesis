@@ -96,7 +96,7 @@ def fig_confusion_matrix(cache_dir: Path) -> None:
 
     y_true_all, y_pred_all = [], []
     for fold_result in result.fold_results:
-        y_true_all.extend(fold_result.y_test.tolist())
+        y_true_all.extend(fold_result.y_true.tolist())
         y_pred_all.extend(fold_result.y_pred.tolist())
 
     cm      = confusion_matrix(y_true_all, y_pred_all)

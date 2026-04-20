@@ -416,26 +416,19 @@ The combined optimizations (process-based parallelization on 8 cores + Numba-acc
 \section{Caching Framework Implementation}
 \label{sec:caching}
 
-Figure~\ref{fig:pipeline_architecture} illustrates the overall architecture of
-the fingerprint-based caching framework, showing the two-layer cache hierarchy
-and the decision flow from configuration input to cached or freshly computed
-output.
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} Figure~\ref{fig:pipeline_architecture} below
-(\texttt{ml\_framework\_architecture.pdf}) is an early draft and does not yet
-reflect the final two-layer cache design (Layer~1: feature cache; Layer~2:
-fingerprint-keyed model cache). Replace before submission.
-\end{minipage}}
-\end{center}
+Figure~\ref{fig:pipeline_architecture} shows the end-to-end pipeline from
+raw EEG recordings to evaluation results. The two orange blocks mark the
+two cache layers; green bypass arrows show the warm-run paths that skip
+redundant computation when cached artefacts exist.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/ml_framework_architecture.pdf}
-\caption{Overall architecture of the fingerprint-based caching framework
-showing the two-layer cache hierarchy.}
+\includegraphics[width=\textwidth]{figures/fig_pipeline_overview.pdf}
+\caption[End-to-end pipeline overview]{End-to-end fingerprint-based caching
+pipeline. Blue blocks: data and signal processing. Orange: two-tier cache
+(Layer~1 feature store, Layer~2 model cache). Pink: LOSO split and
+fingerprint generation. Green arrows indicate warm-run bypass paths;
+the full warm run completes in $\sim$7~s versus $\sim$25~min cold.}
 \label{fig:pipeline_architecture}
 \end{figure}
 
@@ -498,6 +491,19 @@ canonical = json.dumps(config.to_dict(),
 fingerprint = hashlib.sha256(canonical.encode()).hexdigest()[:32]
 cache_key = f"{fingerprint}_{held_out_subject}"
 \end{verbatim}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/fig_fingerprint_zoom.pdf}
+\caption[Fingerprint generation and cache lookup per LOSO fold]{Detailed
+view of fingerprint generation and cache lookup for one LOSO fold.
+All experiment parameters (including the held-out subject identifier)
+are assembled, serialised to canonical JSON, and hashed with SHA-256.
+The resulting 32-character key determines whether a cached model is
+loaded (warm path, $\sim$58~ms for XGBoost) or a new model is trained
+and stored (cold path).}
+\label{fig:fingerprint_zoom}
+\end{figure}
 
 \textbf{Partial cache reuse across experiment sweeps.} Configurations sharing
 identical hyperparameters and subject folds produce matching fingerprints,
