@@ -1,13 +1,5 @@
 \chapter{Related Works}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Length goal 5 Pages
-\end{minipage}}
-\end{center}
-
 This chapter reviews existing solutions for ML experiment caching and sleep
 stage classification, and identifies the specific gap this thesis addresses:
 the lack of validated best practices for caching in Leave-One-Subject-Out
@@ -17,39 +9,53 @@ the lack of validated best practices for caching in Leave-One-Subject-Out
 \section{Academic Research on ML Caching}
 % ============================================================================
 
-Recent research explores the intersection of machine learning and cache management, though primarily from the perspective of \textit{ML-for-System-Optimization}. Krishna (2025) provides a comprehensive review of 'intelligent' caching techniques, including LSTM-based usage prediction and reinforcement learning for adaptive replacement policies~\cite{krishna2025cache}. These approaches focus on \textit{learned} caching decisions to improve hardware throughput.
-In contrast, the framework developed in this thesis focuses on \textit{Caching-for-ML-Workflows}. Rather than using predictive models to guess what to cache, this work employs a deterministic, content-addressed approach. This ensures that cache hits are strictly limited to identical experimental configurations—a requirement for scientific validity that the predictive models surveyed by Krishna (2025) are not designed to satisfy.
+Research at the intersection of caching and machine learning divides into two
+complementary directions: \textit{ML-for-System-Optimisation}, where learned
+models predict what to cache in hardware or CDN systems, and
+\textit{Caching-for-ML-Workflows}, where deterministic artefact stores
+accelerate scientific experiments. This thesis belongs firmly to the second
+category.
 
-In the context of reproducibility, Schubotz et al.\ (2022) demonstrate how
-caching can accelerate data science experiments while maintaining FAIR
-principles~\cite{schubotz2022caching}. Their work emphasizes content-addressable
-storage for automatic result reuse, similar to the fingerprinting approach
-used in this thesis.
+Krishna~(2025) surveys the first direction, reviewing LSTM-based usage
+prediction and reinforcement-learning replacement policies that improve hardware
+cache throughput~\cite{krishna2025cache}. These approaches optimise
+\textit{learned} decisions for hardware efficiency; they make no claim about
+scientific reproducibility and are not designed to validate that a cache hit
+corresponds to an identical experimental configuration.
+Schubotz et al.\ (2022) operate in the second direction, demonstrating how
+content-addressable storage can accelerate data-science experiments while
+maintaining FAIR~(Findable, Accessible, Interoperable, Reusable)
+principles~\cite{schubotz2022caching}. Their work establishes that
+fingerprint-based artefact reuse is a sound engineering pattern for
+reproducible research --- a foundation this thesis extends to the LOSO
+cross-validation setting.
 
-However, existing academic work on ML caching does not specifically address
-the requirements of cross-validation experiments, where cache validity depends
-on explicit encoding of data splits. The challenge of fold-aware cache key
-generation remains unaddressed in the literature.
+Two recent papers extend the scope of ML pipeline caching to AutoML and
+hyperparameter optimisation. Hirzel et al.\ (2024) show how entire pipelines
+can be trained and cross-validated on limited-memory hardware by decomposing
+computations into monoid-structured task graphs that avoid redundant
+recomputation of shared prefixes~\cite{hirzel2024pipelines}. While
+memory-efficient and compatible with standard sklearn APIs, the approach
+treats fold outputs as interchangeable: the task graph does not encode fold
+identity into cache keys, so it cannot prevent cross-fold contamination in
+LOSO settings where each fold corresponds to a structurally different training
+set.
+Essofi et al.\ (2024) address hyperparameter search cost with EEIPU, a
+memoization-aware Bayesian optimisation algorithm that caches pipeline-stage
+outputs to evaluate more configurations per GPU-day~\cite{essofi2024eeipu}.
+EEIPU exploits the fact that shared pipeline prefixes produce identical
+outputs across hyperparameter candidates. This assumption holds for i.i.d.\
+splits but breaks in LOSO cross-validation, where the training prefix differs
+by definition for each held-out subject.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note --- Section 3.1 only has 2 academic papers.}
-
-Option A (find papers): Search for 2--3 papers on:
-\begin{itemize}
-\item ``computational reproducibility caching'' or ``memoization scientific computing''
-\item Samuel et al.\ (2020) on ML pipeline provenance~\cite{samuel2020provenance}
-      may already fit --- add it here to reach 3 papers.
-\end{itemize}
-Option B (reframe without new papers): Add a paragraph explicitly connecting
-to the adjacent-domain caching reviewed in Chapter~2 (Section~2.3 --- LLM
-inference caching, HEP data caching, learned caching). Frame these as evidence
-that content-addressed caching is a validated engineering pattern across
-computational domains, making the absence of a validated LOSO-specific approach
-the research gap this thesis fills. This requires no new sources.
-\end{minipage}}
-\end{center}
+Taken together, these papers confirm that memoization is a validated
+acceleration technique for ML pipelines and hyperparameter search.
+Neither work, however, provides a validated pattern for fold-aware caching in
+LOSO scenarios. The challenge of encoding held-out subject identity into a
+deterministic cache key --- and validating cache integrity against fold
+assignments to prevent silent cross-subject contamination --- remains
+unaddressed in the cited literature. This thesis fills that gap with a
+reference implementation and empirical benchmarks on a 128-subject dataset.
 
 % ============================================================================
 \section{Commercial MLOps Tools}
@@ -67,16 +73,18 @@ caching but are agnostic to the internal structure of cross-validation. While th
       custom implementation for LOSO scenarios.
 
 \item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable
-      pipeline stage reuse~\cite{dvc_pipelines}. While DVC can cache
-      cross-validation results, it requires manual configuration of the pipeline
-      definition to parameterise fold indices---a process not documented in
-      standard DVC workflows.
+      pipeline stage reuse~\cite{dvc_pipelines}. DVC's key covers code and
+      data files but carries no fold-identity component. A cache hit therefore
+      cannot distinguish a model trained on subjects 1--127 from one trained on
+      subjects 2--128 --- the silent collision this thesis prevents by embedding
+      the held-out subject identifier directly in the SHA-256 fingerprint.
 
-\item \textbf{ZenML:} Implements hash-based step caching
-      with automatic invalidation when inputs or code change. However,
-      ZenML's caching abstractions do not provide explicit support for
-      encoding held-out subject identifiers, requiring users to implement
-      custom materializers.
+\item \textbf{ZenML:} Implements step-level SHA-256 caching with automatic
+      invalidation when inputs or code change. However, ZenML does not natively
+      encode held-out subject identifiers: users must implement custom
+      materializers to parameterise fold assignments, and the resulting keys
+      provide no integrity guarantee that training and evaluation sets are
+      correctly separated across cache hits.
 
 \item \textbf{Neptune AI and Weights \& Biases:} While these platforms excel at 
       metric visualization and experiment logging~\cite{wandb2024docs}, 
@@ -97,31 +105,23 @@ Despite the widespread adoption of CRISP-DM as the standard process model for da
 
 Table~\ref{tab:related_works_comparison} compares caching capabilities of
 existing tools relevant to this thesis.
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-TODO Lennart: Verify table contents against latest tool versions before
-final submission. DVC, ZenML, and MLflow update frequently.
-\end{minipage}}
-\end{center}
-
-
 \begin{table}[htbp]
 \centering
 \caption{Comparison of caching capabilities in MLOps tools. ``LOSO Support''
 indicates whether the tool natively encodes fold assignments in cache keys
-or requires manual configuration.}
+or requires manual configuration. ``Levels'' indicates which pipeline
+artefacts are cached. Verified against official documentation as of
+April~2026.}
 \label{tab:related_works_comparison}
-\begin{tabular}{llll}
+\begin{tabular}{lllll}
 \toprule
-\textbf{Tool/Framework} & \textbf{Caching Strategy} & \textbf{Fingerprinting} & \textbf{LOSO Support} \\
+\textbf{Tool} & \textbf{Strategy} & \textbf{Fingerprinting} & \textbf{Levels} & \textbf{LOSO Support} \\
 \midrule
-MLflow        & Step-level (optional)          & Parameter hashing          & Manual fold param. \\
-DVC           & Pipeline stage                 & MD5 (code + inputs)        & Manual pipeline \\
-ZenML         & Step-level                     & SHA-256 (inputs+code+env)  & Custom materializers \\
-Neptune / W\&B & None (tracking only)          & N/A                        & N/A \\
-\textbf{This Thesis} & \textbf{Hierarchical (feat.+models)} & \textbf{SHA-256 + subject ID} & \textbf{Native fold-aware} \\
+MLflow        & Step-level (opt.)    & Parameter hashing         & Model only        & Manual fold param. \\
+DVC           & Pipeline stage       & MD5 (code + inputs)       & Stage outputs     & Manual pipeline \\
+ZenML         & Step-level           & SHA-256 (inputs+code+env) & Step outputs      & Custom materializers \\
+Neptune/W\&B  & None (tracking)      & N/A                       & None              & N/A \\
+\textbf{This thesis} & \textbf{Hierarchical} & \textbf{SHA-256 + subject ID} & \textbf{Features + Models} & \textbf{Native} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -155,24 +155,6 @@ techniques to cross-validation contexts.
 \label{sec:related_sleep}
 % ============================================================================
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Add and find a cite
-TODO Lennart: Find additional references for this section before final submission:
-\begin{itemize}
-\item 2--3 feature-based sleep classification papers (2020--2026) beyond
-      Satapathy~(2024). Search: ``EEG feature extraction sleep staging'',
-      ``handcrafted features polysomnography classification''.
-\item 1 LOSO methodology paper for EEG/BCI (e.g., Jayaram et al.\ 2016
-      ``Transfer learning in brain-computer interfaces'' or similar).
-\item 1 class imbalance handling reference for sleep staging (N1 underrepresentation).
-      Search: ``class imbalance sleep staging'', ``macro F1 sleep classification''.
-\end{itemize}
-\end{minipage}   }
-\end{center}
-
 Sleep stage classification is a well-studied problem in biomedical signal
 processing, with methods broadly grouped into feature-based and deep learning
 approaches.
@@ -196,13 +178,18 @@ representations well-suited to fingerprint-based caching.
 
 Deep learning methods learn representations directly from raw EEG signals.
 Perslev et al.\ (2021) present U-Sleep, achieving robust cross-hardware
-staging~\cite{perslev2021usleep}. However, Siddiqui et al.\ (2025) confirm
-that deep models require ``substantially more computational resources''
-compared to traditional ensembles~\cite{siddiqui2025}, while ensemble
-classifiers remain highly competitive. Deep models typically serialise to
-hundreds of megabytes and require GPU training, making them poor candidates
-for granular fold-level caching. None of the cited deep learning papers
-address caching strategies for iterative LOSO experimentation.
+staging~\cite{perslev2021usleep}. Siddiqui et al.\ (2025) confirm that deep
+models require substantially more computational resources than traditional
+ensembles while ensemble classifiers remain highly competitive on
+standard benchmark datasets~\cite{siddiqui2025}. Deep learning workflows
+address the reuse problem through \textit{checkpointing}---saving intermediate
+training state to resume interrupted optimisation---rather than fold-level
+memoisation. Checkpointing targets a different inefficiency and does not
+prevent redundant retraining when only configuration parameters change.
+This thesis addresses the complementary gap: fold-level memoisation for
+feature-based models, where serialised representations are compact
+(1--185~MB per fold) and per-fold storage is tractable on a single
+workstation.
 
 \subsection{LOSO Evaluation in EEG Research}
 
@@ -265,3 +252,17 @@ re-running computations when only downstream parameters change. The
 framework developed in this thesis addresses this gap at the experimental
 stage, providing the infrastructure foundation that production deployment
 requires.
+
+\textbf{Configuration Debt and Technical Reproducibility:}
+The systems consequences of undisciplined experiment management are
+well-documented. Sculley et al.\ (2015) identify \textit{hidden technical
+debt} in production ML systems, specifically \textit{configuration debt},
+where undocumented parameter interactions and stale pipeline configurations
+accumulate silently and degrade reproducibility over
+time~\cite{sculley2015hidden}. Fingerprint-based caching directly addresses
+this class of debt: because every cached artefact is keyed by a cryptographic
+hash of its complete configuration, it is structurally impossible to serve a
+stale result from a superseded parameter set. In regulated deployment
+contexts---such as medical-device software subject to FDA or EU AI Act audit
+requirements---this property provides a natural audit trail, linking every
+stored model to the exact configuration that produced it.

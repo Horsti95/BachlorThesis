@@ -62,6 +62,16 @@ def ensure_dirs():
     TAB_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _fix_table(latex: str) -> str:
+    """Post-process pandas to_latex output: add [htbp] placement and \\centering."""
+    latex = latex.replace(r"\begin{table}", r"\begin{table}[htbp]")
+    latex = latex.replace(
+        "\\begin{table}[htbp]\n",
+        "\\begin{table}[htbp]\n\\centering\n",
+    )
+    return latex
+
+
 # ===================================================================
 # 1. Speedup Bar Chart — cold vs warm per model type
 # ===================================================================
@@ -135,10 +145,9 @@ def tab2_performance(show: bool):
     for f in sorted(WARM_RUN_DIR.glob("result_*.json")):
         d = json.loads(f.read_text())
         rows.append({
-            "Config": d["config_id"],
             "Model": d["config"]["model_type"],
-            "Corr": d["config"]["feature_selection"].get("correlation_threshold", "None"),
-            "Top-K": d["config"]["feature_selection"].get("top_k_features", "All"),
+            "Corr": d["config"]["feature_selection"].get("correlation_threshold"),
+            "Top-K": d["config"]["feature_selection"].get("top_k_features"),
             "Accuracy": d["accuracy_mean"],
             "Acc Std": d["accuracy_std"],
             "Kappa": d["kappa_mean"],
@@ -146,25 +155,29 @@ def tab2_performance(show: bool):
         })
 
     df = pd.DataFrame(rows).sort_values("Accuracy", ascending=False).reset_index(drop=True)
-    df.index += 1
-    df.index.name = "Rank"
 
-    # Format for display
     df_disp = df.copy()
-    df_disp["Corr"] = df_disp["Corr"].apply(lambda x: str(x) if x is not None else "None")
-    df_disp["Top-K"] = df_disp["Top-K"].apply(lambda x: str(x) if x is not None else "All")
-    df_disp["Accuracy"] = df_disp.apply(lambda r: f"{r['Accuracy']:.3f} ± {r['Acc Std']:.3f}", axis=1)
+    df_disp["\\#"] = range(1, len(df_disp) + 1)
+    df_disp["Model"] = df_disp["Model"].map(
+        {"xgboost": "XGBoost", "random_forest": "Random Forest"}).fillna(df_disp["Model"])
+    df_disp["Corr"] = df_disp["Corr"].apply(
+        lambda x: "---" if x is None or str(x) in ("None", "nan") else str(x))
+    df_disp["Top-K"] = df_disp["Top-K"].apply(
+        lambda x: "All" if x is None or str(x) in ("None", "nan") else str(int(float(x))))
+    df_disp["Accuracy"] = df_disp.apply(
+        lambda r: f"{r['Accuracy']:.3f} $\\pm$ {r['Acc Std']:.3f}", axis=1)
     df_disp["Kappa"] = df_disp["Kappa"].apply(lambda x: f"{x:.3f}")
     df_disp["F1-Macro"] = df_disp["F1-Macro"].apply(lambda x: f"{x:.3f}")
-    df_disp = df_disp[["Model", "Corr", "Top-K", "Accuracy", "Kappa", "F1-Macro"]]
+    df_disp = df_disp[["\\#", "Model", "Corr", "Top-K", "Accuracy", "Kappa", "F1-Macro"]]
 
-    # LaTeX table
     latex = df_disp.to_latex(
         caption="Classification performance of all 18 configurations (128-fold LOSO, global ANOVA selection).",
         label="tab:performance_18configs",
-        column_format="rlccrrr",
+        column_format="rlllrrr",
         escape=False,
+        index=False,
     )
+    latex = _fix_table(latex)
     (TAB_DIR / "tab2_performance_18configs.tex").write_text(latex)
     print(f"  [2/10] Saved tab2_performance_18configs.tex")
 
@@ -331,30 +344,45 @@ def fig3b_crossover(show: bool):
 # 4. Cache Viability Table — 15 models
 # ===================================================================
 def tab4_viability(show: bool):
+    _model_names = {
+        "gradient_boosting": "Gradient Boosting", "adaboost": "AdaBoost",
+        "svm_linear": "SVM Linear",  "decision_tree": "Decision Tree",
+        "catboost": "CatBoost",      "svm_rbf": "SVM RBF",
+        "xgboost": "XGBoost",        "lightgbm": "LightGBM",
+        "logistic_regression": "Logistic Reg.", "random_forest": "Random Forest",
+        "naive_bayes": "Naive Bayes", "knn_5": "kNN ($k$=5)",
+        "knn_10": "kNN ($k$=10)",    "extra_trees": "Extra Trees",
+        "ridge_classifier": "Ridge Classifier",
+    }
+    _verdicts = {"VIABLE": "Viable", "NOT_VIABLE": "Not Viable", "BORDERLINE": "Borderline"}
+
     df = pd.read_csv(VIABILITY_CSV)
     df = df.sort_values("speedup_ratio", ascending=False).reset_index(drop=True)
-    df.index += 1
-    df.index.name = "#"
 
     df_disp = df[["model_name", "category", "cold_per_fold_time_s", "warm_per_fold_time_s",
                    "speedup_ratio", "cache_size_per_fold_mb", "cold_accuracy",
                    "accuracy_match", "cache_verdict"]].copy()
     df_disp.columns = ["Model", "Category", "Cold/fold (s)", "Warm/fold (s)",
-                        "Speedup", "Cache/fold (MB)", "Accuracy",
-                        "Match", "Verdict"]
+                        "Speedup", "Cache/fold (MB)", "Accuracy", "Match", "Verdict"]
 
-    df_disp["Cold/fold (s)"] = df_disp["Cold/fold (s)"].apply(lambda x: f"{x:.2f}")
-    df_disp["Warm/fold (s)"] = df_disp["Warm/fold (s)"].apply(lambda x: f"{x:.3f}")
-    df_disp["Speedup"] = df_disp["Speedup"].apply(lambda x: f"{x:.0f}x")
+    df_disp.insert(0, "Rank", range(1, len(df_disp) + 1))
+    df_disp["Model"]        = df_disp["Model"].map(_model_names).fillna(df_disp["Model"])
+    df_disp["Cold/fold (s)"]= df_disp["Cold/fold (s)"].apply(lambda x: f"{x:.2f}")
+    df_disp["Warm/fold (s)"]= df_disp["Warm/fold (s)"].apply(lambda x: f"{x:.3f}")
+    df_disp["Speedup"]      = df_disp["Speedup"].apply(lambda x: f"${x:,.0f}\\times$")
     df_disp["Cache/fold (MB)"] = df_disp["Cache/fold (MB)"].apply(lambda x: f"{x:.2f}")
-    df_disp["Accuracy"] = df_disp["Accuracy"].apply(lambda x: f"{x:.3f}")
+    df_disp["Accuracy"]     = df_disp["Accuracy"].apply(lambda x: f"{x:.3f}")
+    df_disp["Match"]        = df_disp["Match"].map({True: r"\checkmark", False: r"$\times$"})
+    df_disp["Verdict"]      = df_disp["Verdict"].map(_verdicts).fillna(df_disp["Verdict"])
 
     latex = df_disp.to_latex(
         caption="Cache viability across 15 model types (128 subjects, 5 LOSO folds, RTX 5090 machine).",
         label="tab:cache_viability",
-        column_format="rlllrrrrccl",
+        column_format="rllrrrrrcl",
         escape=False,
+        index=False,
     )
+    latex = _fix_table(latex)
     (TAB_DIR / "tab4_cache_viability.tex").write_text(latex)
     print(f"  [4/10] Saved tab4_cache_viability.tex")
 
@@ -437,7 +465,7 @@ def tab5_fingerprint(show: bool):
         })
 
     df = pd.DataFrame(rows)
-    df["Changed"] = ["—", "subject", "corr + top\\_k", "model"]
+    df["Changed"] = ["---", "subject", "corr + top-k", "model"]
 
     latex = df.to_latex(
         index=False,
@@ -446,6 +474,7 @@ def tab5_fingerprint(show: bool):
         column_format="llllll",
         escape=False,
     )
+    latex = _fix_table(latex)
     (TAB_DIR / "tab5_fingerprint_integrity.tex").write_text(latex)
     print(f"  [5/10] Saved tab5_fingerprint_integrity.tex")
 
@@ -567,26 +596,27 @@ def fig7_feature_importance(show: bool):
 # ===================================================================
 def tab8_global_vs_fold(show: bool):
     note = r"""% Global vs. Fold-Specific Feature Selection Tradeoff
-% Include this in the Discussion chapter.
+% Data source: benchmark_global_vs_perfold.py
+%   N={3,5,10,20} subjects x XGBoost + RF x 3 corr thresholds, top-k=50
 %
-% Data source: ANOVA benchmark (10 subjects), thesis design decision
-%
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
-\caption{Global vs.\ fold-specific feature selection tradeoff.
-         Global selection fits once on all data (minor leakage);
-         fold-specific fits per fold (correct but slower).}
+\caption{Global vs.\ fold-specific ANOVA feature selection: empirical comparison
+         across subject counts (XGBoost and Random Forest, top-$k=50$, 3 correlation
+         thresholds each).}
 \label{tab:global_vs_fold}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Aspect} & \textbf{Global} & \textbf{Fold-Specific} \\
 \midrule
-Selection fitted on    & All subjects        & Training fold only \\
-Data leakage           & Minor ($<$1\%)      & None \\
-Accuracy difference    & $+$0.3--0.8\%       & Baseline \\
-Runtime (128 folds)    & 1$\times$ (single fit) & 128$\times$ (per fold) \\
-Cache compatibility    & Excellent (one fingerprint) & Complex (per-fold keys) \\
-Thesis choice          & \checkmark           & --- \\
+Selection fitted on        & All subjects (once)         & Training fold only \\
+Label leakage              & $1/128 \approx 0.8\%$       & None \\
+Accuracy difference        & $\pm 0.4\%$ mean, $\leq 1.1\%$ max & Baseline \\
+XGBoost warm speedup       & $14$--$23\times$            & $4$--$9\times$ \\
+Random Forest warm speedup & $3$--$5\times$              & $2.5$--$2.8\times$ \\
+Speedup degrades with $N$  & No (fingerprint stable)     & Yes (re-select per fold) \\
+Cache key complexity       & One key per config          & One key per fold \\
+Thesis choice              & \checkmark                  & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
