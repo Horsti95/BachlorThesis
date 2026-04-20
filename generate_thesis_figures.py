@@ -96,28 +96,28 @@ def fig1_speedup_bar(show: bool):
     bars_cold = ax.bar(x - w / 2, cold_vals, w, label="Cold (no cache)", color="#D55E00")
     bars_warm = ax.bar(x + w / 2, warm_vals, w, label="Warm (cached)", color="#0072B2")
 
-    ax.set_ylabel("Total time (minutes)")
+    ax.set_yscale("log")
+    ax.set_ylim(0.5, max(cold_vals) * 3)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}"))
+    ax.set_ylabel("Total time (minutes, log scale)")
     ax.set_title("Cache Speedup: Cold Start vs. Cached Execution (128 LOSO folds)")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.legend()
 
-    # Annotate speedup
+    # Annotate speedup above the cold bar (log scale → position near top of cold bar)
     for i, lbl in enumerate(labels):
         sp = data[lbl]["speedup"]
         ax.annotate(
-            f"{sp:.0f}x",
-            xy=(x[i] + w / 2, warm_vals[i]),
-            xytext=(0, 8),
+            f"{sp:.0f}×\nspeedup",
+            xy=(x[i] - w / 2, cold_vals[i]),
+            xytext=(0, 10),
             textcoords="offset points",
             ha="center",
             fontweight="bold",
-            fontsize=11,
+            fontsize=10,
+            color="#222222",
         )
-
-    ax.set_yscale("log")
-    ax.set_ylim(1, max(cold_vals) * 2)
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}"))
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig1_speedup_bar.pdf", bbox_inches="tight")
@@ -398,7 +398,7 @@ def fig4b_viability_scatter(show: bool):
     ax.set_xscale("log")
     ax.set_xlabel("MB per second saved (lower = more efficient cache)", fontsize=11)
     ax.set_title("Cache Viability Metric: Storage Cost per Second of Compute Saved\n"
-                 "Green = viable, Red = not viable (I/O dominates)", fontsize=11)
+                 "Blue = viable, Vermillion = not viable (I/O dominates)", fontsize=11)
     ax.legend(fontsize=9, loc="lower right")
     ax.grid(True, alpha=0.2, axis="x", which="both")
     ax.invert_yaxis()
@@ -475,7 +475,7 @@ def fig6_per_class_f1(show: bool):
     heatdata = df[stages].values
 
     fig, ax = plt.subplots(figsize=(8, 7))
-    im = ax.imshow(heatdata, cmap="RdYlGn", aspect="auto", vmin=0, vmax=1)
+    im = ax.imshow(heatdata, cmap="viridis", aspect="auto", vmin=0, vmax=1)
 
     ax.set_xticks(range(len(stages)))
     ax.set_xticklabels(stages, fontsize=11)
@@ -717,9 +717,12 @@ def fig_bonus_cache_scaling(show: bool):
                  style, color=color, label=label, linewidth=2, markersize=7)
 
     ax2.set_xlabel("Number of features", fontsize=11)
-    ax2.set_ylabel("Cold training time per fold (s)", fontsize=11)
+    ax2.set_ylabel("Cold training time per fold (s, log scale)", fontsize=11)
     ax2.set_title("Training Time vs. Feature Count", fontsize=12)
     ax2.legend(fontsize=9)
+    ax2.set_yscale("log")
+    ax2.yaxis.set_major_formatter(plt.FuncFormatter(
+        lambda v, _: f"{v:.2f}" if v < 1 else f"{v:.0f}"))
     ax2.grid(True, alpha=0.2)
     ax2.set_xticks(topk_vals)
 
@@ -778,9 +781,9 @@ def fig_bonus_cache_efficiency(show: bool):
             })
     data = pd.DataFrame(records)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    fig, ax1 = plt.subplots(1, 1, figsize=(7, 5))
 
-    # --- Left: Seconds saved per MB (higher = more efficient) ---
+    # Seconds saved per MB (higher = more efficient)
     for label, (model_key, color, style) in model_groups.items():
         subset = data[data["model"] == model_key].sort_values("n_features")
         if subset.empty:
@@ -790,43 +793,19 @@ def fig_bonus_cache_efficiency(show: bool):
 
     ax1.set_xlabel("Number of features", fontsize=11)
     ax1.set_ylabel("Seconds saved per MB of cache", fontsize=11)
-    ax1.set_title("Cache Efficiency (higher = better)", fontsize=12)
+    ax1.set_title("Cache Efficiency Improves with Model Complexity\n"
+                  "(higher = more compute saved per MB stored)", fontsize=11)
     ax1.legend(fontsize=9)
     ax1.set_yscale("log")
     ax1.grid(True, alpha=0.2)
     ax1.set_xticks(topk_vals)
 
-    # Viable threshold annotation: viability uses mb_per_s_saved < 0.5 → equiv. to efficiency > 2.0 s/MB
+    # Viable threshold: efficiency > 2.0 s/MB ↔ mb_per_s < 0.5
     ax1.axhline(y=2.0, color="#888888", linestyle="--", linewidth=1.5, alpha=0.6)
-    ax1.text(155, 2.3, "Viable threshold\n(> 2.0 s/MB)", fontsize=8, color="#555555",
-             ha="right", va="bottom")
+    ax1.text(topk_vals[-1] + 2, 2.3, "Viable threshold\n(> 2.0 s/MB)",
+             fontsize=8, color="#555555", ha="right", va="bottom")
 
-    # --- Right: MB per second saved (lower = better, matches viability metric) ---
-    for label, (model_key, color, style) in model_groups.items():
-        subset = data[data["model"] == model_key].sort_values("n_features")
-        if subset.empty:
-            continue
-        ax2.plot(subset["n_features"], subset["mb_per_s_saved"],
-                 style, color=color, label=label, linewidth=2, markersize=7)
-
-    # Threshold lines matching viability definition
-    ax2.axhline(y=0.5, color="#0072B2", linestyle="--", linewidth=1.5, alpha=0.7,
-                label="Viable (< 0.5)")
-    ax2.axhline(y=2.0, color="#D55E00", linestyle=":", linewidth=1.5, alpha=0.7,
-                label="Not viable (> 2.0)")
-
-    ax2.set_xlabel("Number of features", fontsize=11)
-    ax2.set_ylabel("MB per second saved (lower = better)", fontsize=11)
-    ax2.set_title("Viability Metric vs. Feature Count", fontsize=12)
-    ax2.legend(fontsize=8, loc="upper left")
-    ax2.set_yscale("log")
-    ax2.grid(True, alpha=0.2)
-    ax2.set_xticks(topk_vals)
-
-    fig.suptitle("Cache Efficiency Improves with Model Complexity\n"
-                 "More features → more training time → more compute saved per MB of cache",
-                 fontsize=12, fontweight="bold")
-    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    fig.tight_layout()
     fig.savefig(FIG_DIR / "fig_bonus_cache_efficiency.pdf", bbox_inches="tight")
     print(f"  [11/12] Saved fig_bonus_cache_efficiency.pdf")
     if show:
