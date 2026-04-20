@@ -61,11 +61,11 @@ def check_cache(cache_dir: Path) -> bool:
 
 
 def fig_confusion_matrix(cache_dir: Path) -> None:
+    import tempfile
     sys.path.insert(0, str(REPO))
     from run_training import load_cached_features
     from training import TrainingPipeline, TrainingConfig
     from feature_selection import FeatureSelectionConfig
-    from cross_validation import LOSOCrossValidator
     from sklearn.metrics import confusion_matrix
 
     subject_ids = get_subject_ids(cache_dir)
@@ -86,12 +86,13 @@ def fig_confusion_matrix(cache_dir: Path) -> None:
         random_state=BEST_CONFIG["random_state"],
     )
 
-    cv = LOSOCrossValidator()
-    folds = cv.split(features_df, labels, subject_id_array)
-
-    print("  Running warm-cache LOSO pipeline (~7s)...")
-    pipeline = TrainingPipeline(features_df, labels, use_tqdm=True)
-    result = pipeline.run(config, folds)
+    with tempfile.TemporaryDirectory() as tmp:
+        pipeline = TrainingPipeline(
+            features_df, labels, subject_id_array,
+            output_dir=Path(tmp),
+        )
+        print("  Running warm-cache LOSO pipeline (~7s)...")
+        result = pipeline.run_single_config(config)
 
     y_true_all, y_pred_all = [], []
     for fold_result in result.fold_results:
