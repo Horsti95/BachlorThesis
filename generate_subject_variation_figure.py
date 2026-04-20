@@ -28,8 +28,9 @@ FIG_DIR = REPO / "thesis" / "figures"
 DEFAULT_DATA = Path(r"C:\Users\DerHo\Desktop\Data")
 
 STAGES         = ["Wake", "N1",   "N2",    "N3",    "REM"]
-COLORS         = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#76b7b2"]
-SUBJECT_COLORS = ["#e15759", "#4e79a7", "#f28e2b", "#59a14f"]  # one per subject
+# Okabe-Ito colorblind-safe palette
+COLORS         = ["#E69F00", "#56B4E9", "#0072B2", "#009E73", "#CC79A7"]
+SUBJECT_COLORS = ["#D55E00", "#0072B2", "#E69F00", "#CC79A7"]  # one per subject
 LABEL_MAP = {0: "Wake", 1: "N1", 2: "N2", 3: "N3", 4: "REM"}
 VALID     = set(LABEL_MAP.keys())   # excludes 8=Disconnection, -2=Artifact
 

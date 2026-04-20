@@ -17,7 +17,8 @@ FIG_DIR = REPO / "thesis" / "figures"
 # BOAS dataset — 128 subjects, ~120K epochs
 STAGES  = ["Wake", "N1",   "N2",    "N3",   "REM"]
 COUNTS  = [19137,  4462,   72181,   5225,   18754]
-COLORS  = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#76b7b2"]
+# Okabe-Ito colorblind-safe palette (Wake, N1, N2, N3, REM)
+COLORS  = ["#E69F00", "#56B4E9", "#0072B2", "#009E73", "#CC79A7"]
 
 def main():
     FIG_DIR.mkdir(parents=True, exist_ok=True)

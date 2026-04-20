@@ -93,8 +93,8 @@ def fig1_speedup_bar(show: bool):
     w = 0.32
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    bars_cold = ax.bar(x - w / 2, cold_vals, w, label="Cold (no cache)", color="#d9534f")
-    bars_warm = ax.bar(x + w / 2, warm_vals, w, label="Warm (cached)", color="#5cb85c")
+    bars_cold = ax.bar(x - w / 2, cold_vals, w, label="Cold (no cache)", color="#D55E00")
+    bars_warm = ax.bar(x + w / 2, warm_vals, w, label="Warm (cached)", color="#0072B2")
 
     ax.set_ylabel("Total time (minutes)")
     ax.set_title("Cache Speedup: Cold Start vs. Cached Execution (128 LOSO folds)")
@@ -185,7 +185,7 @@ def fig3_efficiency(show: bool):
     # Compute time saved per fold (cold - warm)
     df["time_saved_per_fold"] = df["cold_per_fold_time_s"] - df["warm_per_fold_time_s"]
 
-    colors = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+    colors = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -227,7 +227,7 @@ def fig3_efficiency(show: bool):
     x_line = np.logspace(-3, 3, 100)
     ax.plot(x_line, x_line / 0.5, "--", color="#888888", linewidth=1.5, alpha=0.6,
             label="Viability boundary (0.5 MB/s)")
-    ax.plot(x_line, x_line / 2.0, ":", color="#cc0000", linewidth=1.2, alpha=0.5,
+    ax.plot(x_line, x_line / 2.0, ":", color="#D55E00", linewidth=1.2, alpha=0.5,
             label="Not-viable boundary (2.0 MB/s)")
 
     ax.set_xscale("log")
@@ -272,11 +272,11 @@ def fig3b_crossover(show: bool):
 
     # --- XGBoost panel ---
     ax1.plot(xgb_avg["n_features"], xgb_avg["cold_per_fold_s"], "o-",
-             color="#d9534f", label="Cold (re-train)", linewidth=2, markersize=7)
+             color="#D55E00", label="Cold (re-train)", linewidth=2, markersize=7)
     ax1.plot(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"], "s-",
-             color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
+             color="#0072B2", label="Warm (cache load)", linewidth=2, markersize=7)
     ax1.fill_between(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"],
-                     xgb_avg["cold_per_fold_s"], alpha=0.15, color="#5cb85c",
+                     xgb_avg["cold_per_fold_s"], alpha=0.15, color="#0072B2",
                      label="Time saved")
     # Annotate cold points with cache size (above the cold line, centered)
     for _, row in xgb_avg.iterrows():
@@ -295,11 +295,11 @@ def fig3b_crossover(show: bool):
 
     # --- RF panel ---
     ax2.plot(rf_avg["n_features"], rf_avg["cold_per_fold_s"], "o-",
-             color="#d9534f", label="Cold (re-train)", linewidth=2, markersize=7)
+             color="#D55E00", label="Cold (re-train)", linewidth=2, markersize=7)
     ax2.plot(rf_avg["n_features"], rf_avg["warm_per_fold_s"], "s-",
-             color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
+             color="#0072B2", label="Warm (cache load)", linewidth=2, markersize=7)
     ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
-                     rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
+                     rf_avg["cold_per_fold_s"], alpha=0.15, color="#E69F00",
                      label="Small gap = I/O bottleneck")
     # Single summary annotation — RF cache size is ~131-154 MB/fold regardless of
     # feature count because it serializes 200 full trees (tree structure dominates)
@@ -374,7 +374,7 @@ def fig4b_viability_scatter(show: bool):
     df = df.sort_values("mb_per_second_saved")
 
     # Horizontal bar chart: MB/s-saved per model, colored by verdict
-    colors_map = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+    colors_map = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
     bar_colors = [colors_map.get(v, "#999") for v in df["cache_verdict"]]
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -392,7 +392,7 @@ def fig4b_viability_scatter(show: bool):
     # Threshold lines
     ax.axvline(x=0.5, color="#888888", linestyle="--", linewidth=2, alpha=0.8,
                label="Viable threshold (< 0.5)")
-    ax.axvline(x=2.0, color="#cc0000", linestyle=":", linewidth=2, alpha=0.7,
+    ax.axvline(x=2.0, color="#D55E00", linestyle=":", linewidth=2, alpha=0.7,
                label="Not-viable threshold (> 2.0)")
 
     ax.set_xscale("log")
@@ -523,11 +523,11 @@ def fig7_feature_importance(show: bool):
 
     # Color by channel
     channel_colors = {
-        "O1": "#e74c3c", "O2": "#c0392b",
-        "F3": "#3498db", "F4": "#2980b9",
-        "C3": "#2ecc71", "C4": "#27ae60",
-        "EMG": "#f39c12", "EOG": "#e67e22",
-        "global": "#9b59b6",
+        "O1": "#D55E00", "O2": "#D55E00",
+        "F3": "#0072B2", "F4": "#0072B2",
+        "C3": "#009E73", "C4": "#009E73",
+        "EMG": "#E69F00", "EOG": "#E69F00",
+        "global": "#CC79A7",
     }
 
     colors = []
@@ -547,10 +547,10 @@ def fig7_feature_importance(show: bool):
     # Legend for channels
     from matplotlib.patches import Patch
     legend_elements = [
-        Patch(facecolor="#e74c3c", label="O1/O2 (Occipital)"),
-        Patch(facecolor="#3498db", label="F3/F4 (Frontal)"),
-        Patch(facecolor="#2ecc71", label="C3/C4 (Central)"),
-        Patch(facecolor="#f39c12", label="EMG"),
+        Patch(facecolor="#D55E00", label="O1/O2 (Occipital)"),
+        Patch(facecolor="#0072B2", label="F3/F4 (Frontal)"),
+        Patch(facecolor="#009E73", label="C3/C4 (Central)"),
+        Patch(facecolor="#E69F00", label="EMG"),
     ]
     ax.legend(handles=legend_elements, loc="lower right", fontsize=8)
 
@@ -624,8 +624,8 @@ def fig_bonus_svm_scaling(show: bool):
                 svm_linear_speedup.append(row["speedup_ratio"])
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.plot(subjects, svm_rbf_speedup, "o-", color="#e74c3c", linewidth=2, markersize=8, label="SVM-RBF")
-    ax.plot(subjects, svm_linear_speedup, "s-", color="#3498db", linewidth=2, markersize=8, label="SVM-Linear")
+    ax.plot(subjects, svm_rbf_speedup, "o-", color="#D55E00", linewidth=2, markersize=8, label="SVM-RBF")
+    ax.plot(subjects, svm_linear_speedup, "s-", color="#0072B2", linewidth=2, markersize=8, label="SVM-Linear")
 
     ax.set_xlabel("Number of subjects")
     ax.set_ylabel("Speedup factor (cold / warm)")
@@ -637,10 +637,10 @@ def fig_bonus_svm_scaling(show: bool):
     for i, n in enumerate(subjects):
         ax.annotate(f"{svm_rbf_speedup[i]:.0f}x", (n, svm_rbf_speedup[i]),
                      textcoords="offset points", xytext=(0, 10), ha="center", fontsize=9,
-                     color="#e74c3c", fontweight="bold")
+                     color="#D55E00", fontweight="bold")
         ax.annotate(f"{svm_linear_speedup[i]:.0f}x", (n, svm_linear_speedup[i]),
                      textcoords="offset points", xytext=(0, -14), ha="center", fontsize=9,
-                     color="#3498db", fontweight="bold")
+                     color="#0072B2", fontweight="bold")
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig_bonus_svm_scaling.pdf", bbox_inches="tight")
@@ -664,11 +664,11 @@ def fig_bonus_cache_scaling(show: bool):
 
     topk_vals = [10, 30, 50, 149]
     model_groups = {
-        "Random Forest":    ("random_forest",    "#e74c3c", "o-"),
-        "Extra Trees":      ("extra_trees",      "#e67e22", "D-"),
-        "XGBoost":          ("xgboost",          "#3498db", "s-"),
-        "Gradient Boosting": ("gradient_boosting", "#2ecc71", "^-"),
-        "LightGBM":         ("lightgbm",         "#9b59b6", "v-"),
+        "Random Forest":    ("random_forest",    "#D55E00", "o-"),
+        "Extra Trees":      ("extra_trees",      "#E69F00", "D-"),
+        "XGBoost":          ("xgboost",          "#0072B2", "s-"),
+        "Gradient Boosting": ("gradient_boosting", "#009E73", "^-"),
+        "LightGBM":         ("lightgbm",         "#CC79A7", "v-"),
     }
 
     # Collect data across feature counts
@@ -748,11 +748,11 @@ def fig_bonus_cache_efficiency(show: bool):
 
     topk_vals = [10, 30, 50, 149]
     model_groups = {
-        "Random Forest":    ("random_forest",    "#e74c3c", "o-"),
-        "Extra Trees":      ("extra_trees",      "#e67e22", "D-"),
-        "XGBoost":          ("xgboost",          "#3498db", "s-"),
-        "Gradient Boosting": ("gradient_boosting", "#2ecc71", "^-"),
-        "LightGBM":         ("lightgbm",         "#9b59b6", "v-"),
+        "Random Forest":    ("random_forest",    "#D55E00", "o-"),
+        "Extra Trees":      ("extra_trees",      "#E69F00", "D-"),
+        "XGBoost":          ("xgboost",          "#0072B2", "s-"),
+        "Gradient Boosting": ("gradient_boosting", "#009E73", "^-"),
+        "LightGBM":         ("lightgbm",         "#CC79A7", "v-"),
     }
 
     records = []
@@ -798,7 +798,7 @@ def fig_bonus_cache_efficiency(show: bool):
 
     # Viable threshold annotation: viability uses mb_per_s_saved < 0.5 → equiv. to efficiency > 2.0 s/MB
     ax1.axhline(y=2.0, color="#888888", linestyle="--", linewidth=1.5, alpha=0.6)
-    ax1.text(155, 2.3, "Viable threshold\n(> 2.0 s/MB)", fontsize=8, color="#666666",
+    ax1.text(155, 2.3, "Viable threshold\n(> 2.0 s/MB)", fontsize=8, color="#555555",
              ha="right", va="bottom")
 
     # --- Right: MB per second saved (lower = better, matches viability metric) ---
@@ -810,9 +810,9 @@ def fig_bonus_cache_efficiency(show: bool):
                  style, color=color, label=label, linewidth=2, markersize=7)
 
     # Threshold lines matching viability definition
-    ax2.axhline(y=0.5, color="#5cb85c", linestyle="--", linewidth=1.5, alpha=0.7,
+    ax2.axhline(y=0.5, color="#0072B2", linestyle="--", linewidth=1.5, alpha=0.7,
                 label="Viable (< 0.5)")
-    ax2.axhline(y=2.0, color="#d9534f", linestyle=":", linewidth=1.5, alpha=0.7,
+    ax2.axhline(y=2.0, color="#D55E00", linestyle=":", linewidth=1.5, alpha=0.7,
                 label="Not viable (> 2.0)")
 
     ax2.set_xlabel("Number of features", fontsize=11)
@@ -927,7 +927,7 @@ def fig_bonus_rf_size_vs_time(show: bool):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     # Left: Cache size vs tree count, colored by feature count
-    colors = {"30f": "#e74c3c", "50f": "#3498db", "149f": "#2ecc71"}
+    colors = {"30f": "#D55E00", "50f": "#0072B2", "149f": "#009E73"}
     for feat_label, color in colors.items():
         subset = df128[df128["features_label"] == feat_label].groupby("tree_count").mean(numeric_only=True).reset_index()
         ax1.plot(subset["tree_count"], subset["cache_size_mb"], "o-",
