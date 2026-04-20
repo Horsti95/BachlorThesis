@@ -87,7 +87,7 @@ def fig_confusion_matrix(cache_dir: Path) -> None:
     )
 
     cv = LOSOCrossValidator()
-    folds = cv.get_folds(features_df, labels)
+    folds = cv.split(features_df, labels)
 
     print("  Running warm-cache LOSO pipeline (~7s)...")
     pipeline = TrainingPipeline(features_df, labels, use_tqdm=True)
