@@ -306,11 +306,14 @@ producing clean 30-second epochs ready for feature extraction.
 \section{Machine Learning Ensemble Methods}
 \label{sec:ensemble_methods}
 % ============================================================================
-Ensemble methods combine multiple decision trees to produce a stronger
-predictor~\cite{hastie2009elements}. They are particularly effective for
-tabular classification tasks, which motivates their use in this thesis.
-This section covers the two ensemble families evaluated: bagging (Random
-Forest) and boosting (XGBoost).
+Ensemble methods combine multiple learners to produce a stronger predictor
+than any individual model~\cite{hastie2009elements}. They are particularly
+effective for tabular classification tasks, which motivates their use in
+this thesis. Two ensemble strategies differ fundamentally in how they
+aggregate learners: \textit{bagging} trains learners independently in
+parallel (Random Forest), while \textit{boosting} trains them sequentially,
+each correcting the errors of the previous (XGBoost). This section covers
+both families.
 
 \subsection{Decision Trees}
 
@@ -335,9 +338,8 @@ Chapter~4.
 
 \subsection{Boosting: XGBoost}
 
-Boosting trains trees sequentially, where each new tree corrects the
-residual errors of the previous ensemble~\cite{hastie2009elements}.
-XGBoost (Extreme Gradient Boosting) extends gradient boosting with
+XGBoost (Extreme Gradient Boosting)~\cite{hastie2009elements} extends
+gradient boosting with
 regularisation terms, sparsity-aware splitting, and cache-efficient tree
 construction. Unlike Random Forest, boosting models use shallow trees
 (depth 3--6) with aggressive regularisation, producing compact serialized
