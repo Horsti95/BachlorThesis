@@ -2,40 +2,36 @@
 Generate Missing Thesis Figures
 ================================
 
-Generates the two figures that require the full feature cache:
-  A. Sleep stage distribution bar chart (fig_sleep_stage_distribution.pdf)
-  B. Aggregated confusion matrix for best XGBoost config (fig_confusion_matrix.pdf)
+Generates the confusion matrix figure (fig_confusion_matrix.pdf).
+The sleep stage distribution figure is now handled by generate_distribution_figure.py.
 
 Prerequisites:
-  - Feature cache populated at results/features_cache_global/  (128 subjects)
+  - Feature cache populated (128 subject_N_full.npz files)
   - Model cache populated (warm run already executed for best XGBoost config)
-  - Run AFTER generate_thesis_figures.py
 
 Usage:
     python generate_missing_figures.py
+    python generate_missing_figures.py --cache "C:/Users/DerHo/Desktop/BachlorThesis/results/features_cache_global"
 
 Output:
-    thesis/figures/fig_sleep_stage_distribution.pdf
     thesis/figures/fig_confusion_matrix.pdf
 """
 
 import sys
-import json
+import argparse
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import seaborn as sns
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent
+REPO    = Path(__file__).resolve().parent
 FIG_DIR = REPO / "thesis" / "figures"
-CACHE_DIR = REPO / "results" / "features_cache_global"
-WARM_RUN_DIR = REPO / "results" / "training_20260408_181311_full" / "training_results"
+
+DEFAULT_CACHE = REPO / "results" / "features_cache_global"
 
 CLASS_NAMES = ["Wake", "N1", "N2", "N3", "REM"]
-CLASS_COLORS = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#76b7b2"]
 
 BEST_CONFIG = {
     "model_type": "xgboost",
@@ -47,69 +43,24 @@ BEST_CONFIG = {
 }
 
 
-def check_feature_cache() -> bool:
-    if not CACHE_DIR.exists():
+def get_subject_ids(cache_dir: Path) -> list:
+    """Extract numeric subject IDs from subject_N_full.npz filenames."""
+    files = sorted(cache_dir.glob("subject_*_full.npz"))
+    ids = []
+    for f in files:
+        parts = f.stem.split("_")  # subject_N_full
+        if len(parts) >= 2 and parts[1].isdigit():
+            ids.append(int(parts[1]))
+    return sorted(ids)
+
+
+def check_cache(cache_dir: Path) -> bool:
+    if not cache_dir.exists():
         return False
-    subject_dirs = list(CACHE_DIR.glob("SC*"))
-    return len(subject_dirs) >= 128
+    return len(list(cache_dir.glob("subject_*_full.npz"))) >= 128
 
 
-def load_all_labels() -> np.ndarray:
-    """Load labels from all cached subjects."""
-    sys.path.insert(0, str(REPO))
-    from feature_cache import load_features_from_cache
-
-    subject_ids = sorted([d.name for d in CACHE_DIR.iterdir() if d.is_dir()])
-    print(f"  Loading labels from {len(subject_ids)} subjects...")
-    all_labels = []
-    for sid in subject_ids:
-        npz_files = list((CACHE_DIR / sid).glob("*.npz"))
-        if npz_files:
-            data = np.load(npz_files[0], allow_pickle=True)
-            if "labels" in data:
-                all_labels.append(data["labels"])
-    return np.concatenate(all_labels) if all_labels else np.array([])
-
-
-def fig_sleep_distribution(labels: np.ndarray) -> None:
-    """Bar chart: sleep stage distribution across all 128 subjects."""
-    stage_map = {0: "Wake", 1: "N1", 2: "N2", 3: "N3", 4: "REM"}
-
-    unique, counts = np.unique(labels, return_counts=True)
-    total = counts.sum()
-
-    stages = [stage_map.get(int(u), str(u)) for u in unique if int(u) in stage_map]
-    cnts = [c for u, c in zip(unique, counts) if int(u) in stage_map]
-    pcts = [100.0 * c / total for c in cnts]
-
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    bars = ax.bar(stages, cnts, color=CLASS_COLORS[: len(stages)], alpha=0.85,
-                  edgecolor="black", linewidth=0.6)
-
-    for bar, pct, cnt in zip(bars, pcts, cnts):
-        ax.text(bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + total * 0.005,
-                f"{pct:.1f}%\n({cnt:,})",
-                ha="center", va="bottom", fontsize=9)
-
-    ax.set_xlabel("Sleep Stage")
-    ax.set_ylabel("Number of 30-second Epochs")
-    ax.set_title("Sleep Stage Distribution — BOAS Dataset (128 subjects, 128-fold LOSO)")
-    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
-    ax.set_ylim(0, max(cnts) * 1.18)
-    fig.tight_layout()
-
-    out = FIG_DIR / "fig_sleep_stage_distribution.pdf"
-    fig.savefig(out, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [A] Saved {out.name}")
-
-
-def fig_confusion_matrix() -> None:
-    """
-    Aggregate confusion matrix across all 128 LOSO folds for best XGBoost config.
-    Runs the warm-cache pipeline (fast: ~7s) to collect fold predictions.
-    """
+def fig_confusion_matrix(cache_dir: Path) -> None:
     sys.path.insert(0, str(REPO))
     from run_training import load_cached_features
     from training import TrainingPipeline, TrainingConfig
@@ -117,9 +68,10 @@ def fig_confusion_matrix() -> None:
     from cross_validation import LOSOCrossValidator
     from sklearn.metrics import confusion_matrix
 
-    subject_ids = sorted([d.name for d in CACHE_DIR.iterdir() if d.is_dir()])
-    print(f"  Loading features for {len(subject_ids)} subjects...")
-    features_df, labels, _ = load_cached_features(subject_ids, CACHE_DIR)
+    subject_ids = get_subject_ids(cache_dir)
+    print(f"  Found {len(subject_ids)} subjects in cache.")
+    print(f"  Loading features...")
+    features_df, labels, _ = load_cached_features(subject_ids, cache_dir)
 
     fs_config = FeatureSelectionConfig(
         correlation_threshold=BEST_CONFIG["correlation_threshold"],
@@ -137,6 +89,7 @@ def fig_confusion_matrix() -> None:
     cv = LOSOCrossValidator()
     folds = cv.get_folds(features_df, labels)
 
+    print("  Running warm-cache LOSO pipeline (~7s)...")
     pipeline = TrainingPipeline(features_df, labels, use_tqdm=True)
     result = pipeline.run(config, folds)
 
@@ -145,11 +98,10 @@ def fig_confusion_matrix() -> None:
         y_true_all.extend(fold_result.y_test.tolist())
         y_pred_all.extend(fold_result.y_pred.tolist())
 
-    cm = confusion_matrix(y_true_all, y_pred_all)
+    cm      = confusion_matrix(y_true_all, y_pred_all)
     cm_norm = cm.astype(float) / cm.sum(axis=1, keepdims=True)
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
-
     for ax, data, fmt, title in [
         (axes[0], cm,      "d",    "Counts"),
         (axes[1], cm_norm, ".2f", "Row-normalised (recall per class)"),
@@ -169,35 +121,30 @@ def fig_confusion_matrix() -> None:
     )
     fig.tight_layout()
 
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
     out = FIG_DIR / "fig_confusion_matrix.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
-    print(f"  [B] Saved {out.name}")
+    print(f"  Saved: {out}")
 
 
 def main():
-    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cache", default=str(DEFAULT_CACHE),
+                        help="Path to features_cache_global directory")
+    args = parser.parse_args()
 
-    if not check_feature_cache():
-        print(
-            "ERROR: Feature cache not found or incomplete at:\n"
-            f"  {CACHE_DIR}\n\n"
-            "Run this script on the machine where the full feature cache is populated\n"
-            "(the benchmark desktop used for the thesis experiments).\n"
-            "Expected: 128 subject directories under results/features_cache_global/"
-        )
+    cache_dir = Path(args.cache)
+
+    if not check_cache(cache_dir):
+        print(f"ERROR: Feature cache not found or incomplete at:\n  {cache_dir}")
+        print("Expected: 128 files named subject_N_full.npz")
+        print('Usage: python generate_missing_figures.py --cache "C:/path/to/features_cache_global"')
         sys.exit(1)
 
-    print("Generating missing thesis figures...")
-    labels = load_all_labels()
-    if len(labels) == 0:
-        print("ERROR: Could not load labels from feature cache.")
-        sys.exit(1)
-
-    print(f"  Total epochs loaded: {len(labels):,}")
-    fig_sleep_distribution(labels)
-    fig_confusion_matrix()
-    print("\nDone. Both figures saved to thesis/figures/")
+    print(f"Using cache: {cache_dir}")
+    fig_confusion_matrix(cache_dir)
+    print("\nDone.")
 
 
 if __name__ == "__main__":
