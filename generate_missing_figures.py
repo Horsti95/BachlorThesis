@@ -71,7 +71,7 @@ def fig_confusion_matrix(cache_dir: Path) -> None:
     subject_ids = get_subject_ids(cache_dir)
     print(f"  Found {len(subject_ids)} subjects in cache.")
     print(f"  Loading features...")
-    features_df, labels, _ = load_cached_features(subject_ids, cache_dir)
+    features_df, labels, subject_id_array = load_cached_features(subject_ids, cache_dir)
 
     fs_config = FeatureSelectionConfig(
         correlation_threshold=BEST_CONFIG["correlation_threshold"],
@@ -87,7 +87,7 @@ def fig_confusion_matrix(cache_dir: Path) -> None:
     )
 
     cv = LOSOCrossValidator()
-    folds = cv.split(features_df, labels)
+    folds = cv.split(features_df, labels, subject_id_array)
 
     print("  Running warm-cache LOSO pipeline (~7s)...")
     pipeline = TrainingPipeline(features_df, labels, use_tqdm=True)
