@@ -68,6 +68,15 @@ def fig_confusion_matrix(cache_dir: Path, model_cache_dir: Path = None) -> None:
     from feature_selection import FeatureSelectionConfig
     from sklearn.metrics import confusion_matrix
 
+    # Always use a persistent model cache so interrupted runs resume from cache
+    if model_cache_dir is None:
+        model_cache_dir = cache_dir.parent / "confusion_matrix_model_cache"
+    model_cache_dir.mkdir(parents=True, exist_ok=True)
+
+    already = len(list(model_cache_dir.glob("*.joblib")))
+    print(f"  Model cache: {model_cache_dir}")
+    print(f"  Already cached folds: {already} (will skip these on warm run)")
+
     subject_ids = get_subject_ids(cache_dir)
     print(f"  Found {len(subject_ids)} subjects in cache.")
     print(f"  Loading features...")
@@ -86,21 +95,17 @@ def fig_confusion_matrix(cache_dir: Path, model_cache_dir: Path = None) -> None:
         random_state=BEST_CONFIG["random_state"],
     )
 
-    use_model_cache = model_cache_dir is not None and model_cache_dir.exists()
-    if use_model_cache:
-        print(f"  Model cache: {model_cache_dir} (warm run, ~7s)")
-    else:
-        print("  No model cache — cold run (~43 min). Pass --model-cache to speed up.")
+    out_dir = cache_dir.parent / "confusion_matrix_output"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        pipeline = TrainingPipeline(
-            features_df, labels, subject_id_array,
-            output_dir=Path(tmp),
-            model_cache_dir=str(model_cache_dir) if use_model_cache else None,
-            enable_model_cache=use_model_cache,
-        )
-        print("  Running LOSO pipeline...")
-        result = pipeline.run_single_config(config, show_progress=True)
+    pipeline = TrainingPipeline(
+        features_df, labels, subject_id_array,
+        output_dir=out_dir,
+        model_cache_dir=str(model_cache_dir),
+        enable_model_cache=True,
+    )
+    print("  Running LOSO pipeline (cached folds load in ~0.2s each)...")
+    result = pipeline.run_single_config(config, show_progress=True)
 
     y_true_all, y_pred_all = [], []
     for fold_result in result.fold_results:
