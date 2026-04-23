@@ -156,11 +156,24 @@ for example, combines dependency hashes with parameter configurations to
 create cache keys. When a match is found, execution is skipped and previous
 results are restored.
 
+In practice, content-addressable caches are typically implemented as
+filesystem-based key--value stores: artifacts are saved to files whose names
+are derived from the configuration fingerprint, and a cache lookup is simply
+a file-existence check using the hash-derived filename. This is distinct from
+an in-memory hash table; lookup performance is governed by the operating
+system's directory indexing rather than constant-time hashing.
+
 This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
-parameters~\cite{schubotz2022caching}. When applied to LOSO cross-validation, this approach additionally enables partial pipeline recovery: if a 128-fold experiment is interrupted, the framework can resume from the exact point of failure by loading cached results for all previously completed folds---a capability that remains cumbersome to implement in standard, coarse-grained pipeline tools.
+parameters~\cite{schubotz2022caching}.
 
-In the context of Google's MLOps maturity model~\cite{googlemlops2023}, hash-based caching is a core component for progressing from Level~0 (manual processes) to an automated pipeline. It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability} and \textit{continuous training}: only through unique configuration fingerprints can the exact data and code versions that produced a specific artifact be identified with certainty.
+Google's MLOps maturity model~\cite{googlemlops2023} describes a progression
+from Level~0 (fully manual processes) to Level~1 (automated ML pipelines) in
+which experiment metadata, artifact versioning, and reproducible pipeline
+execution are central requirements. Hash-based caching supports this
+progression by providing the technical substrate for traceability: only through
+unique configuration fingerprints can the exact data and code versions that
+produced a specific artifact be identified with certainty.
 
 \subsection{Related Caching Approaches}
 
@@ -293,7 +306,7 @@ In this work, EEG signals are decomposed into distinct frequency bands. While sp
 Delta    & 0.5--4.0   & Predominant in N3 (Deep sleep); indicates sleep pressure \\
 Theta    & 4.0--8.0   & Associated with N1 and REM stages; drowsiness \\
 Alpha    & 8.0--13.0  & Hallmarked by relaxed wakefulness; key for Stage W \\
-Sigma    & 12.0--16.0 & Sleep spindles; the definitive marker for N2 sleep \\
+Sigma    & 11.0--16.0 & Sleep spindles; the definitive marker for N2 sleep \\
 Beta     & 13.0--30.0 & Active wakefulness; power decreases during NREM sleep \\
 Gamma    & 30.0--45.0 & High-frequency processing; typically minimal in sleep \\
 \bottomrule
