@@ -1,0 +1,129 @@
+Legend: ✅ Done | ❓ Needs decision | ⬜ Not yet done
+
+===========================================================
+BEFORE CHAPTER 2 (from original message, not in this file)
+===========================================================
+⬜ Reference Bib – for all entries with a link add/change note = {Accessed: 2026-04-20}
+✅ General – caching definition (storage vs cache) added to Section 2.3 of Ch2
+✅ Abstract – added "pipeline" to framing; no mention of ANOVA/wrong orchestration (deliberate)
+✅ Table of Contents / List of Tables – removed 4 redundant tables (19→15)
+✅ Chapter 1 – all 5 items done:
+   ✅ 1.0 model-inspection paragraph added
+   ✅ 1.1 cursive removed (hidden technical debt)
+   ✅ 1.1 "broader landscape" safer rewrite (hedged claims, added 21-hr RF bridge)
+   ✅ 1.1 "This growth highlights" – reproducibility made explicit (bitwise-identical)
+   ✅ 1.2 original project scale added (~96 configs / 12,288 runs, why scaled to 18)
+
+===========================================================
+CHAPTER 2
+===========================================================
+⬜ 2.0 Add that experiment was scaled to 18 configs because cold/warm test had to run multiple times
+❓ 2.0 Section order: sleep+EEG first, then classifiers, then ML? Or EEG+sleep → ML → ensembles?
+❓ 2.0 Structure is ML→EEG→ML (broken) – rearrange sections and subsections
+⬜ 2.1 Build mini "story"/roter Faden in chapter intro (once order is decided)
+⬜ 2.1 "Why still a challenge" – frame specifically around LOSO fold identity gap
+⬜ 2.1 Replace "Holy Trinity" with Kreuzberger P3 definition (keep schubotz as support)
+⬜ 2.1 P3 and P7 – make clear both are from Kreuzberger, not bolted on at end
+⬜ 2.2 RAM/storage prices – DECISION: do NOT add (prices falling not rising, link too speculative)
+⬜ 2.2 "traditional" – wrong word for a 2025 paper; change to "hardware-level"
+⬜ 2.2 Rewording of the Krishna paragraph – use user's suggested safer version
+⬜ 2.3.2 Hash storage: elaborate on folder-based storage and Python/OS search logic? Or future work?
+⬜ 2.3.2 Mixing background with implementation (fallback structure) – decouple?
+⬜ 2.3.2 Check the Google MLOps maturity claim is correct
+✅ 2.3.3 Cache vs storage definition – already added to Section 2.3
+⬜ 2.3.3 Is "Related Caching Approaches" (LLM/HEP/learned) relevant or too far from thesis?
+⬜ 2.5.1 Double citation of "12" – once in text once in table (spindle freq discrepancy 11 vs 12 Hz)
+⬜ 2.5.2 Mention preprocessing pipeline was mainly taken from the old project?
+
+===========================================================
+CHAPTER 3
+===========================================================
+⬜ 3.1 Is "Academic Research on ML Caching" a valid section title for related work?
+⬜ 3.1 Remove cursive text
+⬜ 3.1 Add Hirzel et al. paragraph (within-run vs across-experiment caching distinction)
+⬜ 3.1 "LOSO native" claim – is it the right framing for the fold-contamination argument?
+⬜ 3.4.1 Naming: explain global feature selection used even though not scientifically ideal (real-world apps)
+⬜ 3.4.2 Check FNN 128-subject cache fold size – is 150 MB accurate?
+⬜ 3.5 Shorten/clarify relation to thesis focus (wearables / production gap section)
+⬜ 3.5 Wearables: do watches use EEG or just blood pressure/accel? Fix or shorten
+⬜ 3.5 "Research-to-Production Gap" – production for what? Sleep staging not clearly the goal
+⬜ 3.5 Configuration Debt paragraph – narrative gap (watch wouldn't use LOSO cache model)
+
+===========================================================
+CHAPTER 4
+===========================================================
+⬜ 4.0 Check entire structure – should start with data first?
+⬜ 4.0 State methodology type: quantitative/empirical, no interviews
+⬜ 4.0 Frame EEG sleep lab as vehicle/proof-of-concept for LOSO caching
+⬜ 4.1.1 Does a table make sense for fingerprint components (seed, code version, params, features)?
+⬜ 4.1.1 Move figures 4.3/4.4 up or combine with table idea for fingerprint generation
+⬜ Table 4.1 – clarify RF big vs XGB small (1–150 MB is a wide range, explain it)
+⬜ Remove the word "Implemented" where it appears as a label
+⬜ Don't call it "primary contribution" – rephrase to clarify this is the thesis code
+⬜ 185 MB per what? Per fold? All 128 folds? All combinations? Clarify for XGB and RF
+⬜ "Scientific Validity" – is it really "invalid"? Soften the wording
+⬜ "Why Model-Level Caching, Not Result-Level Caching?" – is wording clear enough?
+⬜ 4.1.3 Two Orthogonal Dimensions – add note about RF being borderline given its size
+⬜ 4.2 Move data section earlier (before framework theory?)
+⬜ 4.2.2 Extend dataset justification: old project, FNN future, all models, public, right difficulty
+⬜ 4.3 Over-explained for a non-caching section – shorten?
+⬜ 4.3 + 4.4 + 4.5 Over-explained as not caching-relevant – shorten overall?
+⬜ 4.5.2 Add: MI per-fold would increase global cache cost by 174×; frame carefully (depends)
+⬜ 4.5.3 "Implemented Optimizations" – keep or restructure around server/thread context?
+⬜ 4.5.3 Correct inaccurate claims per codebase check:
+      - Hurst uses R/S not antropy (fix)
+      - "Compute once for all 6 channels" outdated (now 8-capable, filter to 6)
+      - Exact speed numbers (4.7s→1.1s, 4.3×) not backed by benchmark artifact
+      - Dataset name inconsistency (BOAS vs MASS SS3)
+⬜ 4.5.3 "Evaluated But Not Implemented" – delete or reframe as explicit rejection rationale
+⬜ Table 4.6 – remove "Implemented" column; add actual time saved numbers
+⬜ If 4.3+4.4+4.5 shortened, expand 4.6?
+⬜ 4.6.1 Needs decision: keep here, move to appendix, or put in disclaimer/table at start?
+⬜ 4.6.2 Clean up: remove cursive/italic/code snippets; fix 64-vs-32 hex confusion
+⬜ 4.6.2 Correct fingerprint description per codebase:
+      - features_hash stored (not full sorted list)
+      - .encode() is UTF-8 by default
+      - Final key: {fingerprint}_{held_out_subject}
+⬜ 4.6.3 Remove cursive code in table; decide: table or inline text?
+⬜ 4.6.4 Remove bold and italic
+⬜ 4.6.5 Mention code version is hardcoded but could link to git hash
+⬜ 4.6.5 Strict Validation flag – do we still have it? Is it relevant here?
+⬜ 4.7.1 Double-check all versions against requirements.txt
+⬜ 4.7.1 Hardware table: add full CPU name (Ultra 9 275HX); remove "integrated" GPU and "1.6 GB available"
+⬜ 4.7.1 Cache lifecycle: mention garbage collection / eviction policy (30-day rule, permanent best model?)
+⬜ Before 4.7.2: define correlation threshold earlier, or is it common knowledge in ML?
+⬜ 4.7.2 Remove FNN note
+⬜ 4.7.3 Feels out of place – rename, rephrase, merge, or delete?
+⬜ 4.7.4 + 4.7.5 Shorten or merge into one paragraph (feels obvious)
+⬜ 4.8.1 Document the partial-overlap experiment (A1A2B1B2 then B1B2C1C2 → 50% cache hits)
+⬜ 4.8.4 Do we have a table for this result?
+⬜ 4.9.1 Move metrics definition earlier? Keep in tables/conclusion/results?
+⬜ 4.9.3 Rewrite – too bullet-pointy, incorporate into flowing text
+⬜ Table 4.12 (4.10.1) – mention thermal throttling as a confound (most features = most heat)
+⬜ Table 4.14 – re-run XGB none/none and RF none/none cold/warm to verify; re-run *-marked config
+⬜ Figure 4.5 – log scale distorts gains; call it out or switch to linear; add numbers on small bars
+⬜ 4.10.2 – mention MI+RF per-fold interaction: speedup depends on combination
+⬜ 4.10.2 Figure 4.6 – define the viability threshold explicitly before using it
+⬜ 4.10.2 Fig 4.7 – move up (classification, not caching); bridge to dataset distribution
+⬜ 4.10.3 – no roter Faden; reorder to match actual research chronology
+⬜ Table 4.17 – replace with graph (fig 4.11 already shows the increase better)?
+⬜ Figure 4.10 – add caption/explanation; verify correct data used; consider clean re-run
+⬜ Figure 4.18 – move up to fingerprint generation/validation section
+⬜ 4.11 – did we miss a finding? Expand if so
+⬜ 4.12 – does discussion belong here or in Chapter 5?
+⬜ 4.12.2 – define viability metrics sharply first, then declare which models fall below line
+⬜ 4.12.3 – define size-to-speedup ratio earlier; state viability condition formally
+⬜ Table 4.19 – out of place; global feature selection decision not fully resolved
+⬜ Figure 4.13 – move overlapping labels (+0.006, -0.01) to side of bars
+
+===========================================================
+CHAPTER 5
+===========================================================
+⬜ 5.0 Add thermal throttling mention (caching enables cooling between runs)
+⬜ 5.1.1 Is listing RQs again good practice, or just answer them directly?
+⬜ 5.2.2 Framing: conclusions should say "it depends on X and Y" – no universal claim
+⬜ 5.2.2 "Version A — Determinism-based key" needs more fields (dataset, code version…)
+⬜ 5.2.2 Keep Version B if neither used nor implemented?
+⬜ 5.2.5 + 5.2.6 Future work not future dreams – combine into "scaling to real-world use"?
+⬜ 5.2.7 Wrong section placement? More of a constraint than future work
+⬜ Add vision paragraph: Master thesis → viability combinations; PhD → deployment-ready API with AI orchestration
