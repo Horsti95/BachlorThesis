@@ -1,0 +1,119 @@
+
+Chapter 2
+2.0 And now we scaled it down to 18 configs as I had to run the cold warm test a few times
+2.0 Should we do first sleep eeg than classifiers and resembles then ml ? Or eeg sleep, then ml, then assemblers?
+2.0 From ML to EEG to ML structure of chapter 2 the strcuture is a bit broken lets re arraange the sections and subsection?
+2.1 Maybe build up a mini "story" or roter Faden in the 2.0. introduction? With the new ordering in mind ?
+2.1 "Tools such as MLflow [36] and MLXP [1] support experiment tracking by recording parameters, metrics, code versions, and artifacts for each run, enabling comparison and reproducibility. Despite these advances, reproducibility remains a pervasive challenge in ML research" - Why still a challenge ? Better framing it with especially with loso folds or something like this, point is not clear like this
+2.1 "Reproducibility ensures consistent results from an ML workflow under identical conditions, hinging on the “Holy Trinity”: input data, code and parameters, and the execution environment [29]. Challenges arise from:" Holy Trinity, mentioned in a paper ? Then adding as xy defines the holy Trinity or even - Should we use Kreuzbergers P definitions instead of holy Trinity ?
+2.1 Paragraph "These challenges are..." - P3 and p7, is it clear that's these are from Kreuzberger ?
+2.2 Should we link this to increasing prices of ram and storage ? Or is this too far away and the proce change and training isn't related or can't be proved, that it's more running the data centers  - Which is linked to the first point here  Large datasets
+2.2 "While caching can help, traditional.." - traditional the Right word her?
+
+2.2. rewording to """While caching can help, traditional research in cache management—such as the ML‑aided hardware strategies surveyed by Krishna (2025)—focuses primarily on optimizing low‑level latency and hardware replacement policies. These systems are designed to predict microsecond‑scale access patterns rather than addressing macro‑level requirements such as matching high‑level experiment configurations to saved artifacts. For EEG research, such low‑level caching does not prevent the redundant recomputation of 128‑fold cross‑validation when hyperparameters change.""" good idea?
+2.3.2 We are storing the hash keys just in a folder right (?) so do we hash cache ? As in hash as a data structure ? So we need to elaborate on this, and our saving and loading ? So that we have the Standart phyton or windows loading / searching logic at this point ? Is this addresses in the paper ? Is this something to improve on and maybe even future work ?
+2.3.2 Are we mixing background with our fallback structure ? Maybe entkoppeln ?
+2.3.2 Check the Google claim  correct
+2.3.3 Trivial but Feature Cache / permanent storage ? Or end result saving like metrics ? Maybe so we need a definition of storage vs cache ? As a mini paragraph? check with - Do we need a caching Definition here or somewhere else ? Like storage vs cache maybe with a new scource ? Short , one paragraph or a table
+2.3.3. Is 2.3.3. actually relevant ? Or too far from our approach
+2.5.1 Double cote of 12 once in text once in table
+2.5.2. Should we mention this was mainly copied and taken from the old project ?
+
+
+
+
+
+
+
+
+
+
+
+Chapter 3
+3.1. weird one but : Is 3.1. a valid cheaper for related work or to academic in academic paper - obviously it's about a academic research
+3.1. Remove cursive  text
+3.1. related to the "Hirzel " the Two recent papers extend the idea of caching in ML pipelines to AutoML and hyperparameter tuning. Hirzel et al. (2024) show how to train and cross‑validate entire pipelines on machines with limited memory by breaking computations into small, reusable pieces that avoid repeating the same steps. Their approach reduces wasted computation within a single training or cross‑validation run, while the caching framework proposed here reduces waste across many different experiments, such as hyperparameter sweeps and AutoML Trials
+3.1 "While memory-efficient and compatible with standard sklearn APIs, the approach treats fold out17puts as interchangeable: the task graph does not encode fold identity into cache keys, so it cannot prevent cross-fold contamination in LOSO settings where each fold corresponds to a structurally different training set. Essofi et al. (2024) address hyperparameter search cost with EEIPU, a memoization-aware Bayesian optimisation algorithm that caches pipelinestage outputs to evaluate more configurations per GPU-day" is loso native the Right Claim ?
+3.4.1 Here naming we used global as there are real world applications for global, even though the old grid from old course + loso isn't scientifically best practice
+3.4.2. Can we check one fnn 128 subject Cache fold size, 150mb isn't small
+3.5. should we shorten or Change this Maybe a bt unclear the relation to our focus
+3.5 But do the watches etc using eeg  or just blood pressure etc- still name it like this ? Maybe shorten it ? or Change
+3.5. Research-to-Production Gap - Production for what ? Is sleep staging even the goal? As we use eeg not wrist pulse or so a bit unclear
+3.5 Configuration Debt and Technical Reproducibility: Also a watch or whatever wouldn't cache my stuff to predict a classic faction model, kinda a narrative gab here
+
+
+
+
+
+
+
+
+
+Chapter 4
+4.0. check entire structure we should start with our data Right ?
+4.0. should we say if we did qulaitative or quantitiavte as an introduction - Do we need to state mainly empirical so no Interviews etc
+Maybe as that the eeg sleep lab comes from the old project so its more like our vehicle to show the ""proof of concept" of loso caching
+4.1.1.Does a table make sense here ? Like from codebase seed and code version from model , name Paramus etc from features selected, cut off etc ?
+4.1.1. Maybe the fiures 4.3. and figure 4.4. from below how it's generated or with the table idea then saying combined and canonical (?) deterministiclly (?) hashed
+table 4.1. Maybe already distinguish or make clear in the table that RF big xgb small like 1-150mb is a wild Statement
+"Remove implemented " - Remove implemented
+Not naming it primary contribution but making clear that here the thesis "code" is from
+185 mb per what ? Fold ? Alls 128 folds ? All combinations ? make it mor clear for xgb and rf
+"Scientific Validity" - Is it really invalid ?
+"WhyModel-Level Caching, Not Result-Level Caching?" - Model level caching the right word ? is it clear wording
+4.1.3 Two Orthogonal Evaluation Dimensions - Is it though? With rf that big, do we need to say a side sentence about it ?
+4.2. move further up Maybe first Thing like what we have and then what we do with it what is best practice ?
+4.2.2 Extend a bit ? Maybe again old project but super good for a lot of things, fnn in future, all models l,time domain, relevant, sleep stages are understandable, not too easy to predict, under present data so a bit of everything needed or possible, publicly available
+4.3. Over explained as not caching relevant ?
+4.3 + 4.4 + 4.5 Over explained as not caching relevant ?
+4.5.2. Should we add that this is important as depending on what we want to say and how we orchestred the pipeline a MI implementation would increase our global cache by another 174x , so if we want to boost time  .. be careful with framing as it gives space to yeah but in per fold MI feature selection it would slow down. So it is a classical depends situation
+4.5.3. Implemented Optimizations (No Quality Loss) do we Need this like this? as it is not cahing but we can make an rgument that Maybe on a Server with one thread it would be even higher Speed up ? like a more it depends on the Setting you would get xy and we used xy with xy
+4.5.3 check this with the code base this part is old i Guess ist a bti inprecise check vs code check ntoe bewlow do you agrree? "vs code check of 4.5.3 : Mostly yes, but not fully as written. Confirmed Process-based parallel extraction with joblib is implemented, and the code explicitly cites GIL as the reason to prefer processes: feature_extractor.py:695, feature_extractor.py:698, feature_extractor.py:709. antropy is integrated for complexity features (at least Hjorth and DFA): feature_extractor.py:262, feature_extractor.py:351, and declared dependency in requirements.txt:8.Compressed feature caching is implemented via NumPy archives: feature_cache.py:138. Cache is loaded once and filtered at runtime to requested channel count: pipeline.py:141, feature_cache.py:221, feature_cache.py:223. Needs correction Hurst acceleration claim is not accurate in current code. Hurst uses R/S analysis, not antropy acceleration: feature_extractor.py:301. “Compute once for all 6 EEG channels” is outdated for current implementation. The pipeline now computes/stores full-channel features (8-channel capable, 195 features) and then filters to 6-channel (149) when needed: pipeline.py:112, pipeline.py:263, PIPELINE_PROCESSING_DETAILS.md:163. Exact numeric speed claims in your text (4.7s to 1.1s, 4.3x, complexity 2–3x) are not directly backed by a dedicated feature-extraction benchmark artifact in the repo. They appear in narrative/verification text, but I did not find a primary benchmark file proving those exact values: METHODOLOGY_VERIFICATION_REPORT.md:386. Dataset wording is inconsistent across repo artifacts (BOAS vs MASS SS3). BOAS is used in core pipeline/docs, but one consolidated results file states MASS SS3: README.md:13, data_loader_boas.py:1, thesis_results_human_readable.txt:7. Suggested corrected wording for 4.5.3 To enable efficient processing of the BOAS dataset (128 subjects, typically around 950–1000 epochs per subject), several optimization strategies were implemented. Feature extraction was parallelized across CPU cores using joblib with process-based workers to bypass GIL limitations for CPU-bound computation. Complexity features were optimized using antropy where applicable (notably Hjorth parameters and DFA), while preserving fallback implementations. A global compressed feature cache was added so each subject’s full feature set is computed once and then filtered at runtime to the required channel configuration, avoiding redundant recomputation across experiments. If you want, I can also provide a stricter “thesis-safe” version that only includes claims with directly reproducible benchmark files in this repository. """
+4.5.3 Evaluated But Not Implemented (Would Reduce Quality) - Delete as not used ? Or explain why didn't used so more direct
+table 4.6 Do we need this or just say we used Standart optimisation tools to achieve table idea: Remove implemented and add the real time gesture save up time , we had it somewhere
+if we cut on 4.3 + 4.4 + 4.5 should we expand on 4.6.
+4.6.1. Do we need it here or out it in the disclaimer up too ? Or appendix ?  or the table at the start ? Maybe even ask Sarita
+4.6.2 clean this up it has cursive italic code snipped etc unprofessional for a Thesis also the 64 and 32 are unclear stated like waht is the standart what do we use ist confusing again check ti with our codebase here is the vs code ntoe (it might be outdated) """Mostly confirmed, with a few important corrections. Step 1 (configuration assembly): confirmed with Nuance The tracked fields are assembled in a config object/dict and include random seed, code version, model config, feature config, and held-out subject: fingerprint.py:125, fingerprint.py:129, fingerprint.py:130, fingerprint.py:131. In training, selected feature names are passed into feature_config: training.py:582. Correction: the final serialized config does not store the full sorted selected-feature list directly; it stores a short hash of the sorted list (features_hash): fingerprint.py:88, fingerprint.py:90.  Step 2 (canonical serialization): confirmed Uses deterministic JSON serialization with sort_keys=True and compact separators: fingerprint.py:250. Step 3 (SHA-256 hashing): confirmed SHA-256 is applied to the canonical JSON string: fingerprint.py:253. Correction: .encode() is used without explicit argument; in Python this is UTF-8 by default, so behavior matches your claim. Step 4 (truncation to 32 hex chars / 128 bits): confirmed Truncation is implemented: fingerprint.py:157, fingerprint.py:253. Step 5 (cache key formation): confirmed Final key format is {fingerprint}_{held_out_subject}: fingerprint.py:335, fingerprint.py:351. Same filename pattern is used by model cache: loso_cache.py:238, loso_cache.py:242. Best corrected thesis wording “Fingerprint generation assembles random seed, code version, model hyperparameters, feature-selection settings, and held-out subject into a configuration object. The configuration is canonically serialized with json.dumps(..., sort_keys=True, separators=(',', ':')), hashed via SHA-256, and truncated to 32 hex characters (128 bits). For selected features, the implementation stores a deterministic hash of the sorted selected-feature names (features_hash) rather than the full list. The final cache key is formed as {fingerprint}_{held_out_subject}.”"""
+4.6.3  remove cursive code in table clean table or do we Need this as a table ? or just integrating it into text?
+4.6.4. remove bold and kursiv
+4.6.5.  Did we mentioned that Right now code version is hard coded but could be linked to a git version or something?
+4.6.5. Strict Validation - Do we still have this flag and do we need to say it here ? Fehl am Platz ?
+4.7.1. double check with requirments
+4.7.1. Double check and full list or table of old laptop vs new one and that we did run it on the old one but new testing scripts on the new machine , do we have a result for times ProBook vs 5090 maybe the caching is the same as read write is faster from cache in 5090 too? Like 300 sec to 3 sec on old is the same as 100 to 1 bitch is 100x while the 100x trains 3x faster  Intel(R) Core(TM) Ultra 9 275HX (2.70 GHz) also remove integrated and the 1.6 gb avaiablbe
+4.7.1. Manually? Garbage collection? Do we need to add a what to do with cache? Like of not used for 30 days move to bin, if there not used for 30 days remove, or when to hold things longer ? Or permeant like best model or sth?
+before 4.7.2 do we Need to define the metrics for evalulation earlier ? Do we need to define a correlation threshold maybe earlier or is it common in ML
+4.7.2. remove fnn note
+4.7.3 Feels out of place maybe rename rephrase or include somewhee ? Or even delte
+4.7.4 + 4.7.5  shorten or put tpgheter into one text feels a bit obvious
+4.8.1 We also did a run  On 3 subjects or 10 And then  Combination a1 a2 b1 B2 and then b1 B2 C1 C2 and 50% where cached do you find it  Otherwise explain or show it via a table and metric so Fingerprint detects same configs in different combination
+4.8.4 do we have a table for this?
+4.9.1. should we move them up like earlier? also do we Need them in our tables and conclusion and reults etc? or do we define them but leave them?
+4.9.3 Maybe incorporate into something? Or rewrite feels to bullet pointy
+table 4.12 in chapter 4.10.1 Mentioning overheat and throtteliing ? But also that is had the most festures
+table 4.14 Should we re run xgb none none und RF none none cold warm to verify ? I am unsure about these claims I doubt it as 30-50 festures wasn't quicker  And re run cold warm the * marked one too
+figure 4.5 Log scale distorts the gains shoudl we call it out or put it on a normal scale? also Put number on smaller bar  ist too high up
+4.10.2 shoudl wemention here if not incorparte earlier "What happens if mutual information + RF or mutual information+ RF + features per fold does this change the visbilzws MI increases the time ? Does this mean we should say in the conclusion it always depends on your combination of it's viable ?"
+4.10.2 figure 4.6 we Need to define and make sure we are using the defined threshold Did we define the threshold before in the or another chapter ?
+4.10.2  fig 4.7. Maybe move it upwards as ist not part of cahcing and Speed up similar to the restructure like first data and Sleep then Cache and pssed
+fig 4.7 Should we bridge here to distribution of dataset, and explain the different accuracies
+4.10.3. No roter Faden  that this is ad hoc Research so new order and make it more coherent with our research progress and when we did what
+table 4.17 Do we need this table or better a graph (fig 4.11)  shoes more the increase
+figure 4.10 do we Need a Explanation Maybe as a fig description or sth ist not super intutive i might re work this one also And we use the right data , should we do one clean re run on all subjects 18 configs but also on all the ad hoc tests?
+figure 4.18 should we move it way up to finger print Generation and Validation?
+4.11 Did we miss a finding ? should we expand
+4.12 Does this belong here or in the last chapter ?
+4.12.2 Should we define the viability metrics before more sharp and then just say these models fall below the line ?
+4.12.3 Should we also define this earlier ? Like size to speed up + And that if you don't have an increase or of speedup Dienst increase faster than cache size it can never become viable ?
+table 4.19 This table is at the wrong place (?) or it feels out of place as we didnt decide completly on how to incorparte the global feature decsion
+figure 4.13 First bars move description to the side , the +0.006 and -0.01 is overlapping with thigns
+
+Chapter 5
+5.0 Do we have a section of at least a section mentioning Thermal throtteliing? Which is a point for caching like running 2-3 combinations evaluating cooling, then run 2-3 new ones ? Is this an idea or worth a mention, my old laptop was struggling
+5.1.1.Is this good practice or just a section answering them not listing them again like this ?
+5.2.2"eters, it always produces the same ranked feature list. Two implementation variants are conceivable." - - I feel like the conclusion and summary should be "all of the insights depends on xy and depends on xy " - So that we can not make a unified and allgemeinen Aussage Also ja die Zeiten Aber die metric mit viability kann auch anders gesetzt werden
+5.2.2 "Version A — Determinism-based key" The key needs more like dataset, Codeversion...
+5.2.2. should we Keep Version b if neither used or implemtented
+5.2.5 + 5.2.6. Future work not future dreams, is this relevant for a thesis ? Maybe combine 5.2.4. and 5.2.5. into scaling to real world use or something?
+5.2.7. Is this in the right section? Or more a constraint and thus wrong placement ?
+Maybe add How about idea dream "for master thesis checking ever combination of viability" storing this
+Then PhD level implementing a deployment ready API that has the master Thesis findings as knowledge and then can orchestred automatically og a combination needs to be cached or not, maybe Webinterface maybe the tools and libraries we mentioned, maybe even with an planing ai that asked the user before start what's the goal and then sets up a real smart caching Framework for each individual project after understanding the goals and workflow
