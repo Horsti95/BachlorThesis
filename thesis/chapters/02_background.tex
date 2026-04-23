@@ -32,14 +32,19 @@ framework aligns with modern MLOps principles, which emphasize automation,
 continuous integration/deployment (CI/CD), and reproducibility throughout
 the ML lifecycle~\cite{kreuzberger2023mlops}.
 
-Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp} 
-support experiment tracking by recording parameters, metrics, code versions, 
-and artifacts for each run, enabling comparison and reproducibility. Despite 
-these advances, reproducibility remains a pervasive challenge in ML 
-research~\cite{semmelrock2025reproducibility}. Reproducibility ensures consistent 
-results from an ML workflow under identical conditions, hinging on the 
-``Holy Trinity'': input data, code and parameters, and the execution 
-environment~\cite{schubotz2022caching}. Challenges arise from:
+Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
+support experiment tracking by recording parameters, metrics, code versions,
+and artifacts for each run, enabling comparison and reproducibility. Despite
+these advances, reproducibility remains a persistent challenge---particularly
+in subject-independent evaluation workflows such as LOSO cross-validation,
+where experiment tracking tools record parameters globally but do not natively
+encode fold identity into cache keys. Without explicit fold-aware engineering,
+a cached model trained with Subject~$S_i$ held out could silently be reused
+for Subject~$S_j$, violating the experimental
+protocol~\cite{semmelrock2025reproducibility}. As Kreuzberger et al.\ define
+it, reproducibility is the ``ability to obtain the exact same results'' given
+identical inputs, code, and execution environment (Principle~P3)~\cite{kreuzberger2023mlops},
+a goal that depends on three controllable factors~\cite{schubotz2022caching}:
 \begin{itemize}
     \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
           Unrecorded decisions or parameter changes hinder replication.
@@ -69,7 +74,12 @@ This observation motivates the central contribution of this thesis: a
 fingerprint-based caching framework that persists and reuses computational
 artifacts (extracted features and trained models) across iterative modeling
 phases while maintaining reproducibility through cryptographic configuration
-fingerprinting. Specifically, Kreuzberger et al.\ define reproducibility as the ``ability to obtain the exact same results'' (Principle~P3) and highlight metadata tracking for maintaining model lineage (Principle~P7)~\cite{kreuzberger2023mlops}. The fingerprint-based framework implements these principles by hashing a canonical JSON representation of the complete experiment state---including data configuration, code version, model parameters, and held-out subject identifier---into a SHA-256 fingerprint that simultaneously automates lineage tracking and provides a deterministic cache key.
+fingerprinting. Kreuzberger et al.'s Principle~P7 requires metadata tracking
+for maintaining model lineage~\cite{kreuzberger2023mlops}; the fingerprint-based
+framework implements this directly by hashing a canonical JSON representation
+of the complete experiment state---data configuration, code version, model
+parameters, and held-out subject identifier---into a SHA-256 fingerprint that
+simultaneously automates lineage tracking and serves as a deterministic cache key.
 
 \section{Context: Computational Efficiency in Research}
 
@@ -105,7 +115,7 @@ Several factors drive this resource consumption:
       k-fold, leave-one-out) multiply training costs by the number of folds.
 \end{itemize}
 
-While caching can help, traditional research in cache management—such as the ML-aided hardware strategies surveyed by Krishna (2025)—focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artifacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
+While caching can help, hardware-level research in cache management---such as the ML-aided strategies surveyed by Krishna (2025)---focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-scale access patterns rather than addressing macro-level requirements such as matching high-level experiment configurations to saved artifacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
 
 This thesis addresses these inefficiencies through a deterministic, fingerprint-based caching framework. By encoding complete experiment configurations (including cross-validation fold identity) into cryptographic SHA-256 cache keys, the framework enables automatic result reuse that is mathematically tied to the scientific parameters, ensuring both efficiency and reproducibility.
 
