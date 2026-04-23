@@ -47,23 +47,7 @@ A fundamental distinction in this framework is between \textit{configuration-ind
 
 \textbf{Configuration-Dependent Cache} refers to artifacts whose validity depends on experimental configuration. These artifacts require fingerprint-based invalidation when parameters change. The LOSO model cache, which stores trained models keyed by configuration fingerprint and held-out subject, exemplifies configuration-dependent caching.
 
-Table~\ref{tab:storage_hierarchy} summarizes this distinction:
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{llcll}
-\toprule
-\textbf{Layer} & \textbf{Artifact} & \textbf{Size/Subject} & \textbf{Type} \\
-\midrule
-Layer 1 & 149 features (NPZ) & $\sim$1.1 MB & Persistent Storage \\
-Layer 2 & Trained LOSO models & 1--150 MB & Fingerprint Cache \\
-\bottomrule
-\end{tabular}
-\caption{Storage hierarchy distinguishing persistent storage from intelligent
-caching. Both layers are operational. Full-scale verification: XGBoost achieved
-122--498$\times$ speedup (avg 208$\times$); Random Forest 12--110$\times$ (avg 28$\times$).}
-\label{tab:storage_hierarchy}
-\end{table}
+In concrete terms: Layer~1 stores extracted features ($\sim$1.1~MB per subject, NPZ format) as persistent storage — no fingerprint needed, always valid. Layer~2 stores trained LOSO models (1--150~MB per fold depending on model type) as a fingerprint cache — keyed by configuration hash, automatically invalidated when parameters change.
 
 
 \subsubsection{Layer 1: Feature Extraction as Persistent Storage (Implemented)}
@@ -684,26 +668,7 @@ grid (3 subjects $\times$ 8 configurations = 24 cache operations):
 
 \subsection{Verification Results}
 
-Table~\ref{tab:cache_verification} summarizes the cache hit/miss behaviour
-on the 3-subject verification grid.
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{lccc}
-\toprule
-\textbf{Run} & \textbf{Hits} & \textbf{Misses} & \textbf{Hit Rate} \\
-\midrule
-Cold Start  & 0  & 24 & 0\%   \\
-Warm Re-run & 24 & 0  & 100\% \\
-\bottomrule
-\end{tabular}
-\caption{Cache hit/miss verification on 3 subjects (24 operations).
-Cold start correctly produces 24 misses; the subsequent warm re-run
-correctly retrieves all 24 cached models. Speedup measurements are
-reported separately in the full-scale evaluation
-(Section~\ref{sec:results_caching}).}
-\label{tab:cache_verification}
-\end{table}
+The cold run produced 24 cache misses (0\% hit rate), as expected for an empty cache. The subsequent warm re-run correctly retrieved all 24 cached models (100\% hit rate, 0 misses). Speedup measurements are reported separately in the full-scale evaluation (Section~\ref{sec:results_caching}).
 
 \subsection{Correctness Validation}
 
@@ -876,29 +841,7 @@ Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
 Verdict: \textbf{BORDERLINE}, meaningful speedup but GB-scale storage makes this
 impractical for repeated experimentation without large-capacity storage.
 
-Table~\ref{tab:xgb_rf_comparison} summarises the comparison. XGBoost dominates
-on all dimensions: higher accuracy, higher speedup, and dramatically smaller
-cache footprint.
-
-\begin{table}[htbp]
-\centering
-\caption{XGBoost vs.\ Random Forest cache performance summary (averages
-across all 9 configurations, 128-fold LOSO).}
-\label{tab:xgb_rf_comparison}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Metric} & \textbf{XGBoost} & \textbf{Random Forest} \\
-\midrule
-Average cache size   & $\sim$185~MB  & $\sim$18.5~GB \\
-Average speedup      & 208$\times$   & 28$\times$    \\
-Average warm time    & 7.1~s         & 330~s         \\
-Best accuracy        & 85.5\%        & 81.9\%        \\
-Best Cohen's $\kappa$ & 0.745        & 0.666         \\
-Best F1-macro        & 0.690         & 0.607         \\
-Cache verdict        & \textbf{VIABLE} & \textbf{BORDERLINE} \\
-\bottomrule
-\end{tabular}
-\end{table}
+XGBoost dominates on every measured dimension: 208$\times$ average speedup vs.\ 28$\times$ for Random Forest, cache storage of $\sim$185~MB vs.\ $\sim$18.5~GB, warm-load time of 7.1~s vs.\ 330~s, and best accuracy of 85.5\% vs.\ 81.9\% ($\kappa$: 0.745 vs.\ 0.666, F1-macro: 0.690 vs.\ 0.607).
 
 Figure~\ref{fig:speedup_bar} visualises the speedup comparison, and
 Figure~\ref{fig:cache_efficiency} shows cold start vs.\ warm run time
@@ -1034,27 +977,7 @@ this scaling behaviour.
 \subsection{Feature Selection: ANOVA vs.\ Mutual Information}
 \label{sec:results_anova}
 
-\begin{table}[htbp]
-\centering
-\caption{ANOVA F-statistic vs.\ Mutual Information feature selection (10 subjects,
-5-fold CV). ANOVA is both faster and more accurate.}
-\label{tab:anova_vs_mi}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Method} & \textbf{Time (s)} & \textbf{Accuracy} \\
-\midrule
-ANOVA (f\_classif)  & 0.022 & 84.26\% \\
-Mutual Information  & 3.74  & 80.58\% \\
-\midrule
-\textbf{Difference} & \textbf{174$\times$ faster} & \textbf{$+$3.68\% ANOVA} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-ANOVA is strictly superior for this dataset: 174$\times$ faster \textit{and}
-3.68 percentage points more accurate than Mutual Information. This is not a
-trade-off but a clear dominance, making ANOVA the justified choice for feature
-selection.
+ANOVA is strictly superior for this dataset: 174$\times$ faster (0.022~s vs.\ 3.74~s) \textit{and} 3.68 percentage points more accurate (84.26\% vs.\ 80.58\%) than Mutual Information on a 10-subject, 5-fold CV pilot. This is not a speed--accuracy trade-off but a clear dominance, making ANOVA the justified choice for feature selection.
 
 \subsection{Reproducibility Validation}
 \label{sec:results_reproducibility}
