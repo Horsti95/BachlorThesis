@@ -177,28 +177,17 @@ produced a specific artifact be identified with certainty.
 
 \subsection{Related Caching Approaches}
 
-While this thesis focuses on hash-based caching for ML experiments, other
-caching paradigms exist in adjacent domains:
-
-\textbf{Large Language Model (LLM) Inference Caching} addresses inference
-latency by managing attention key-value tensors during autoregressive
-generation. vLLM's PagedAttention~\cite{kwon2023pagedattention} solves
-memory fragmentation by treating the KV cache as a virtual memory system
-with non-contiguous blocks.
-
-\textbf{Learned Caching for Deep Networks} employs neural networks to predict
-hidden layer outputs, enabling layer skipping during inference.
-GATI~\cite{balasubramanian2021accelerating} uses learned models to make
-sophisticated cache eviction decisions.
-
-\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale
-for experimental data distribution.
-XRootD/XCache~\cite{sim2023xcache} provides distributed file caching across
-global collaborations through locality-aware placement.
-
-In contrast to these domain-specific approaches, this thesis implements
-deterministic, hash-based caching for cross-validation experiments where
-validity depends on configuration and fold identity.
+Caching is applied across many computing domains, but with fundamentally
+different objectives. LLM inference caches manage attention key-value tensors
+to reduce autoregressive latency~\cite{kwon2023pagedattention}; hardware-level
+systems optimize replacement policies for microsecond-scale memory
+access~\cite{krishna2025cache}; and large-scale scientific computing uses
+distributed file caches for petabyte data distribution~\cite{sim2023xcache}.
+In contrast to these runtime or hardware-oriented approaches, this thesis
+implements \textit{experiment-level} caching: artifacts are indexed by the
+complete scientific configuration that produced them, and validity depends on
+configuration identity and cross-validation fold identity rather than access
+frequency or latency.
 
 \subsection{Reproducibility Considerations}
 
@@ -252,7 +241,8 @@ thesis:
       transitional nature (typically 1--5 minutes).
 
 \item \textbf{N2 (Sleep):} Comprises 45--55\% of total sleep time. Defined
-      by sleep spindles (11--16~Hz) and K-complexes.
+      by sleep spindles (12--16~Hz as used in this thesis's feature extractor;
+      AASM defines spindles at 11--16~Hz) and K-complexes.
 
 \item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves
       (0.5--4~Hz, $\geq$20\% of epoch). Most prevalent in the first third
@@ -306,7 +296,7 @@ In this work, EEG signals are decomposed into distinct frequency bands. While sp
 Delta    & 0.5--4.0   & Predominant in N3 (Deep sleep); indicates sleep pressure \\
 Theta    & 4.0--8.0   & Associated with N1 and REM stages; drowsiness \\
 Alpha    & 8.0--13.0  & Hallmarked by relaxed wakefulness; key for Stage W \\
-Sigma    & 11.0--16.0 & Sleep spindles; the definitive marker for N2 sleep \\
+Sigma    & 12.0--16.0 & Sleep spindles; the definitive marker for N2 sleep \\
 Beta     & 13.0--30.0 & Active wakefulness; power decreases during NREM sleep \\
 Gamma    & 30.0--45.0 & High-frequency processing; typically minimal in sleep \\
 \bottomrule
@@ -335,7 +325,11 @@ addressed before feature extraction:
 \end{itemize}
 
 These steps constitute the preprocessing pipeline used in this thesis,
-producing clean 30-second epochs ready for feature extraction.
+producing clean 30-second epochs ready for feature extraction. The pipeline
+was originally developed for a prior subject-independent sleep staging project
+and is adopted here with minor adaptations; this thesis contributes the
+fingerprint-based caching layer on top of it, treating the preprocessing
+as a fixed, validated substrate.
 
 % ============================================================================
 \section{Machine Learning Ensemble Methods}
