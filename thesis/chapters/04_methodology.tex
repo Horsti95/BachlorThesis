@@ -428,19 +428,35 @@ Discussion (Section~\ref{sec:discussion}).
 
 \subsection{Feature Extraction Optimization}
 
-Feature extraction was parallelized across CPU cores using joblib process-based
-workers (process-based rather than thread-based, to bypass Python's GIL for
-CPU-bound NumPy/SciPy operations), achieving a 4.3$\times$ speedup on 8 cores.
-Computationally expensive complexity measures (DFA, Hurst exponent, Hjorth
-parameters) were accelerated using the antropy library's Numba JIT-compiled
-implementations, providing an additional 2--3$\times$ reduction with no change
-to the computed values.
+To enable efficient processing of the BOAS dataset (128 subjects,
+$\sim$950--1{,}000 epochs per subject), the extraction pipeline uses
+process-based parallelization via joblib to bypass Python's GIL for
+CPU-bound NumPy/SciPy operations. Complexity features are accelerated using
+the antropy library where applicable---specifically DFA (\texttt{ant.detrended\_fluctuation})
+and Hjorth parameters (\texttt{ant.hjorth\_params}); the Hurst exponent retains a
+standard R/S-analysis implementation to avoid duplicating the DFA computation.
+Each subject's full feature set is computed once and stored as a compressed NumPy
+archive; downstream experiments filter to the required channel count and top-K
+selection at runtime without re-extracting from raw signals.
 
-The combined optimizations reduced total cold-start feature extraction for
-128 subjects from $\sim$150 hours (sequential, unoptimised) to $\sim$53 minutes.
-The 227$\times$ Layer~1 cache speedup is measured against this already-optimised
-baseline: on single-threaded environments, cold-start extraction would take
-proportionally longer, making the constant cache load time even more advantageous.
+Table~\ref{tab:extraction_timing} shows the resulting extraction times for the
+full 128-subject dataset. The 227$\times$ Layer~1 cache speedup is measured
+against the optimised cold-start baseline; single-threaded environments would
+show a larger absolute speedup.
+
+\begin{table}[htbp]
+\centering
+\caption{Feature extraction timing for the full 128-subject BOAS dataset.}
+\label{tab:extraction_timing}
+\begin{tabular}{lll}
+\toprule
+\textbf{Run type} & \textbf{Time (128 subjects)} & \textbf{Note} \\
+\midrule
+Cold start (parallelised) & $\sim$53 min & Extraction + cache write \\
+Warm run (Layer~1 cache)  & $<$1 min     & 227$\times$ speedup \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 
 
