@@ -293,8 +293,8 @@ def run_extra_scripts(repo_root: Path, output_root: Path, timeout_seconds: int) 
             "exit_code": exit_code,
             "timed_out": timed_out,
             "elapsed_seconds": round(elapsed, 2),
-            "stdout_log": str((logs_dir / f"{log_base}.stdout.log").relative_to(repo_root).as_posix()),
-            "stderr_log": str((logs_dir / f"{log_base}.stderr.log").relative_to(repo_root).as_posix()),
+            "stdout_log": str((logs_dir / f"{log_base}.stdout.log").resolve().relative_to(repo_root).as_posix()),
+            "stderr_log": str((logs_dir / f"{log_base}.stderr.log").resolve().relative_to(repo_root).as_posix()),
         }
         results.append(result)
 
