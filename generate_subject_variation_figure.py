@@ -42,7 +42,7 @@ CLAIMED = {
     "N2-heavy":   ("sub-114", "N2",   79.96),
     "Wake-heavy": ("sub-34",  "Wake", 51.53),
     "N3-heavy":   ("sub-2",   "N3",   22.56),
-    "REM-heavy":  ("sub-52",  "REM",  24.49),
+    "REM-heavy":  ("sub-119", "REM",  25.17),
 }
 
 

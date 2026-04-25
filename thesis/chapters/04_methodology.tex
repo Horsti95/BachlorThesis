@@ -462,10 +462,10 @@ the full warm run completes in $\sim$7~s versus $\sim$25~min cold.}
 
 The EEG signal processing and feature extraction pipeline (bandpass filtering,
 artifact rejection, epoch segmentation, and computation of the 149 per-epoch
-features) was adapted from code originally developed during a prior university
-course project on sleep stage classification. This prior code was written by
-the same author and provides the domain-specific signal processing foundation
-on which the thesis builds.
+features) was adapted from an implementation originally developed during a prior
+university course project on sleep stage classification. That implementation
+was written by the same author and provides the domain-specific signal
+processing foundation on which this thesis builds.
 
 The fingerprint-based caching framework itself---including the SHA-256
 configuration fingerprinting mechanism, the two-layer cache architecture
@@ -540,8 +540,8 @@ $C_1$, $C_2$ fresh. This was verified in
 
 \textbf{Version control safety.} The \texttt{code\_version} parameter
 (set to the current semantic version or Git commit hash) ensures that
-code changes automatically invalidate the cache. If a code migration
-introduces a bug or modifies model behaviour, the resulting fingerprint
+implementation changes automatically invalidate the cache. If an implementation
+migration introduces a bug or modifies model behaviour, the resulting fingerprint
 differs from previous versions, preventing retrieval of stale cached
 models.
 
@@ -613,7 +613,7 @@ Our implementation defaults to version-based validation (Option 1), balancing in
 
 \subsection{Technical Environment}
 
-Table~\ref{tab:technical_env} specifies the software environment for reproducibility. All code was developed and tested with Python 3.12.2 and the following dependencies.
+Table~\ref{tab:technical_env} specifies the software environment for reproducibility. The entire implementation was developed and tested with Python 3.12.2 and the following dependencies.
 
 \begin{table}[htbp]
 \centering
