@@ -83,7 +83,7 @@ The four research questions posed in Chapter~1 are answered as follows:
       achieved a 100\% cache hit rate across all 2{,}304 warm-cache operations
       (18 configurations $\times$ 128 LOSO folds). Median speedups were
       178$\times$ for XGBoost and 17.7$\times$ for Random Forest, with peak
-      speedups of 498$\times$ and 110$\times$ respectively. The feature cache
+      speedups of 498$\times$ and 110$\times$ respectively. The persistent feature store
       (Layer~1) eliminated redundant feature extraction entirely across
       experimental iterations.
 
@@ -218,7 +218,7 @@ provide meaningful improvements.
 Currently, each experiment maintains its own cache directory. A shared cache
 repository could enable reuse across experiments with compatible preprocessing
 parameters. For example, if two experiments use the same feature extraction
-pipeline but differ only in model hyperparameters, the feature cache (Layer~1)
+pipeline but differ only in model hyperparameters, the persistent feature store (Layer~1)
 could be shared while the model cache (Layer~2) remains experiment-specific.
 This extension would require a cache registry that maps fingerprints to
 shared storage locations and enforces access control.
