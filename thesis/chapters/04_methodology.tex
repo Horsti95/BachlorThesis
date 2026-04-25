@@ -54,7 +54,7 @@ Model     & Hyperparameters   & \texttt{max\_depth: 6, n\_estimators: 200} \\
 Features  & Base count        & \texttt{149} \\
 Features  & Correlation threshold & \texttt{0.90} \\
 Features  & Top-K selected    & \texttt{50} \\
-Features  & Selected feature names & sorted list (post-selection) \\
+Features  & Feature name hash & SHA-256[:16] of sorted selected names \\
 LOSO fold & Held-out subject  & \texttt{SC4001} \\
 \bottomrule
 \end{tabular}
@@ -503,34 +503,33 @@ infrastructure was taken from the prior project.
 Cache key generation follows a five-step process:
 
 \begin{enumerate}
-\item \textbf{Configuration assembly.} All tracked parameters
-      (\texttt{random\_seed}, \texttt{code\_version}, \texttt{model\_config}
-      with algorithm name and hyperparameters, \texttt{feature\_config} with
-      base feature count, correlation threshold, top-K selection, and the
-      sorted list of selected feature names, and \texttt{held\_out\_subject})
-      are combined into a single Python dictionary.
+\item \textbf{Configuration assembly.} All tracked parameters are combined
+      into a single dictionary: \texttt{random\_seed}, \texttt{code\_version},
+      \texttt{model\_config} (algorithm name and hyperparameters),
+      \texttt{feature\_config} (base feature count, correlation threshold,
+      top-K selection, and a 16-character SHA-256 hash of the sorted selected
+      feature names), and \texttt{held\_out\_subject}. The feature list is
+      represented as a compact hash (\texttt{features\_hash}) rather than the
+      full name list to keep the fingerprint string short.
 
-\item \textbf{Canonical serialization.} The dictionary is serialized to
-      JSON using \texttt{json.dumps()} with \texttt{sort\_keys=True} and
-      compact separators \texttt{(',',':')}, ensuring a deterministic string
-      representation regardless of insertion order.
+\item \textbf{Canonical serialization.} The dictionary is serialized to JSON
+      with \texttt{sort\_keys=True} and compact separators \texttt{(',',':')}
+      (\texttt{json.dumps}), producing a deterministic string regardless of
+      dictionary insertion order.
 
-\item \textbf{SHA-256 hashing.} The canonical JSON string is encoded to
-      UTF-8 and hashed using SHA-256, producing a 256-bit (64 hexadecimal
-      character) digest.
-
-\item \textbf{Truncation.} The hash is truncated to 32 hexadecimal
-      characters (128 bits) for filesystem compatibility, while retaining
-      sufficient collision resistance for the experimental scale
+\item \textbf{SHA-256 hashing and truncation.} The canonical JSON string is
+      hashed with SHA-256 (256 bits = 64 hex characters) and then truncated to
+      32 hex characters (128 bits) for filesystem compatibility. 128 bits
+      provides ample collision resistance at the experimental scale
       ($\sim$2{,}300 configurations).
 
-\item \textbf{Cache key formation.} The truncated hash is concatenated
-      with the held-out subject identifier to form the final cache key:
-      \texttt{\{fingerprint\}\_\{subject\}}, e.g.,
-      \texttt{a3f2b8c1d4e5f6a7...\_sub-001}.
+\item \textbf{Cache key formation.} The 32-character fingerprint is
+      concatenated with the held-out subject identifier:
+      \texttt{\{fingerprint\}\_\{subject\}}, e.g.\
+      \texttt{a3f2b8c1...\_sub-001}.
 \end{enumerate}
 
-The corresponding implementation in \texttt{fingerprint.py}:
+The implementation in \texttt{fingerprint.py} (steps 2--4):
 
 \begin{verbatim}
 canonical = json.dumps(config.to_dict(),
@@ -635,69 +634,18 @@ Our implementation defaults to version-based validation (Option 1), balancing in
 
 \subsection{Technical Environment}
 
-Table~\ref{tab:technical_env} specifies the software environment for reproducibility. The entire implementation was developed and tested with Python 3.12.2 and the following dependencies.
+All experiments were executed on a custom desktop workstation (Intel Core
+Ultra~9, 64~GB RAM, NVMe SSD, NVIDIA RTX~5090 Mobile) running Python~3.12.2
+with pinned dependencies listed in \texttt{requirements.txt} (scikit-learn
+1.4.x, XGBoost~3.0.2, MNE-Python~1.9.0, joblib~1.5.1, NumPy~2.1.3).
+All stochastic operations use \texttt{random\_state=42}.
 
-\begin{table}[htbp]
-\centering
-\begin{tabular}{lll}
-\toprule
-\textbf{Component} & \textbf{Version} & \textbf{Purpose} \\
-\midrule
-Python        & 3.12.2   & Core language \\
-scikit-learn  & 1.4.x+   & ML models (Random Forest, feature selection) \\
-XGBoost       & 3.0.2    & Gradient boosting classifier (primary model) \\
-MNE-Python    & 1.9.0    & EEG data loading and signal processing \\
-SciPy         & 1.15.3   & Signal filtering, spectral analysis \\
-NumPy         & 2.1.3    & Numerical computations, array operations \\
-Pandas        & 2.2.3    & Data manipulation and organization \\
-joblib        & 1.5.1    & Parallel processing, model serialization \\
-pickle        & Built-in & Model/data serialization for caching \\
-\midrule
-\textbf{Random Seed} & \textbf{42} & \textbf{All stochastic operations} \\
-\bottomrule
-\end{tabular}
-\caption{Software environment and dependency versions. All versions are pinned
-in \texttt{requirements.txt} for strict reproducibility.}
-\label{tab:technical_env}
-\end{table}
-
-\textbf{Hardware Environment:}
-
-Two machines were used for the experiments reported in this thesis. The
-HP~ProBook laptop served as the primary development and initial testing
-platform; the desktop workstation with an NVIDIA RTX~5090 Mobile GPU and
-64~GB RAM was used for all large-scale benchmarks, including the
-18-configuration experiment, the 15-model viability study, and the scaling
-analysis.
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{lll}
-\toprule
-\textbf{Component} & \textbf{Development Laptop} & \textbf{Benchmark Desktop} \\
-\midrule
-Machine     & HP ProBook x360 435 G7      & Custom Desktop Workstation \\
-Processor   & AMD Ryzen 7 4700U (8 cores) & Intel Core Ultra 9 \\
-RAM         & 16 GB (1.6 GB available)    & 64 GB \\
-GPU         & AMD Radeon (integrated)     & NVIDIA RTX 5090 Mobile \\
-Storage     & SSD                         & NVMe SSD \\
-OS          & Windows 11 Pro              & Windows 11 Pro \\
-\bottomrule
-\end{tabular}
-\caption{Hardware specifications for the two machines used. The development
-laptop was used for initial testing and pipeline development; the desktop
-workstation was used for all timing benchmarks reported in this thesis.}
-\label{tab:hardware_env}
-\end{table}
-
-
-
-\textbf{Note:} All timing results and speedup measurements reported in this
-thesis were obtained on the benchmark desktop. The development laptop was used
-only for implementation and preliminary testing. Absolute timing values are
-hardware-dependent; however, as discussed in the viability analysis
-(Section~\ref{sec:results_viability}), relative speedup ratios and viability verdicts
-generalise across hardware configurations.
+All timing results and speedup measurements reported in this thesis were
+obtained on this machine. Absolute timing values are hardware-dependent;
+as discussed in Section~\ref{sec:results_viability}, relative speedup ratios
+and VIABLE/NOT\_VIABLE verdicts generalise across hardware configurations
+because they are determined by model serialization characteristics, not
+machine speed.
 \subsection{Experimental Grid}
 
 The experiments evaluate 18 configurations, as shown in Table~\ref{tab:exp_grid}.
