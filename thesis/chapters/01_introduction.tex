@@ -19,8 +19,11 @@
   \item \textbf{Yellow boxes:} Remove all \texttt{Working Draft Note} boxes
         before submission.
   \item \textbf{Figures missing:} \texttt{fig\_sleep\_stage\_distribution.pdf}
-        and \texttt{fig\_confusion\_matrix.pdf} must be generated on the
-        benchmark desktop (\texttt{python generate\_missing\_figures.py}).
+        --- run \texttt{python generate\_distribution\_figure.py} (no data
+        required, uses hardcoded counts, works on any machine).
+        \texttt{fig\_confusion\_matrix.pdf} --- run
+        \texttt{python generate\_missing\_figures.py} on the benchmark
+        desktop (requires trained model cache).
 \end{itemize}
 \end{minipage}}
 \end{center}
@@ -35,9 +38,9 @@ The central question shifted from "how can the classifier be improved?" to "why 
 
 ML projects frequently fail not due to algorithmic limitations but due to infrastructure deficiencies. Rzig et al.\ report that 61.8\% of CI/CD pipeline modifications in ML projects address build policies and dependency management rather than model logic~\cite{rzig2024empirical}. This aligns with the concept of \textit{hidden technical debt} in ML systems, where the actual model code constitutes only a small fraction of the overall system~\cite{googlemlops2023}. The framework developed in this thesis aims to reduce this technical debt through automated, deterministic caching.
 
-The broader landscape reinforces the urgency of this work. The field of Artificial Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth: AI-related publications have increased 2.3 times since 2015, now comprising nearly 42\% of all computer science publications~\cite{AIIndex2023}. The most visible manifestation of resulting resource waste occurs at the frontier: training compute for notable AI models is doubling approximately every five months, and individual training runs for large-scale models emit thousands of tons of $CO_2$~\cite{AIIndex2025}. Redundant computation, however, is not exclusive to frontier AI. The same principle applies at every scale: the 21-hour Random Forest sweeps that motivated this thesis represent a smaller but structurally identical instance of the same waste. As ML systems grow more complex and resource-intensive, MLOps pipelines must incorporate deterministic caching frameworks to eliminate this redundancy wherever it occurs.
+The broader landscape reinforces the urgency of this work. The field of Artificial Intelligence (AI) and Machine Learning (ML) is experiencing unprecedented growth: AI-related publications have increased 2.3 times since 2015, now comprising nearly 42\% of all computer science publications~\cite{AIIndex2023}. The most visible manifestation of resulting resource waste occurs at the frontier: training compute for notable AI models is doubling approximately every five months, and individual frontier training runs have been estimated to emit substantial CO$_2$ equivalents~\cite{AIIndex2025}. Redundant computation, however, is not exclusive to frontier AI. The same principle applies at every scale: the 21-hour Random Forest sweeps that motivated this thesis represent a smaller but structurally identical instance of the same waste. As ML systems grow more complex and resource-intensive, MLOps pipelines must incorporate deterministic caching frameworks to eliminate this redundancy wherever it occurs.
 
-This growth highlights a critical gap in current development practices. As Kreuzberger et al.\ observe, many data science projects remain ``manual to a great extent,'' functioning as experimental Proofs of Concept that fail to operationalize efficiently~\cite{kreuzberger2023mlops}. The initial manual iteration cycle encountered in this research---where simple parameter changes triggered 21-hour re-training runs---is a textbook example of this failure mode. By automating the caching decision through a deterministic framework, this thesis moves the pipeline from a manual prototype to an operationalized workflow aligned with the principles of sustainable and reproducible AI. Despite these advances in MLOps standardization, caching for cross-validation workflows remains an unaddressed gap.
+This growth highlights a critical gap in current development practices. As Kreuzberger et al.\ observe, many data science projects remain ``manual to a great extent,'' functioning as experimental Proofs of Concept that fail to operationalize efficiently~\cite{kreuzberger2023mlops}. The initial manual iteration cycle encountered in this research---where simple parameter changes triggered 21-hour re-training runs---is a textbook example of this failure mode. By automating the caching decision through a deterministic framework, this thesis moves the pipeline from a manual prototype to an operationalized workflow aligned with the principles of sustainable and reproducible AI.
 
 
 
@@ -100,14 +103,8 @@ hashing of canonical JSON configuration representations to generate deterministi
 cache keys, with held-out subject identifiers included to ensure cache validity
 across folds. The approach was validated through a sleep stage classification
 case study using 128 subjects from the BOAS (Bitbrain Open Access Sleep)
-dataset.
-
-
-Evaluation metrics included cache hit rates, computational time savings,
-storage requirements, and reproducibility validation across experimental
-iterations.
-
-
+dataset, measuring cache hit rates, computational time savings, storage
+requirements, and reproducibility across experimental iterations.
 
 
 \section{Research Questions}
@@ -159,6 +156,7 @@ This thesis follows a quantitative experimental methodology to evaluate a finger
 
 
 \end{enumerate}
+
 \subsection{Evaluation Dimensions}
 
 The evaluation is structured along two orthogonal dimensions:
@@ -173,7 +171,9 @@ The evaluation is structured along two orthogonal dimensions:
         \item \textbf{Tier 1: Persistent Feature Store.} A durable repository for subject-wise extracted features (149 features per epoch). By storing these as a \textit{Materialized Intermediate Representation}, the framework isolates computationally expensive signal processing from the model training phase.
         \item \textbf{Tier 2: Fingerprint-based Model Cache.} A dynamic layer that utilizes SHA-256 configuration hashing to prevent the redundant re-training of models during iterative hyperparameter and feature-selection sweeps.
     \end{itemize}
-\end{itemize}\subsection{Validity and Reproducibility Criteria}
+\end{itemize}
+
+\subsection{Validity and Reproducibility Criteria}
 
 A cache lookup is considered valid only when the fingerprinted configuration matches.
 If any tracked parameter changes, the fingerprint changes and cached outputs are bypassed.
