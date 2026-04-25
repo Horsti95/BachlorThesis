@@ -97,19 +97,19 @@ speedup (median 17.7$\times$) but required $\sim$18.5~GB of cache storage.
 
 \textbf{Why LOSO-Level Caching, Not Just Model Caching?}
 
-A critical design decision is caching at the \textit{LOSO fold level} rather than caching a single global model. This distinction is essential:
+A critical design decision is caching at the LOSO fold level rather than caching a single global model. This distinction is essential:
 
 \begin{enumerate}
-    \item \textbf{Data Leakage Prevention:} Each LOSO fold has a unique fingerprint that includes the \texttt{held\_out\_subject} field. A model trained with Subject~A held out \textit{cannot} be retrieved when Subject~B is the test subject---the fingerprints differ (as demonstrated by the implemented \texttt{LOSOFingerprint} class), forcing a cache miss and retraining.
+    \item \textbf{Data Leakage Prevention:} Each LOSO fold has a unique fingerprint that includes the \texttt{held\_out\_subject} field. A model trained with Subject~A held out cannot be retrieved when Subject~B is the test subject---the fingerprints differ (as demonstrated by the implemented \texttt{LOSOFingerprint} class), forcing a cache miss and retraining.
     
-    \item \textbf{Scientific Validity:} In LOSO cross-validation, each fold produces a \textit{different} model because the training data differs. Caching a single ``global model'' would be scientifically invalid---there is no single model, but rather $N$ distinct models (one per subject held out).
+    \item \textbf{Scientific Validity:} In LOSO cross-validation, each fold produces a different model because the training data differs. Caching a single ``global model'' would be scientifically invalid---there is no single model, but rather $N$ distinct models (one per subject held out).
     
     \item \textbf{Incremental Experimentation:} When adding new subjects or modifying experimental parameters, only affected folds require retraining. Cached models for unchanged configurations remain valid and are reused automatically.
 \end{enumerate}
 
 \textbf{Why Model-Level Caching, Not Result-Level Caching?}
 
-Within each LOSO fold, the framework caches the \textit{trained model} rather than just the evaluation metrics:
+Within each LOSO fold, the framework caches the trained model rather than just the evaluation metrics:
 
 \begin{itemize}
     \item \textbf{Post-hoc Analysis:} Cached models enable feature importance analysis, prediction on new data, or computation of additional metrics without retraining.
@@ -734,7 +734,7 @@ excluded from the benchmark experiments; see Section~\ref{chap:summary}
 
 During development, a feature mismatch bug was identified: models trained
 with 37 features crashed during loading when feature selection produced 33
-features under identical selection \textit{parameters} but with a different
+features under identical selection parameters but with a different
 random seed. The root cause was that the fingerprint included the selection
 parameters (correlation threshold, top-K count) but not the resulting feature
 names. The fix was to hash the sorted list of selected feature names into the
@@ -1087,8 +1087,7 @@ the viability spectrum.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig4b_viability_scatter.pdf}
-\caption{Cache viability across 15 model types, ranked by MB per second of
-compute saved (lower = more efficient). Green bars are cache-viable; red bars
+\caption{Cache viability across 15 model types, ranked by seconds of compute saved per MB of cache (higher = more efficient). Green bars are cache-viable; red bars
 are not viable because loading time approaches retraining time.}
 \label{fig:viability_scatter}
 \end{figure}
