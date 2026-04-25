@@ -1,17 +1,16 @@
-\documentclass{imc-inf} % Use the actual IMC template class
+\documentclass{imc-inf}
 
 % --- IMC Template Specific Commands ---
-% These commands are defined by the imc-inf.cls file
 \title{Optimizing ML Experiments: Intelligent Frameworks for Efficiency and Reproducibility}
 \subtitle{A Fingerprint-Based LOSO Caching Approach Validated on EEG Sleep Classification}
-\thesistype{Bachelor Thesis} % FIXED: Changed from Bachelor Exposé
+\thesistype{Bachelor Thesis}
 \author{Lennart Gorzel}
-\supervisor{Prof. Himanshu Buckchash} % FIXED: Correct supervisor
-\copyrightyear{2026} % FIXED: Updated year
-\submissiondate{05.05.2026} % FIXED: Proposal deadline
+\supervisor{Prof. Himanshu Buckchash}
+\copyrightyear{2026}
+\submissiondate{05.05.2026}
 \keywords{Machine Learning, Intelligent Caching, Reproducibility, Sleep Stage Classification, EEG, Feature Engineering}
 
-% --- Standard Packages (keep these) ---
+% --- Standard Packages ---
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
 \usepackage{svg}
@@ -23,25 +22,24 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{subcaption}
-\usepackage{booktabs} % For professional tables
-\usepackage{multirow} % For merged cells in tables
+\usepackage{booktabs}
+\usepackage{multirow}
 \usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{algorithmic}
+\usepackage{algorithm}
 
-% Define the missing plotsuggestion environment
-\newenvironment{plotsuggestion}{%
-    \begin{center}
-    \begin{minipage}{0.9\textwidth}
-    \begin{itshape}
-    \textbf{Plot Suggestion:} 
-}{%
-    \end{itshape}
-    \end{minipage}
-    \end{center}
-}
+% ---- Colored TODO/Note boxes for thesis review ----
+\newtcolorbox{todobox}[1][]{colback=red!8, colframe=red!70!black, fonttitle=\bfseries, title=TODO, #1}
+\newtcolorbox{verifybox}[1][]{colback=orange!8, colframe=orange!70!black, fonttitle=\bfseries, title=VERIFY, #1}
+\newtcolorbox{claudenote}[1][]{colback=blue!8, colframe=blue!60!black, fonttitle=\bfseries, title=Claude Note, #1}
+\newtcolorbox{missingref}[1][]{colback=purple!8, colframe=purple!60!black, fonttitle=\bfseries, title=Missing Reference, #1}
+\newtcolorbox{plotsuggestion}[1][]{colback=green!8, colframe=green!60!black, fonttitle=\bfseries, title=Plot/Figure Suggestion, #1}
+\newtcolorbox{generatefigure}[1][]{colback=yellow!15, colframe=yellow!60!black, fonttitle=\bfseries, title=Generate This Figure, #1}
 
 \begin{document}
 
-% --- Front Matter (as per IMC template) ---
+% --- Front Matter ---
 \frontmatter
 \maketitle
 
@@ -49,30 +47,24 @@
 \end{declarations}
 
 
-
 % ============================================================================
 % ABSTRACT
 % ============================================================================
-
 \begin{abstract}
-This thesis addresses the computational costs and reproducibility challenges inherent in modern Machine Learning (ML) experimentation. As ML systems increase in complexity, researchers face significant overhead from redundant computations, inconsistent results across runs, and difficulties resuming interrupted experiments. This work proposes a fingerprint-based caching framework utilizing SHA-256 configuration hashing to systematically mitigate these challenges.
+This thesis addresses the computational costs and reproducibility challenges in modern Machine Learning (ML) experimentation, where redundant computations and inconsistent results create significant overhead. To mitigate these issues, this work proposes a deterministic caching framework utilizing SHA-256 configuration hashing.
 
-The research develops a deterministic fingerprinting system where a cryptographic hash uniquely identifies each experiment configuration. The fingerprint is derived from a canonical JSON representation of the tracked experiment state, including the random seed, code version, model hyperparameters, feature configuration, and held-out subject. This ensures that any modification to parameters that may affect the output results in a unique fingerprint, enabling automatic cache invalidation. Consequently, identical fingerprints indicate an identical tracked configuration, allowing for valid, reproducible cache retrieval.
+By deriving a cryptographic fingerprint from a canonical JSON representation of the experiment state, including random seeds, code versions, hyperparameters, and held-out subjects—the system ensures that any parameter modification results in automatic cache invalidation. This mechanism specifically supports Leave-One-Subject-Out (LOSO) cross-validation by incorporating the subject identifier into the cache key, preventing cross-fold contamination and maintaining strict isolation between training and testing sets.
 
-The framework specifically extends this mechanism to Leave-One-Subject-Out (LOSO) cross-validation. By incorporating the held-out subject into the cache key, the system ensures cache integrity and prevents the improper reuse of models across different folds, thereby maintaining strict isolation between training and testing sets under a fixed dataset partition.
+The framework was validated via a sleep stage classification case study using the Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, ~120,000 epochs). The feature extraction module computes 149 features per epoch, which are cached to isolate performance evaluation to the model training phase.
 
-Validation is conducted via a sleep stage classification case study using the Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, approximately 120,000 epochs). The feature extraction module computes 149 features per epoch across six EEG channels, which are cached persistently to isolate the performance evaluation to the computationally intensive model training phase. 
-
-The contributions of this thesis are: (1) a fingerprint-based LOSO model caching framework that ensures cache correctness and prevents cross-fold contamination; (2) quantified efficiency gains, demonstrating a median speedup of 178x for XGBoost and 17.7x for Random Forest across 128 LOSO folds; and (3) validated reproducibility, where all cached models yielded identical classification results to those obtained through cold retraining.
+The contributions are: (1) a validated LOSO model caching framework ensuring cache correctness; (2) quantified efficiency gains, with median speedups of 178$\times$ for XGBoost and 17.7$\times$ for Random Forest; and (3) verified reproducibility, where cached models yielded results identical to cold retraining.
 \end{abstract}
-
 % 3. THE AI TABLE & THANKS to HImanshu (This is where the Acknowledgements go!)
+
 \begin{acknowledgements}
     I would like to express my sincere gratitude to my supervisor, Prof.\ Himanshu Buckchash, for his continuous guidance, constructive feedback, and patience throughout the development of this thesis. His expertise in machine learning and his emphasis on methodological rigour shaped both the research direction and my understanding of scientific work.
 
     I also wish to thank the IMC University of Applied Sciences Krems for providing the academic environment and resources that made this research possible. The structured curriculum in the Computer Science programme laid the foundation for the interdisciplinary skills required in this project.
-
-    Finally, I would like to thank my family and friends for their support and encouragement during the writing of this thesis.
 
     \vspace{1cm}
     \section*{AI Usage Disclosure (per FHR-5-0044)}
@@ -80,6 +72,7 @@ The contributions of this thesis are: (1) a fingerprint-based LOSO model caching
     \colorbox{yellow!20}{%
     \begin{minipage}{0.95\textwidth}
     \small
+    Placeholder for now need to be filled by hand later
     In accordance with the IMC examination regulations, the following AI-assisted tools were used during the preparation of this thesis. In all cases, the underlying research, analysis, and scientific argumentation were performed independently by the author. AI tools were used exclusively in a supporting capacity as permitted under FHR-5-0044. Original texts and prompts are available upon request.
 
     \vspace{0.3cm}
@@ -119,6 +112,7 @@ The contributions of this thesis are: (1) a fingerprint-based LOSO model caching
 \include{chapters/04_methodology}
 \include{chapters/05_summary}
 
+
 % ============================================================================
 % BACK MATTER
 % ============================================================================
@@ -127,7 +121,7 @@ The contributions of this thesis are: (1) a fingerprint-based LOSO model caching
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
+\textbf{Working Draft Note:}
 TODO Lennart: Currently $\sim$18 references are cited (30 in bib file, but
 12 are uncited). Professor expects a minimum of 25 cited references. Missing
 categories:
