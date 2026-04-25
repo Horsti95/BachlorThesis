@@ -21,9 +21,9 @@ validated.
 % ============================================================================
 
 Research at the intersection of caching and machine learning divides into two
-complementary directions: \textit{ML-for-System-Optimisation}, where learned
+complementary directions: ML-for-System-Optimisation, where learned
 models predict what to cache in hardware or CDN systems, and
-\textit{Caching-for-ML-Workflows}, where deterministic artefact stores
+Caching-for-ML-Workflows, where deterministic artefact stores
 accelerate scientific experiments. The framework developed in this thesis
 operates within the second direction.
 
@@ -41,14 +41,15 @@ fingerprint-based artefact reuse is a sound engineering pattern for
 reproducible research --- a foundation this thesis extends to the LOSO
 cross-validation setting.
 
-Two recent papers extend the scope of ML pipeline caching to AutoML and
-hyperparameter optimisation. Hirzel et al.\ (2024) show how entire pipelines
-can be trained and cross-validated on limited-memory hardware by decomposing
-computations into task graphs (structured so that shared pipeline prefixes are
-computed once and reused across configurations) that avoid redundant
-recomputation~\cite{hirzel2024pipelines}. While
-memory-efficient and compatible with standard sklearn APIs, the approach
-treats fold outputs as interchangeable: the task graph does not encode fold
+Two recent papers extend ML pipeline caching to AutoML and hyperparameter
+optimisation. Hirzel et al.\ (2024) decompose pipelines into task graphs so
+that shared pipeline prefixes are computed once and reused within a single
+training or cross-validation run, reducing redundant computation on
+memory-constrained hardware~\cite{hirzel2024pipelines}. Their approach
+targets waste \textit{within} a run; this thesis targets waste \textit{across}
+repeated experimental iterations such as hyperparameter sweeps. While
+memory-efficient and compatible with standard sklearn APIs, Hirzel et al.\
+treat fold outputs as interchangeable: the task graph does not encode fold
 identity into cache keys, so it cannot prevent cross-fold contamination in
 LOSO settings where each fold corresponds to a structurally different training
 set.
@@ -240,56 +241,29 @@ where reproducibility and configuration management become critical
 production requirements.
 
 % ============================================================================
-\section{Industrial Research and Applications}
+\section{Research-to-Production Gap in ML}
 \label{sec:related_industrial}
 % ============================================================================
 
-The gap between academic sleep staging research and industrial deployment
-reflects broader challenges in production machine learning~\cite{kreuzberger2023mlops}.
-Academic studies typically report results on controlled datasets under ideal
-acquisition conditions, while commercial sleep monitoring must cope with
-consumer-grade hardware, motion artefacts, and variable electrode contact
-quality.
-
-\textbf{Commercial Sleep Monitoring:}
-Consumer wearables---smartwatches, fitness trackers, and optical heart rate
-bands---incorporate simplified sleep staging primarily from accelerometer
-and photoplethysmography signals rather than full EEG. This hardware
-simplification substantially reduces staging accuracy, particularly for
-discriminating N1 from N2 and for reliably identifying REM. The
-industry-standard approach currently accepts this accuracy trade-off in
-exchange for user convenience and mass-market scalability.
-Medical-grade consumer EEG headbands represent an intermediate tier,
-providing dry-electrode frontal EEG channels at a fraction of clinical
-PSG complexity. Devices in this category have narrowed the accuracy gap
-relative to clinical PSG, but introduce a different deployment challenge:
-models trained on full clinical EEG (such as those in this thesis, using
-6 channels at 256~Hz) must be retrained or adapted for the reduced channel
-count and placement, requiring the exact kind of iterative experimentation
-that fingerprint-based caching accelerates.
-
-\textbf{Production ML Challenges:}
-Deploying ML models in clinical and consumer contexts introduces requirements
-rarely addressed in academic benchmarks: model versioning across firmware
-updates, inference latency constraints for real-time feedback, regulatory
-approval requiring full audit trails, and reproducibility across device
-batches with sensor variability. Reproducibility and experiment management have been identified as primary
-barriers to the transition from research prototype to production
-deployment~\cite{kreuzberger2023mlops}.
+The transition from research prototype to production deployment is a
+well-documented challenge in machine learning, independent of the application
+domain. Kreuzberger et al.\ observe that many data science projects remain
+``manual to a great extent,'' functioning as experimental proofs of concept
+that fail to operationalise efficiently~\cite{kreuzberger2023mlops}. The
+barriers are consistently identified as reproducibility failures and
+undisciplined experiment management rather than algorithmic limitations.
 
 \textbf{Research-to-Production Gap:}
-The transition from research prototype to production deployment requires
-systematic experiment management: the ability to reproduce any prior result
-on demand, resume interrupted experiments, and compare model versions
-without retraining from scratch. These requirements are precisely what
-fingerprint-based caching provides. A researcher iterating a sleep staging
-model toward clinical deployment---adjusting feature sets, testing on new
-subject populations, validating on different hardware---benefits directly
-from a framework that caches each validated configuration and prevents
-re-running computations when only downstream parameters change. The
-framework developed in this thesis addresses this gap at the experimental
-stage, providing the infrastructure foundation that production deployment
-requires.
+Moving any ML model from prototype to a system that can be reliably
+re-evaluated, versioned, and maintained requires systematic experiment
+management: the ability to reproduce any prior result on demand, resume
+interrupted experiments, and compare model versions without retraining from
+scratch. These requirements apply whether the target application is clinical
+sleep analysis, speech recognition, or medical imaging---any domain where
+iterative model development occurs. Fingerprint-based caching directly
+provides this infrastructure: each cached artefact is permanently linked to
+the exact configuration that produced it, enabling on-demand result
+reproduction without retraining.
 
 \textbf{Configuration Debt and Technical Reproducibility:}
 The systems consequences of undisciplined experiment management are
@@ -297,9 +271,8 @@ well-documented. Sculley et al.\ (2015) identify \textit{hidden technical
 debt} in production ML systems, specifically \textit{configuration debt},
 where undocumented parameter interactions and stale pipeline configurations
 accumulate silently and degrade reproducibility over
-time~\cite{sculley2015hidden}. Fingerprint-based caching directly addresses
-this class of debt: because every cached artefact is keyed by a cryptographic
-hash of its complete configuration, it is structurally impossible to serve a
-stale result from a superseded parameter set. This property provides a natural
-audit trail, linking every stored model to the exact configuration that
-produced it.
+time~\cite{sculley2015hidden}. Fingerprint-based caching structurally
+prevents this class of debt: because every cached artefact is keyed by a
+cryptographic hash of its complete configuration, it is impossible to serve
+a stale result from a superseded parameter set. Every stored model carries
+an unambiguous audit trail back to the exact configuration that produced it.
