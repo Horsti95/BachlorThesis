@@ -1,13 +1,12 @@
-\chapter{Methodology}
+\chapter{Methodology and Results}
 
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
+\textbf{Working Draft Note:}
 Goal 20 pages currently 31 shorten to at least 25
 \end{minipage}}
 \end{center}
-While Satapathy et al.\ (2024) demonstrate high performance using a set of 63 multi-modal features~\cite{satapathy2024multimodal}, this thesis implements an expanded set of 149 EEG-specific features. This deliberate over-provisioning serves a dual purpose in evaluating the caching framework: first, it increases the computational cost of the feature extraction phase, providing a more rigorous stress test for the Tier~1 Persistent Feature Store; second, it enables the systematic evaluation of feature-count cut-offs as a configuration parameter. Because all 149 features are cached as a Materialised Intermediate Representation, the framework can test various sub-selections (e.g., top 20, 50, or 100 features) with near-zero latency, demonstrating the advantage of deterministic caching over traditional linear pipelines.
 
 This chapter presents the complete methodology for implementing and evaluating the intelligent caching framework. Section~\ref{sec:theoretical} establishes the theoretical foundations, Section~\ref{sec:data} describes the dataset, Sections~\ref{sec:preprocessing}--\ref{sec:features} detail the signal processing and feature extraction pipeline, Section~\ref{sec:caching} explains the caching implementation, Section~\ref{sec:experiment_setup} outlines the experimental design, and Section~\ref{sec:evaluation_plan} defines the evaluation metrics.
 
@@ -322,6 +321,8 @@ Inter-Channel & 11 & Coherence pairs (6), Phase Locking Value pairs (3), global 
 \end{table}
 
 \subsection{Feature Engineering Strategy and Caching Prioritization}
+
+While Satapathy et al.\ (2024) demonstrate high performance using a set of 63 multi-modal features~\cite{satapathy2024multimodal}, this thesis implements an expanded set of 149 EEG-specific features. This deliberate over-provisioning serves a dual purpose in evaluating the caching framework: first, it increases the computational cost of the feature extraction phase, providing a more rigorous stress test for the Tier~1 Persistent Feature Store; second, it enables the systematic evaluation of feature-count cut-offs as a configuration parameter. Because all 149 features are cached as a Materialised Intermediate Representation, the framework can test various sub-selections (e.g., top 20, 50, or 100 features) with near-zero latency, demonstrating the advantage of deterministic caching over traditional linear pipelines.
 
 The feature extraction pipeline implements a comprehensive 149-feature representation spanning time-domain statistics, frequency-domain band powers, complexity measures, and cross-channel connectivity metrics. This feature set was deliberately designed to balance discriminative power for sleep stage classification with computational tractability for caching optimization.
 

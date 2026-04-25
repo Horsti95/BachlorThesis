@@ -70,6 +70,32 @@ assignments to prevent silent cross-subject contamination --- remains
 unaddressed in the cited literature. This thesis fills that gap with a
 reference implementation and empirical benchmarks on a 128-subject dataset.
 
+
+\subsection{Related Caching Approaches}
+
+Beyond the ML workflow caching approaches reviewed above, other caching paradigms exist in adjacent domains. Contrasting these with the approach developed in this thesis clarifies the scope of the contribution:
+
+\textbf{Large Language Model (LLM) Inference Caching} addresses inference
+latency by managing attention key-value tensors during autoregressive
+generation. vLLM's PagedAttention~\cite{kwon2023pagedattention} solves
+memory fragmentation by treating the KV cache as a virtual memory system
+with non-contiguous blocks.
+
+\textbf{Learned Caching for Deep Networks} employs neural networks to predict
+hidden layer outputs, enabling layer skipping during inference.
+GATI~\cite{balasubramanian2021accelerating} uses learned models to make
+sophisticated cache eviction decisions.
+
+\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale
+for experimental data distribution.
+XRootD/XCache~\cite{sim2023xcache} provides distributed file caching across
+global collaborations through locality-aware placement.
+
+In contrast to these domain-specific approaches, this thesis implements
+deterministic, hash-based caching for cross-validation experiments where
+validity depends on configuration and fold identity.
+
+
 % ============================================================================
 \section{Commercial MLOps Tools}
 \label{sec:related_commercial}

@@ -161,41 +161,21 @@ This thesis follows a quantitative experimental methodology to evaluate a finger
 
 \subsection{Evaluation Dimensions}
 
-The evaluation is structured along two orthogonal dimensions:
-
-\begin{itemize}
-    \item \textbf{Optimization Objective (WHY):} 
-    Quantifying the reduction in computational latency, resource efficiency, and cumulative time savings achieved through deterministic cache reuse across iterative experimental cycles.
-
-    \item \textbf{Caching Placement (WHERE):} 
-    Assessing the complementary effects of a two-tier persistence strategy designed to optimize different stages of the ML pipeline:
-    \begin{itemize}
-        \item \textbf{Tier 1: Persistent Feature Store.} One-time extraction and
-              persistent storage of 149-dimensional feature vectors from
-              6-channel EEG signal processing. Features are extracted once per
-              subject and stored in a shared, experiment-agnostic cache. This
-              tier decouples expensive signal processing from downstream model
-              training: once computed, features are reused across all 18
-              experimental configurations without recomputation.
-        \item \textbf{Tier 2: Fingerprint-based Model Cache.}
-              Configuration-aware training and storage of fold-specific models.
-              For each LOSO fold, this tier retrieves cached features from
-              Tier~1, optionally applies feature selection (correlation
-              thresholding and top-$K$ ranking), trains a model, and stores
-              it under a SHA-256 fingerprint that encodes the full
-              configuration including the held-out subject identifier.
-              This prevents redundant retraining when only hyperparameters or
-              feature-selection parameters change across experimental iterations.
-    \end{itemize}
-\end{itemize}
+The evaluation is structured along two orthogonal dimensions: the
+\textbf{optimization objective} (quantifying time savings and cache hit rates
+achieved by deterministic cache reuse) and \textbf{caching placement}
+(assessing a two-tier architecture where Tier~1 stores extracted features
+once per subject and Tier~2 stores fold-specific models under SHA-256
+fingerprints). Full details of both tiers are given in
+Chapter~\ref{chap:methodology}.
 
 \subsection{Validity and Reproducibility Criteria}
 
-A cache lookup is considered valid only when the fingerprinted configuration matches.
-If any tracked parameter changes, the fingerprint changes and cached outputs are bypassed.
-Empirical validation focuses on two criteria:
-(1) performance gains from warm-cache execution compared with cold retraining, and
-(2) consistency of predictive outputs between cached and freshly trained models in the reported benchmark suite.
+A cache hit is considered valid only when the full fingerprinted configuration
+matches. If any tracked parameter changes, the fingerprint changes and cached
+outputs are bypassed. Validation confirms both performance gains from warm-cache
+execution and bitwise-identical predictions between cached and freshly trained
+models.
 
 \section{Structure of the Thesis}
 This thesis is structured as follows:

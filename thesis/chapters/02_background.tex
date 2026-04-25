@@ -359,28 +359,3 @@ identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}.
 
 In the context of Google's MLOps maturity model~\cite{googlemlops2023}, automated pipeline execution---including artefact reuse---is a key component for progressing from Level~0 (manual processes) to Level~1 (automated training pipelines). It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability}: only through unique configuration fingerprints can the exact data and parameter versions that produced a specific artefact be identified with certainty. Fingerprinting addresses the controllable sources of irreproducibility---seeds, hyperparameters, data splits, implementation versions---while for the CPU-based sklearn and XGBoost models used in this thesis (fixed \texttt{random\_state=42}), deterministic outputs are guaranteed by construction.
-
-\subsection{Related Caching Approaches}
-
-While this thesis focuses on hash-based caching for ML experiments, other
-caching paradigms exist in adjacent domains:
-
-\textbf{Large Language Model (LLM) Inference Caching} addresses inference
-latency by managing attention key-value tensors during autoregressive
-generation. vLLM's PagedAttention~\cite{kwon2023pagedattention} solves
-memory fragmentation by treating the KV cache as a virtual memory system
-with non-contiguous blocks.
-
-\textbf{Learned Caching for Deep Networks} employs neural networks to predict
-hidden layer outputs, enabling layer skipping during inference.
-GATI~\cite{balasubramanian2021accelerating} uses learned models to make
-sophisticated cache eviction decisions.
-
-\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale
-for experimental data distribution.
-XRootD/XCache~\cite{sim2023xcache} provides distributed file caching across
-global collaborations through locality-aware placement.
-
-In contrast to these domain-specific approaches, this thesis implements
-deterministic, hash-based caching for cross-validation experiments where
-validity depends on configuration and fold identity.
