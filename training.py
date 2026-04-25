@@ -745,12 +745,11 @@ class TrainingPipeline:
         
         self.results = results
         
-        # Print final results table
-        if results:
+        # Print final results table only when comparing multiple configs
+        if results and len(results) > 1:
             results_dicts = [r.to_dict() for r in results]
             self.formatter.print_final_results_table(results_dicts)
-            
-            # Print best result
+
             best = max(results, key=lambda r: r.accuracy_mean)
             self.formatter.print_best_result(
                 best.config_id,

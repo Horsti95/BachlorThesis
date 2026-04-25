@@ -62,14 +62,14 @@ if USE_UNICODE:
         'cross': '┼',
     }
     ICONS = {
-        'check': '',
-        'cross': '',
-        'warning': '️',
-        'trophy': '🏆',
-        'tick': '',
-        'success': '',
-        'compute': '⏳',
-        'cache': '💾',
+        'check': '[OK]',
+        'cross': '[X]',
+        'warning': '[!]',
+        'trophy': '[#1]',
+        'tick': '[v]',
+        'success': '[OK]',
+        'compute': '[..]',
+        'cache': '[C]',
     }
 else:
     BOX = {
@@ -243,7 +243,8 @@ class TrainingOutputFormatter:
         
         print()
         print(BOX['tl'] + BOX['h'] * (w - 2) + BOX['tr'])
-        print(BOX['v'] + _center_text(f'CONFIGURATION {config_idx}/{total_configs}', w - 2) + BOX['v'])
+        if total_configs > 1:
+            print(BOX['v'] + _center_text(f'CONFIGURATION {config_idx}/{total_configs}', w - 2) + BOX['v'])
         print(BOX['v'] + _center_text(config_name, w - 2) + BOX['v'])
         print(BOX['ml'] + BOX['h'] * (w - 2) + BOX['mr'])
         print(BOX['v'] + f"  Model:              {model_type.upper()}".ljust(w - 2) + BOX['v'])
