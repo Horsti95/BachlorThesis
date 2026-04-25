@@ -1019,11 +1019,23 @@ per bar.}
 \label{fig:speedup_bar}
 \end{figure}
 
+Figure~\ref{fig:cache_efficiency} visualises the viability spectrum along two
+dimensions: how much disk space a cached model requires (x-axis) and how much
+compute time it saves per fold (y-axis). The dashed diagonal represents the
+\textit{viability boundary} --- the line where disk read time equals training
+time saved, i.e.\ $T_{\text{save}} = \text{size} / B_{\text{disk}}$. Models
+above the boundary recover more time than they cost in I/O; models below it
+do not. XGBoost configurations cluster in the top-left (small cache, large time
+saved); RF configurations fall in the right half (large cache, still meaningful
+time saved but with much less margin). The boundary is hardware-dependent
+(faster disk $\Rightarrow$ boundary shifts left), which is why the absolute
+numbers differ across machines while the VIABLE/NOT\_VIABLE rankings do not.
+
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
 \textbf{Draft Note -- re-run pending:}
-Cache efficiency scatter (fig below) may shift once clean re-run completes
+Cache efficiency scatter may shift once clean re-run completes
 (RF cold-run outliers at 11{,}331~s and 31{,}679~s could move RF points).
 Regenerate figure from updated benchmark JSON after re-run.
 \end{minipage}}
@@ -1031,9 +1043,11 @@ Regenerate figure from updated benchmark JSON after re-run.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
-\caption{Cache efficiency scatter: cache size per fold (MB, log scale) vs.\ time
-saved per fold (seconds, log scale). Points above the dashed viability boundary
-save more compute time than they cost in storage I/O.}
+\caption{Cache efficiency scatter: cache size per fold (x-axis, MB, log scale)
+vs.\ compute time saved per fold (y-axis, seconds, log scale).
+Dashed diagonal = viability boundary ($T_{\text{save}} = \text{size}/B_{\text{disk}}$);
+points above the boundary recover more time than they cost in storage I/O.
+XGBoost (top-left cluster) is clearly viable; RF (right half) is borderline.}
 \label{fig:cache_efficiency}
 \end{figure}
 
@@ -1072,6 +1086,36 @@ N1 shows lowest F1 due to transitional stage characteristics.}
 \label{fig:per_class_f1}
 \end{figure}
 
+\subsection{Reproducibility Results}
+\label{sec:results_reproducibility}
+
+Reproducibility was validated across all 18 configurations and 128 LOSO folds.
+Fingerprint uniqueness across representative configurations is demonstrated in
+Table~\ref{tab:fingerprint_integrity} (Section~\ref{sec:fingerprint_generation}).
+CPU-based sklearn estimators with fixed \texttt{random\_state=42} are fully
+deterministic; GPU-level non-determinism~\cite{nvidia2024cudnn} does not apply here.
+
+\begin{itemize}
+\item \textbf{100\% fingerprint determinism:} Identical configurations always
+      produce identical SHA-256 hashes.
+\item \textbf{Identical predictions:} Cached models produce bitwise-identical
+      predictions to freshly trained models (\texttt{accuracy\_match = True}
+      for all 18 configurations).
+\item \textbf{Zero cache corruption:} All save/load cycles completed without
+      data loss or serialization errors.
+\end{itemize}
+
+\subsection{Extended Analyses}
+\label{sec:results_extended}
+
+The primary benchmark (Sections~\ref{sec:results_caching}--\ref{sec:results_reproducibility})
+evaluated the framework on XGBoost and Random Forest across 18 configurations and 128 folds.
+After confirming the primary results, two secondary studies were conducted to test whether
+the viability picture generalises beyond these two models and whether caching benefit
+grows with dataset scale. These analyses were not part of the original experimental plan
+but emerged naturally from the observation that viability appears to be governed by
+serialization size, independent of model family.
+
 \subsection{Multi-Model Cache Viability}
 \label{sec:results_viability}
 
@@ -1103,23 +1147,7 @@ are not viable because loading time approaches retraining time.}
 
 SVM models are used here because their well-characterised training complexity---O($n$) for linear kernels, O($n^2$) for RBF---provides a theoretically grounded test case: as subjects increase, training cost grows predictably while cache loading stays constant, isolating the scaling effect cleanly.
 
-\begin{table}[htbp]
-\centering
-\caption{SVM cache speedup scaling from 10 to 128 subjects. Cache loading cost
-is constant while training cost grows with data size.}
-\label{tab:svm_scaling}
-\begin{tabular}{ccc}
-\toprule
-\textbf{Subjects} & \textbf{SVM-Linear Speedup} & \textbf{SVM-RBF Speedup} \\
-\midrule
-10  & 1{,}736$\times$ & 9.2$\times$   \\
-30  & 1{,}551$\times$ & 33.4$\times$  \\
-64  & 2{,}040$\times$ & 82.3$\times$  \\
-128 & 3{,}093$\times$ & 200.9$\times$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
+% TODO: add / update data from re-run
 Cache speedup increases with dataset size for models whose training cost scales
 super-linearly. SVM-RBF illustrates this cleanly: its O($n^2$) training complexity
 causes cold run time to grow quadratically with subjects, while warm loading
@@ -1158,31 +1186,12 @@ scale of the experiment.
 \label{fig:svm_scaling}
 \end{figure}
 
-\subsection{Reproducibility Results}
-\label{sec:results_reproducibility}
-
-Reproducibility was validated across all 18 configurations and 128 LOSO folds.
-Fingerprint uniqueness across representative configurations is demonstrated in
-Table~\ref{tab:fingerprint_integrity} (Section~\ref{sec:fingerprint_generation}).
-(CPU-based sklearn estimators with fixed \texttt{random\_state}; GPU-level
-non-determinism~\cite{nvidia2024cudnn} does not apply here).
-
-\begin{itemize}
-\item \textbf{100\% fingerprint determinism:} Identical configurations always
-      produce identical SHA-256 hashes.
-\item \textbf{Identical predictions:} Cached models produce bitwise-identical
-      predictions to freshly trained models (\texttt{accuracy\_match = True}
-      for all 18 configurations).
-\item \textbf{Zero cache corruption:} All save/load cycles completed without
-      data loss or serialization errors.
-\end{itemize}
-
 % ============================================================================
 \section{Findings}
 \label{sec:findings}
 % ============================================================================
 
-Seven claims formulated at the outset of this thesis were validated through
+Eight claims formulated at the outset of this thesis were validated through
 systematic experimentation:
 
 \begin{enumerate}
@@ -1223,12 +1232,33 @@ systematic experimentation:
       classified as NOT\_VIABLE at Layer~2 (e.g., Random Forest, KNN) still
       avoid a $\sim$53-minute cold extraction on warm runs, making Layer~1
       caching unambiguously worthwhile for any repeated LOSO experiment.
+
+\item \textbf{Global feature selection achieves equivalent accuracy to per-fold
+      selection while enabling significantly better cache reuse.}
+      Mean accuracy difference across all configurations and subject counts is
+      $\pm 0.4\%$ with no consistent direction --- the leakage from
+      $1/128 \approx 0.8\%$ label overlap per fold is empirically negligible.
+      In exchange, global scope preserves a stable fingerprint across all folds,
+      and warm-run speedup for XGBoost is 3--5$\times$ higher than per-fold
+      scope because feature selection does not re-run on cache hits.
+      % TODO: add / update data from re-run
 \end{enumerate}
 
 % ============================================================================
 \section{Discussion}
 \label{sec:discussion}
 % ============================================================================
+
+All four discussion topics below follow from one fundamental constraint:
+\textbf{cache viability is governed by the ratio of serialized model size to
+cold-train time.} A model whose load time grows proportionally to its train
+time will never become more viable at larger scale --- size and savings cancel
+out. Only models where train time grows \textit{faster} than load time (due to
+super-linear training complexity or constant-size serialization) improve with
+scale. Conversely, if the speedup ratio does not increase faster than cache
+size grows with more data or features, caching cannot become structurally
+viable regardless of hardware. This principle predicts the VIABLE/NOT\_VIABLE
+verdicts before a single measurement is taken; the empirical results confirm it.
 
 \subsection{XGBoost vs.\ Random Forest: A Multi-Dimensional Tradeoff}
 
@@ -1292,22 +1322,29 @@ cost-effective compared to full recomputation.}
 \label{fig:crossover}
 \end{figure}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- placement decision pending:}
-Table~\ref{tab:global_vs_fold} (global vs.\ per-fold feature selection) is currently
-here in Storage vs.\ Speed Tradeoff (§4.12.3) but it is primarily about
-\textit{accuracy vs.\ speed} for feature selection scope, not storage.
-Options after re-run: (A) move to §4.10.2 Classification Performance as a
-sub-result, (B) keep here but reframe the surrounding text, or (C) cut the
-table and keep only Figure~\ref{fig:global_vs_perfold}.
-\end{minipage}}
-\end{center}
-Table~\ref{tab:global_vs_fold} presents the empirical tradeoff for feature
-selection strategy --- global selection versus per-fold selection, measured
-across $N \in \{3, 5, 10, 20\}$ subjects with both XGBoost and Random Forest.
+\subsection{Feature Selection Scope: Accuracy vs.\ Cache Efficiency}
+\label{sec:discussion_scope}
 
+A practical design choice in any LOSO caching workflow is whether feature
+selection runs \textit{globally} (once per configuration, fitted on all subjects)
+or \textit{per-fold} (refitted independently inside each LOSO iteration).
+Per-fold selection is statistically stricter --- it eliminates the minor
+label leakage that arises when the held-out subject's labels contribute to
+the global feature ranking --- but it has a significant cache efficiency cost.
+
+Global feature selection (used in this thesis) introduces a structural leakage
+of $1/128 \approx 0.8\%$ of selection data per fold. An empirical benchmark
+(Table~\ref{tab:global_vs_fold} and Figure~\ref{fig:global_vs_perfold}) measured
+this effect directly: the mean accuracy difference across all configurations and
+subject counts is $\pm 0.4\%$ with a maximum of $1.1\%$, and the direction is
+inconsistent --- per-fold occasionally outperforms global, confirming the effect
+is noise rather than systematic bias. The warm-run speedup benefit of global
+scope is more significant: XGBoost retains its full 14--23$\times$ warm speedup,
+whereas per-fold scope degrades to 4--9$\times$ because feature selection
+re-runs for every fold even on cache hits. Global selection is therefore the
+pragmatic choice for caching-oriented workflows.
+
+% TODO: add / update data from re-run
 \input{tables/tab8_global_vs_fold}
 
 \begin{center}
@@ -1331,21 +1368,6 @@ figure height. Regenerate after re-run.
   re-run once per fold even on cache hits.}
 \label{fig:global_vs_perfold}
 \end{figure}
-
-Global feature selection (used in this thesis) introduces minor label leakage
-but enables a stable fingerprint across all folds. The leakage mechanism is
-structural: with 128 subjects, each LOSO fold holds out 1 subject whose labels
-nonetheless contributed to the global feature ranking, representing
-$1/128 \approx 0.8\%$ of the selection data. An empirical benchmark
-(Figure~\ref{fig:global_vs_perfold}) measured this effect directly: the
-mean accuracy difference across all configurations and subject counts is
-$\pm 0.4\%$ with a maximum of $1.1\%$, and the direction is inconsistent
-(per-fold occasionally outperforms global, confirming the effect is noise not
-bias). The warm-run speedup benefit of global scope is more significant: XGBoost
-retains its full 14--23$\times$ warm speedup, whereas per-fold scope degrades to
-4--9$\times$ because feature selection re-runs for every fold even on cache
-hits. Global selection is therefore the pragmatic choice for caching-oriented
-workflows.
 
 \subsection{Limitations}
 \label{sec:limitations}
