@@ -730,6 +730,14 @@ The primary thesis contribution was evaluated through caching metrics:
 \item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
 \item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
 \item \textbf{Storage Overhead:} Total cache size in MB/GB
+\item \textbf{Cache Efficiency:} Seconds of compute saved per MB of cache storage
+      (higher = more efficient use of disk space; used to rank model types in
+      the viability analysis).
+\item \textbf{Cache Viability Verdict:} A model is classified as
+      \textbf{VIABLE} when $T_{\text{load}} \ll T_{\text{train}}$ and the
+      per-configuration storage footprint is manageable for repeated
+      experimentation. It is \textbf{NOT\_VIABLE} when warm-load time
+      approaches or exceeds cold-train time, negating the caching benefit.
 \end{itemize}
 
 \subsection{Secondary Metrics: Classification Performance}
@@ -744,7 +752,7 @@ Classification metrics validated that the caching framework produced correct res
 \item \textbf{Confusion Matrix:} 5$\times$5 aggregated across all LOSO folds
 \end{itemize}
 
-\subsection{Reproducibility Validation}
+\subsection{Reproducibility Metrics}
 
 Reproducibility is validated at three levels: fingerprint determinism
 (identical configurations produce identical SHA-256 hashes across multiple
@@ -957,9 +965,19 @@ corr=None, k=50  & 50  & 5{,}465.4  & 305.2 & 17.9$\times$ & 17.5 \\
 \end{tabular}
 \end{table}
 
-% TODO: re-run or validate — RF corr=None, k=None cold=31,679s may include
-% thermal throttling on 9-hour mobile run. RF corr=None, k=30 (11,331s, marked *)
-% is anomalous vs. similar configs; likely process interruption during measurement.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- re-run or validate:}
+Two RF cold-run times are suspect and should be replaced with clean re-run results:
+(1)~\texttt{corr=None, k=None}: 31{,}679~s ($\approx$8.8~h) may be inflated by
+thermal throttling during a sustained mobile run;
+(2)~\texttt{corr=None, k=30} (marked~* in table): 11{,}331~s is $2\times$ higher
+than comparable configs, likely caused by process interruption.
+Both verdict (BORDERLINE) and median speedup (17.7$\times$) are unaffected,
+but exact per-config speedup values in the table should be updated.
+\end{minipage}}
+\end{center}
 Random Forest caching provides significant time savings (up to 110$\times$ speedup)
 but at substantially higher storage cost ($\sim$18.5~GB per configuration vs.\ $\sim$185~MB
 for XGBoost). As with XGBoost, all 1{,}152 warm-cache operations achieved a 100\% cache hit rate.
@@ -1105,7 +1123,9 @@ deterministic; GPU-level non-determinism~\cite{nvidia2024cudnn} does not apply h
       data loss or serialization errors.
 \end{itemize}
 
-\noindent\textbf{Extended analyses.}
+\subsection{Extended Analyses}
+\label{sec:results_extended}
+
 The primary benchmark (Sections~\ref{sec:results_caching}--\ref{sec:results_reproducibility})
 evaluated the framework on XGBoost and Random Forest across 18 configurations and 128 folds.
 After confirming the primary results, two secondary studies were conducted to test whether
@@ -1114,7 +1134,7 @@ grows with dataset scale. These analyses were not part of the original experimen
 but emerged naturally from the observation that viability appears to be governed by
 serialization size, independent of model family.
 
-\subsection{Multi-Model Cache Viability}
+\subsubsection{Multi-Model Cache Viability}
 \label{sec:results_viability}
 
 The fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. Cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families to validate this generalizability.
@@ -1140,12 +1160,20 @@ are not viable because loading time approaches retraining time.}
 \label{fig:viability_scatter}
 \end{figure}
 
-\subsection{Cache Scaling with Dataset Size}
+\subsubsection{Cache Scaling with Dataset Size}
 \label{sec:results_scaling}
 
 SVM models are used here because their well-characterised training complexity---O($n$) for linear kernels, O($n^2$) for RBF---provides a theoretically grounded test case: as subjects increase, training cost grows predictably while cache loading stays constant, isolating the scaling effect cleanly.
 
-% TODO: add / update data from re-run
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- update from re-run:}
+SVM scaling numbers (9$\times$ at 10 subjects to 201$\times$ at 128 subjects for
+RBF; 1{,}736$\times$--3{,}093$\times$ for Linear) were measured on the development
+machine. Regenerate from desktop benchmark after clean re-run to confirm values.
+\end{minipage}}
+\end{center}
 Cache speedup increases with dataset size for models whose training cost scales
 super-linearly. SVM-RBF illustrates this cleanly: its O($n^2$) training complexity
 causes cold run time to grow quadratically with subjects, while warm loading
@@ -1239,8 +1267,17 @@ systematic experimentation:
       In exchange, global scope preserves a stable fingerprint across all folds,
       and warm-run speedup for XGBoost is 3--5$\times$ higher than per-fold
       scope because feature selection does not re-run on cache hits.
-      % TODO: add / update data from re-run
 \end{enumerate}
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- update from re-run:}
+Finding~8 numbers ($\pm 0.4\%$ accuracy difference, 3--5$\times$ speedup
+advantage for global scope) are from the existing benchmark. Confirm and
+update these values after clean desktop re-run of global vs.\ per-fold
+comparison.
+\end{minipage}}
+\end{center}
 
 % ============================================================================
 \section{Discussion}
@@ -1342,7 +1379,16 @@ whereas per-fold scope degrades to 4--9$\times$ because feature selection
 re-runs for every fold even on cache hits. Global selection is therefore the
 pragmatic choice for caching-oriented workflows.
 
-% TODO: add / update data from re-run
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- update from re-run:}
+Table~\ref{tab:global_vs_fold} values (accuracy differences and warm-run
+speedup ratios across $N \in \{3,5,10,20\}$ subjects) should be regenerated
+from clean desktop re-run. Update numbers in table and in the surrounding
+prose before final submission.
+\end{minipage}}
+\end{center}
 \input{tables/tab8_global_vs_fold}
 
 \begin{center}
