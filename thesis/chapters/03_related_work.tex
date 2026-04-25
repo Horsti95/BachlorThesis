@@ -13,8 +13,8 @@ Research at the intersection of caching and machine learning divides into two
 complementary directions: \textit{ML-for-System-Optimisation}, where learned
 models predict what to cache in hardware or CDN systems, and
 \textit{Caching-for-ML-Workflows}, where deterministic artefact stores
-accelerate scientific experiments. This thesis belongs firmly to the second
-category.
+accelerate scientific experiments. The framework developed in this thesis
+operates within the second direction.
 
 Krishna~(2025) surveys the first direction, reviewing LSTM-based usage
 prediction and reinforcement-learning replacement policies that improve hardware
@@ -33,8 +33,9 @@ cross-validation setting.
 Two recent papers extend the scope of ML pipeline caching to AutoML and
 hyperparameter optimisation. Hirzel et al.\ (2024) show how entire pipelines
 can be trained and cross-validated on limited-memory hardware by decomposing
-computations into monoid-structured task graphs that avoid redundant
-recomputation of shared prefixes~\cite{hirzel2024pipelines}. While
+computations into task graphs (structured so that shared pipeline prefixes are
+computed once and reused across configurations) that avoid redundant
+recomputation~\cite{hirzel2024pipelines}. While
 memory-efficient and compatible with standard sklearn APIs, the approach
 treats fold outputs as interchangeable: the task graph does not encode fold
 identity into cache keys, so it cannot prevent cross-fold contamination in
@@ -60,10 +61,21 @@ reference implementation and empirical benchmarks on a 128-subject dataset.
 % ============================================================================
 \section{Commercial MLOps Tools}
 % ============================================================================
-A structural limitation of these platforms emerges from their design focus. As Kreuzberger et al.\ observe, workflow orchestration tools such as Airflow, Kubeflow, and AWS SageMaker are optimised for linear production pipelines~\cite{kreuzberger2023mlops}. They lack deterministic sub-task invalidation for nested experimental loops such as LOSO cross-validation, where 128 subjects $\times$ 18 configurations create 2{,}304 interdependent but individually cacheable training operations. Furthermore, their cost management principles focus on periodic retraining schedules rather than state-aware retraining, where computation is skipped entirely when the underlying configuration has not changed. The framework developed in this thesis fills this gap at the experimental stage by providing a pre-computation check that prevents redundant training before it begins.
-
-Current MLOps platforms provide general experiment tracking and pipeline
-caching but are agnostic to the internal structure of cross-validation. While these tools can be configured for LOSO via complex templating, they do not natively encode fold-identity into cache keys, leading to coarse-grained invalidation where changing a single parameter might trigger an entire 128-fold recomputation unnecessarily.
+Commercial MLOps platforms---MLflow, DVC, ZenML, and experiment-tracking tools
+such as Weights \& Biases---provide general pipeline caching and experiment
+management infrastructure. A structural limitation common to these tools
+emerges from their design focus. As Kreuzberger et al.\ observe, workflow
+orchestration tools such as Airflow, Kubeflow, and AWS SageMaker are optimised
+for linear production pipelines~\cite{kreuzberger2023mlops}. They lack
+deterministic sub-task invalidation for nested experimental loops such as LOSO
+cross-validation, where 128 subjects $\times$ 18 configurations
+(see Table~\ref{tab:exp_grid} in Chapter~\ref{chap:methodology}) create
+2{,}304 interdependent but individually cacheable training operations.
+Their cost management principles focus on periodic retraining schedules rather
+than state-aware retraining, where computation is skipped entirely when the
+underlying configuration has not changed. The framework developed in this
+thesis fills this gap at the experimental stage by providing a pre-computation
+check that prevents redundant training before it begins.
 
 \begin{itemize}
 \item \textbf{MLflow:} Provides experiment tracking, model registry, and
@@ -86,17 +98,16 @@ caching but are agnostic to the internal structure of cross-validation. While th
       provide no integrity guarantee that training and evaluation sets are
       correctly separated across cache hits.
 
-\item \textbf{Neptune AI and Weights \& Biases:} While these platforms excel at 
-      metric visualization and experiment logging~\cite{wandb2024docs}, 
-      they are inherently subject to platform stability and vendor lock-in. 
-      The discontinuation of Neptune AI services in early 2026~\cite{neptune2026shutdown} 
-      vividly underscores the long-term risks of relying on proprietary, cloud-based 
-      metadata stores for academic research. Furthermore, these tools primarily 
-      function as observation layers; they lack integrated computational caching 
-      mechanisms. This necessitates the development of the independent, 
-      self-hosted framework for reproducible LOSO-fold management proposed 
-      in this thesis.
+\item \textbf{Weights \& Biases:} Excels at metric visualisation and experiment
+      logging~\cite{wandb2024docs}, but functions as an observation layer
+      rather than a computational cache. Reliance on proprietary, cloud-hosted
+      metadata stores introduces vendor dependency that can threaten long-term
+      experiment reproducibility. This motivates the independent, self-hosted
+      framework proposed in this thesis.
 \end{itemize}
+
+The limitations identified across academic work and commercial platforms converge
+on a single unaddressed gap, which the following section characterises formally.
 
 % ============================================================================
 \section{Research Gap Analysis}
@@ -120,7 +131,7 @@ April~2026.}
 MLflow        & Step-level (opt.)    & Parameter hashing         & Model only        & Manual fold param. \\
 DVC           & Pipeline stage       & MD5 (code + inputs)       & Stage outputs     & Manual pipeline \\
 ZenML         & Step-level           & SHA-256 (inputs+code+env) & Step outputs      & Custom materializers \\
-Neptune/W\&B  & None (tracking)      & N/A                       & None              & N/A \\
+W\&B          & None (tracking)      & N/A                       & None              & N/A \\
 \textbf{This thesis} & \textbf{Hierarchical} & \textbf{SHA-256 + subject ID} & \textbf{Features + Models} & \textbf{Native} \\
 \bottomrule
 \end{tabular}
@@ -149,6 +160,10 @@ explicit measurement of cache performance (hit rates, time savings) and
 validation of reproducibility. The contribution is not a new MLOps platform,
 but a validated approach for extending existing fingerprinting
 techniques to cross-validation contexts.
+
+Having characterised the methodological gap in ML experiment caching, the
+following section surveys the sleep stage classification domain in which
+this thesis validates the framework.
 
 % ============================================================================
 \section{Sleep Stage Classification Methods}
@@ -187,9 +202,9 @@ training state to resume interrupted optimisation---rather than fold-level
 memoisation. Checkpointing targets a different inefficiency and does not
 prevent redundant retraining when only configuration parameters change.
 This thesis addresses the complementary gap: fold-level memoisation for
-feature-based models, where serialised representations are compact
-(1--185~MB per fold) and per-fold storage is tractable on a single
-workstation.
+feature-based models, where serialised representations range from
+approximately 1--2~MB per fold (XGBoost) to 120--180~MB per fold
+(Random Forest), and per-fold storage is tractable on a single workstation.
 
 \subsection{LOSO Evaluation in EEG Research}
 
@@ -234,10 +249,18 @@ Deploying ML models in clinical and consumer contexts introduces requirements
 rarely addressed in academic benchmarks: model versioning across firmware
 updates, inference latency constraints for real-time feedback, regulatory
 approval requiring full audit trails, and reproducibility across device
-batches with sensor variability. As Kreuzberger et al.\ observe, fewer than
-15\% of ML proof-of-concept projects successfully reach production
-deployment~\cite{kreuzberger2023mlops}, with reproducibility and experiment
-management identified as primary barriers.
+batches with sensor variability. Reproducibility and experiment management have been identified as primary
+barriers to the transition from research prototype to production
+deployment~\cite{kreuzberger2023mlops}.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{TODO before submission:} Verify the ``fewer than 15\,\%'' production
+deployment statistic in Kreuzberger et al.\ (2023). If not found there,
+either locate the original source (often cited from Gartner) or rephrase
+as ``only a small fraction.''
+\end{minipage}}
+\end{center}
 
 \textbf{Research-to-Production Gap:}
 The transition from research prototype to production deployment requires
@@ -262,7 +285,6 @@ accumulate silently and degrade reproducibility over
 time~\cite{sculley2015hidden}. Fingerprint-based caching directly addresses
 this class of debt: because every cached artefact is keyed by a cryptographic
 hash of its complete configuration, it is structurally impossible to serve a
-stale result from a superseded parameter set. In regulated deployment
-contexts---such as medical-device software subject to FDA or EU AI Act audit
-requirements---this property provides a natural audit trail, linking every
-stored model to the exact configuration that produced it.
+stale result from a superseded parameter set. This property provides a natural
+audit trail, linking every stored model to the exact configuration that
+produced it.

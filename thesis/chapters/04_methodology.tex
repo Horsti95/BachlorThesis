@@ -723,12 +723,9 @@ Top-K Features & 30, 50, None (all 149) & 3 \\
 
 Each configuration underwent Leave-One-Subject-Out (LOSO) cross-validation with 128 folds, resulting in 2{,}304 total model training iterations.
 
-\textbf{Note on FNN:} A Feedforward Neural Network (input$\rightarrow$64$\rightarrow$32$\rightarrow$5)
-was implemented and verified but excluded from the final experiments due to
-PyTorch not being installed in the benchmark environment. Preliminary results
-on 5 subjects achieved $\sim$78\% accuracy with successful caching
-(4.2$\times$ speedup on re-runs). The implementation is discussed as future
-work in Chapter~\ref{chap:summary}.
+\textbf{Note on FNN:} A Feedforward Neural Network was implemented but
+excluded from the benchmark experiments; see Section~\ref{chap:summary}
+(Future Work) for details.
 
 \subsection{Implementation Challenge: Incomplete Fingerprinting}
 \label{sec:implementation_challenges}
