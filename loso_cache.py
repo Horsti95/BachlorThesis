@@ -720,9 +720,9 @@ if __name__ == "__main__":
             cached_model = cache.get(fingerprint, subject_id)
             
             if cached_model is not None:
-                print(f"  {subject_id}: CACHE HIT ✓")
+                print(f"  {subject_id}: CACHE HIT ")
             else:
-                print(f"  {subject_id}: CACHE MISS ✗")
+                print(f"  {subject_id}: CACHE MISS ")
         
         print(f"\nAfter second run: {cache.metrics}")
         
@@ -741,7 +741,7 @@ if __name__ == "__main__":
         
         cached_model = cache.get(fingerprint_new, "sub-001")
         if cached_model is None:
-            print("  sub-001 (xgboost): CACHE MISS ✓ (correct - different config)")
+            print("  sub-001 (xgboost): CACHE MISS (correct - different config)")
         
         # Print final stats
         print("\n--- Cache Statistics ---")

@@ -188,7 +188,7 @@ def check_slow_models(
 
     if slow_models:
         print("\n" + "=" * 70)
-        print("⚠  SLOW MODEL WARNING")
+        print(" SLOW MODEL WARNING")
         print("=" * 70)
         print(f"The following models are estimated to be very slow")
         print(f"with {n_subjects} subjects using {cv_method}:\n")

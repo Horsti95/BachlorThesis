@@ -503,4 +503,4 @@ if __name__ == "__main__":
     print(f"  Test size: {summary['test_size_mean']:.0f} ± {summary['test_size_std']:.0f}")
     
     print("\n" + "=" * 60)
-    print("Cross-Validation Module: ✓ All tests passed")
+    print("Cross-Validation Module: All tests passed")

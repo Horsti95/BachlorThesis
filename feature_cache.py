@@ -1,7 +1,7 @@
 """
 Feature caching helpers with integrity verification.
 
-STATUS: IMPLEMENTED ✓ (224× speedup verified)
+STATUS: IMPLEMENTED (224× speedup verified)
     This module handles FEATURE-LEVEL caching (Stage 1).
     For MODEL-LEVEL caching (Stage 2 - core thesis work), see:
     - fingerprint.py (TODO: LOSOFingerprint implementation)
@@ -9,7 +9,7 @@ STATUS: IMPLEMENTED ✓ (224× speedup verified)
 
 Cache Architecture:
 ==================
-GLOBAL FEATURE CACHE (results/features_cache_global/) - IMPLEMENTED ✓
+GLOBAL FEATURE CACHE (results/features_cache_global/) - IMPLEMENTED 
     - Shared across ALL experiments
     - Contains: subject_{id}_full.npz (195 features)
     - Purpose: Avoid recomputing expensive feature extraction

@@ -196,8 +196,8 @@ class DataPipeline:
             apply_channel_selection=True,  # Select 8 EEG channels
             apply_resampling=False  # Don't resample yet (done in preprocessing)
         )
-        print(f"  ✓ Loaded: {metadata.n_epochs} total epochs, {metadata.sampling_rate} Hz")
-        print(f"  ✓ Channels: {metadata.channels}")
+        print(f"  Loaded: {metadata.n_epochs} total epochs, {metadata.sampling_rate} Hz")
+        print(f"  Channels: {metadata.channels}")
         
         # Stage 2: Preprocess (only ONCE with 8 channels)
         print(f"[Step 2/3] Preprocessing (filtering, downsampling, epoching)...")
@@ -214,14 +214,14 @@ class DataPipeline:
         
         # Validate
         epochs_full, labels = validate_epochs_labels(epochs_full, labels)
-        print(f"  ✓ Preprocessed: {len(epochs_full)} valid epochs, shape {epochs_full.shape}")
+        print(f"  Preprocessed: {len(epochs_full)} valid epochs, shape {epochs_full.shape}")
         
         # Create experiment subset by selecting first N channels
         # The channels are ordered: F3, F4, C3, C4, O1, O2, EOG, EMG
         # Experiment typically uses first 6 (EEG only)
         active_channels = len(self.config.data.get_channels())
         epochs_experiment = epochs_full[:, :active_channels, :]
-        print(f"  ✓ Experiment channels: {active_channels} of {epochs_full.shape[1]} (subset)")
+        print(f"  Experiment channels: {active_channels} of {epochs_full.shape[1]} (subset)")
         
         # Stage 3: Extract features
         print(f"[Step 3/3] Extracting {self.config.features.expected_feature_count()} features...")
@@ -278,7 +278,7 @@ class DataPipeline:
             if source_labels_for_full is not None:
                 save_features_to_cache(cache_path, features_full_df, source_labels_for_full, n_channels=source_epochs_for_full.shape[1])
                 logger.info(f"Saved features to global cache: {cache_path}")
-                print(f"  ✓ Saved to global cache: {cache_path.name}")
+                print(f"  Saved to global cache: {cache_path.name}")
         except Exception:
             logger.exception("Failed to save feature cache")
 
@@ -286,7 +286,7 @@ class DataPipeline:
         active_count = len(self.config.data.get_channels())
         features_df = select_channel_features(features_full_df, channels_to_keep=active_count)
 
-        print(f"  ✓ Features extracted: {features_df.shape}")
+        print(f"  Features extracted: {features_df.shape}")
         return features_df
     
     def process_all_subjects(
@@ -338,8 +338,8 @@ class DataPipeline:
                     # CACHE HIT - Skip loading and preprocessing entirely!
                     features_df, labels = cached_data
                     self.cache_hits += 1
-                    print(f"  ✓ CACHE HIT: Loaded {features_df.shape} features from cache")
-                    print(f"  ⚡ Skipped: Loading, preprocessing, feature extraction")
+                    print(f"  CACHE HIT: Loaded {features_df.shape} features from cache")
+                    print(f"  Skipped: Loading, preprocessing, feature extraction")
                     logger.info(f"Cache hit for subject {subject_id} - skipped full processing")
                     
                     # Store results (no metadata/epochs available from cache)
@@ -354,7 +354,7 @@ class DataPipeline:
                     print(f"    Epochs: {len(labels)}")
                     print(f"    Features: {features_df.shape}")
                     print(f"    Labels: {np.unique(labels, return_counts=True)}")
-                    print(f"  ✓ Subject {i}/{n_subjects} complete (CACHED)")
+                    print(f"  Subject {i}/{n_subjects} complete (CACHED)")
                     continue
                 
                 # CACHE MISS - Need full processing
@@ -390,17 +390,17 @@ class DataPipeline:
                 if save_intermediate:
                     print(f"  -> Saving intermediate results...")
                     self.save_subject_data(subject_id, epochs, labels, features_df)
-                    print(f"  ✓ Saved to {self.output_dir / 'per_subject' / f'subject_{subject_id}'}")
+                    print(f"  Saved to {self.output_dir / 'per_subject' / f'subject_{subject_id}'}")
                 
                 # Summary for this subject
                 print(f"\n  SUMMARY: Subject {subject_id}")
                 print(f"    Epochs: {len(epochs)}")
                 print(f"    Features: {features_df.shape}")
                 print(f"    Labels: {np.unique(labels, return_counts=True)}")
-                print(f"  ✓ Subject {i}/{n_subjects} complete")
+                print(f"  Subject {i}/{n_subjects} complete")
                 
             except Exception as e:
-                print(f"\n  ✗ FAILED: Subject {subject_id}")
+                print(f"\n  FAILED: Subject {subject_id}")
                 print(f"    Error: {str(e)}")
                 logger.error(f"Failed to process subject {subject_id}: {e}", exc_info=True)
                 failed_subjects.append(subject_id)
@@ -526,19 +526,19 @@ class DataPipeline:
         features_path = self.output_dir / "features" / "all_features.csv"
         print(f"  -> Saving features to CSV...")
         save_dataframe(features_df, features_path)
-        print(f"    ✓ {features_path}")
+        print(f"    {features_path}")
         
         # Save labels
         labels_path = self.output_dir / "features" / "all_labels.npy"
         print(f"  -> Saving labels...")
         save_numpy_array(labels, labels_path)
-        print(f"    ✓ {labels_path}")
+        print(f"    {labels_path}")
         
         # Save subject IDs
         subject_ids_path = self.output_dir / "features" / "subject_ids.npy"
         print(f"  -> Saving subject IDs...")
         save_numpy_array(subject_ids, subject_ids_path)
-        print(f"    ✓ {subject_ids_path}")
+        print(f"    {subject_ids_path}")
         
         # Save metadata
         print(f"  -> Saving metadata...")
@@ -555,7 +555,7 @@ class DataPipeline:
         
         metadata_path = self.output_dir / "features" / "dataset_metadata.json"
         save_json(metadata, metadata_path)
-        print(f"    ✓ {metadata_path}")
+        print(f"    {metadata_path}")
         
         print(f"\n  ALL FILES SAVED TO: {self.output_dir / 'features'}")
         print(f"{'='*60}\n")

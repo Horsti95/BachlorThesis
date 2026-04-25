@@ -3,9 +3,9 @@ Model Implementations for Sleep Stage Classification
 =====================================================
 
 Implements the three models from the thesis configuration grid:
-- XGBoost (gradient boosting) - IMPLEMENTED ✓ (used in experiments)
-- Random Forest (ensemble trees) - IMPLEMENTED ✓ (used in experiments)
-- FNN (feedforward neural network) - IMPLEMENTED ✓ (available but excluded)
+- XGBoost (gradient boosting) - IMPLEMENTED (used in experiments)
+- Random Forest (ensemble trees) - IMPLEMENTED (used in experiments)
+- FNN (feedforward neural network) - IMPLEMENTED (available but excluded)
 
 Thesis Experimental Grid: 2 × 3 × 3 = 18 configurations
 - 2 models: XGBoost, Random Forest
@@ -107,7 +107,7 @@ class XGBoostModel(BaseModel):
     """
     XGBoost classifier for sleep stage classification.
     
-    Status: ✓ IMPLEMENTED
+    Status: IMPLEMENTED
     
     Characteristics:
     - Fast training
@@ -181,7 +181,7 @@ class RandomForestModel(BaseModel):
     """
     Random Forest classifier for sleep stage classification.
     
-    Status: ✓ IMPLEMENTED
+    Status: IMPLEMENTED
     
     Characteristics:
     - Robust baseline
@@ -254,7 +254,7 @@ class FNNModel(BaseModel):
     """
     Feedforward Neural Network for sleep stage classification.
     
-    Status: ✓ IMPLEMENTED (PyTorch)
+    Status: IMPLEMENTED (PyTorch)
     
     Architecture: input → 256 → 128 → 64 → 5 (softmax)
     
@@ -967,7 +967,7 @@ if __name__ == "__main__":
         print(f"\n{model_type}:")
         try:
             model = create_model(model_type)
-            print(f"  ✓ Created successfully")
+            print(f"  Created successfully")
             
             # Test with dummy data
             X = np.random.randn(100, 149)
@@ -975,9 +975,9 @@ if __name__ == "__main__":
             
             model.fit(X, y)
             preds = model.predict(X)
-            print(f"  ✓ Fit and predict work")
+            print(f"  Fit and predict work")
             
         except NotImplementedError as e:
-            print(f"  ⚠ Not implemented: {str(e)[:50]}...")
+            print(f"  Not implemented: {str(e)[:50]}...")
         except Exception as e:
-            print(f"  ✗ Error: {e}")
+            print(f"  Error: {e}")

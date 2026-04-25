@@ -353,6 +353,7 @@ class TrainingPipeline:
         output_dir: Path,
         experiment_name: str = "training_experiment",
         formatter: Optional[TrainingOutputFormatter] = None,
+        n_jobs: int = 1,
         enable_model_cache: bool = True,
         model_cache_dir: Optional[str] = None,
         cache_min_free_space_gb: float = 5.0,
@@ -827,7 +828,7 @@ class TrainingPipeline:
     def _print_cache_stats(self, stats: Dict[str, Any]):
         """Print model cache statistics for thesis metrics."""
         print("\n" + "=" * 60)
-        print("📊 LOSO MODEL CACHE STATISTICS (Layer 2)")
+        print("LOSO MODEL CACHE STATISTICS (Layer 2)")
         print("=" * 60)
         
         metrics = stats.get('metrics', {})
@@ -1133,4 +1134,4 @@ if __name__ == "__main__":
     pipeline.print_results_table()
     
     print("\n" + "=" * 60)
-    print("Training Pipeline: ✓ All tests passed")
+    print("Training Pipeline: All tests passed")

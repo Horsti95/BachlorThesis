@@ -936,4 +936,4 @@ if __name__ == "__main__":
         print(f"  Reduction: {(1 - summary['reduction_ratio']) * 100:.1f}%")
     
     print("\n" + "=" * 60)
-    print("Feature Selection Module: ✓ All tests passed")
+    print("Feature Selection Module: All tests passed")

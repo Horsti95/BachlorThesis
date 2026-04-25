@@ -687,4 +687,4 @@ if __name__ == "__main__":
         print(f"  {key}: {value}")
     
     print("\n" + "=" * 60)
-    print("Cache Visualization Module: ✓ Tests passed")
+    print("Cache Visualization Module: Tests passed")

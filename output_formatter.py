@@ -62,12 +62,12 @@ if USE_UNICODE:
         'cross': '┼',
     }
     ICONS = {
-        'check': '✅',
-        'cross': '❌',
-        'warning': '⚠️',
+        'check': '',
+        'cross': '',
+        'warning': '️',
         'trophy': '🏆',
-        'tick': '✓',
-        'success': '✅',
+        'tick': '',
+        'success': '',
         'compute': '⏳',
         'cache': '💾',
     }

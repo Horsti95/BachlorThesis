@@ -46,14 +46,14 @@ from sklearn.feature_selection import f_classif, mutual_info_classif, SelectKBes
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 
-log("      ✓ All imports complete!")
+log("      All imports complete!")
 
 # Load real data from cache
 log("[2/7] Loading data from feature cache...")
 cache_dir = Path('results/features_cache_global')
 
 if not cache_dir.exists():
-    log("      ❌ ERROR: Cache directory not found!")
+    log("      ERROR: Cache directory not found!")
     sys.exit(1)
 
 all_features = []
@@ -69,14 +69,14 @@ for i in range(1, subjects_to_load + 1):
         all_labels.append(data['labels'])
         progress_bar(i, subjects_to_load, prefix='Loading')
     else:
-        log(f"      ⚠ Subject {i} not found!")
+        log(f"      Subject {i} not found!")
 
 X = np.vstack(all_features)
 y = np.concatenate(all_labels)
 
-log(f"      ✓ Data loaded: {X.shape[0]:,} epochs × {X.shape[1]} features")
-log(f"      ✓ Classes: {np.unique(y)} ({len(np.unique(y))} classes)")
-log(f"      ✓ Memory: ~{X.nbytes / 1024 / 1024:.1f} MB")
+log(f"      Data loaded: {X.shape[0]:,} epochs × {X.shape[1]} features")
+log(f"      Classes: {np.unique(y)} ({len(np.unique(y))} classes)")
+log(f"      Memory: ~{X.nbytes / 1024 / 1024:.1f} MB")
 
 # Benchmark ANOVA
 log("[3/7] Benchmarking ANOVA (f_classif) - 5 runs...")
@@ -89,7 +89,7 @@ for run in range(5):
     X_anova = selector_anova.fit_transform(X, y)
     elapsed = time.perf_counter() - start
     anova_times.append(elapsed)
-    log(f"      Run {run+1}/5 complete: {elapsed:.4f}s ✓")
+    log(f"      Run {run+1}/5 complete: {elapsed:.4f}s ")
 
 anova_mean = np.mean(anova_times)
 anova_std = np.std(anova_times)
@@ -97,8 +97,8 @@ log(f"      ═══ ANOVA Average: {anova_mean:.4f}s ± {anova_std:.4f}s ═�
 
 # Benchmark Mutual Information
 log("[4/7] Benchmarking Mutual Information - 3 runs")
-log("      ⚠ WARNING: This is SLOW! MI uses k-nearest neighbors estimation.")
-log("      ⚠ Expected time: 2-5 minutes per run!")
+log("      WARNING: This is SLOW! MI uses k-nearest neighbors estimation.")
+log("      Expected time: 2-5 minutes per run!")
 mi_times = []
 for run in range(3):
     log(f"      ┌─ Run {run+1}/3 STARTING (be patient)...")
@@ -111,7 +111,7 @@ for run in range(3):
     
     elapsed = time.perf_counter() - start
     mi_times.append(elapsed)
-    log(f"      └─ Run {run+1}/3 COMPLETE: {elapsed:.1f}s ✓")
+    log(f"      └─ Run {run+1}/3 COMPLETE: {elapsed:.1f}s ")
     
     # Show running estimate
     if run > 0:
@@ -143,27 +143,27 @@ np.random.seed(42)
 sample_idx = np.random.choice(len(X), size=sample_size, replace=False)
 X_sample = X[sample_idx]
 y_sample = y[sample_idx]
-log("      ✓ Sample created")
+log("      Sample created")
 
 log("      Fitting ANOVA selector on sample...")
 selector_anova_sample = SelectKBest(f_classif, k=50)
 X_anova_sample = selector_anova_sample.fit_transform(X_sample, y_sample)
-log("      ✓ ANOVA selector fitted")
+log("      ANOVA selector fitted")
 
 log("      Fitting MI selector on sample (this takes ~30-60s)...")
 selector_mi_sample = SelectKBest(mutual_info_classif, k=50)
 X_mi_sample = selector_mi_sample.fit_transform(X_sample, y_sample)
-log("      ✓ MI selector fitted")
+log("      MI selector fitted")
 
 clf = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=42, n_jobs=-1)
 
 log("      Running 5-fold CV with ANOVA features...")
 scores_anova = cross_val_score(clf, X_anova_sample, y_sample, cv=5, scoring='accuracy')
-log(f"      ✓ ANOVA CV scores: {[f'{s:.4f}' for s in scores_anova]}")
+log(f"      ANOVA CV scores: {[f'{s:.4f}' for s in scores_anova]}")
 
 log("      Running 5-fold CV with MI features...")
 scores_mi = cross_val_score(clf, X_mi_sample, y_sample, cv=5, scoring='accuracy')
-log(f"      ✓ MI CV scores: {[f'{s:.4f}' for s in scores_mi]}")
+log(f"      MI CV scores: {[f'{s:.4f}' for s in scores_mi]}")
 
 acc_diff = abs(scores_anova.mean() - scores_mi.mean()) * 100
 
@@ -204,7 +204,7 @@ output_file = output_dir / "anova_vs_mi_results.json"
 with open(output_file, "w") as f:
     json.dump(results, f, indent=2)
 
-log(f"      ✓ Saved to: {output_file}")
+log(f"      Saved to: {output_file}")
 
 # Print final summary
 print()
@@ -225,7 +225,7 @@ print(f"║    • Mutual Information:    {scores_mi.mean():.4f} ± {scores_mi.s
 print(f"║    • Difference:            {acc_diff:.2f}%" + " " * 34 + "║")
 print("║" + " " * 68 + "║")
 print("║  THESIS CLAIM: '~200× faster with <1% accuracy difference'" + " " * 8 + "║")
-claim_status = "✓ VALIDATED" if (speedup > 100 and acc_diff < 1.0) else "✗ NOT VALIDATED"
+claim_status = "VALIDATED" if (speedup > 100 and acc_diff < 1.0) else "NOT VALIDATED"
 print(f"║  STATUS: {claim_status}" + " " * (57 - len(claim_status)) + "║")
 print("╚" + "═" * 68 + "╝")
 print()
@@ -239,7 +239,7 @@ script_path = Path(__file__)
 log(f"Deleting benchmark script: {script_path.name}")
 try:
     os.remove(script_path)
-    log("✓ Script deleted successfully.")
+    log("Script deleted successfully.")
 except Exception as e:
-    log(f"⚠ Could not delete script: {e}")
+    log(f"Could not delete script: {e}")
     log("  Please delete manually: benchmark_anova_vs_mi.py")

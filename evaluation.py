@@ -327,9 +327,9 @@ def format_evaluation_report(
     
     # Overall metrics
     lines.append("\nOverall Metrics:")
-    lines.append(f"  Accuracy:    {result.accuracy:.4f}  {'✓' if result.meets_accuracy_target else '✗'} (target: ≥{CLINICAL_TARGETS['accuracy']:.2f})")
-    lines.append(f"  Kappa:       {result.kappa:.4f}  {'✓' if result.meets_kappa_target else '✗'} (target: ≥{CLINICAL_TARGETS['kappa']:.2f})")
-    lines.append(f"  F1-Macro:    {result.f1_macro:.4f}  {'✓' if result.meets_f1_target else '✗'} (target: ≥{CLINICAL_TARGETS['f1_macro']:.2f})")
+    lines.append(f"  Accuracy:    {result.accuracy:.4f}  {'' if result.meets_accuracy_target else ''} (target: ≥{CLINICAL_TARGETS['accuracy']:.2f})")
+    lines.append(f"  Kappa:       {result.kappa:.4f}  {'' if result.meets_kappa_target else ''} (target: ≥{CLINICAL_TARGETS['kappa']:.2f})")
+    lines.append(f"  F1-Macro:    {result.f1_macro:.4f}  {'' if result.meets_f1_target else ''} (target: ≥{CLINICAL_TARGETS['f1_macro']:.2f})")
     lines.append(f"  F1-Weighted: {result.f1_weighted:.4f}")
     
     # Per-class metrics
@@ -340,7 +340,7 @@ def format_evaluation_report(
     for class_name in CLASS_NAMES:
         if class_name in result.class_metrics:
             m = result.class_metrics[class_name]
-            status = "✓" if m.within_expected_range else "⚠"
+            status = "" if m.within_expected_range else ""
             lines.append(
                 f"  {class_name:<8} {m.precision:<10.4f} {m.recall:<10.4f} "
                 f"{m.f1_score:<10.4f} {m.support:<10} {status}"
@@ -349,9 +349,9 @@ def format_evaluation_report(
     # Clinical verdict
     lines.append("\n" + "-" * 60)
     if result.meets_all_targets:
-        lines.append("✓ MEETS ALL CLINICAL TARGETS")
+        lines.append("MEETS ALL CLINICAL TARGETS")
     else:
-        lines.append("✗ Does not meet all clinical targets")
+        lines.append("Does not meet all clinical targets")
         if not result.meets_accuracy_target:
             lines.append(f"  - Accuracy {result.accuracy:.4f} < {CLINICAL_TARGETS['accuracy']}")
         if not result.meets_kappa_target:
@@ -399,7 +399,7 @@ def format_aggregated_report(
             mean = result.class_f1_means[class_name]
             std = result.class_f1_stds.get(class_name, 0.0)
             expected = EXPECTED_CLASS_PERFORMANCE[class_name]
-            status = "✓" if expected['f1_range'][0] <= mean <= expected['f1_range'][1] else "⚠"
+            status = "" if expected['f1_range'][0] <= mean <= expected['f1_range'][1] else ""
             lines.append(f"  {class_name:<6}: {mean:.4f} ± {std:.4f} {status}")
     
     lines.append("=" * 60)
@@ -442,7 +442,7 @@ def format_comparison_table(
             r.kappa_mean >= CLINICAL_TARGETS['kappa'] and
             r.f1_macro_mean >= CLINICAL_TARGETS['f1_macro']
         )
-        target_str = "✓" if meets_target else "✗"
+        target_str = "" if meets_target else ""
         
         lines.append(
             f"{i:<5} {r.config_id:<35} "
@@ -600,4 +600,4 @@ if __name__ == "__main__":
     print(format_comparison_table(agg_results))
     
     print("\n" + "=" * 60)
-    print("Evaluation Module: ✓ All tests passed")
+    print("Evaluation Module: All tests passed")
