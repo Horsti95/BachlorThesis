@@ -38,7 +38,7 @@ try:
     FNN_AVAILABLE = True
 except ImportError:
     FNN_AVAILABLE = False
-    logger.warning("⚠ PyTorch not available - FNN tests will be skipped")
+    logger.warning("PyTorch not available - FNN tests will be skipped")
 
 
 def generate_synthetic_data(n_subjects=3, n_epochs_per_subject=200, n_features=149):
@@ -172,7 +172,7 @@ def print_cache_report(run1_stats, run2_stats):
 
     # Run 1 (Cold start)
     cache1 = run1_stats['cache_stats']
-    print(f"\n📊 RUN 1 (Cold Start - Train Fresh)")
+    print(f"\nRUN 1 (Cold Start - Train Fresh)")
     print(f"   Configurations: {run1_stats['n_configs']}")
     print(f"   Time: {run1_stats['elapsed_seconds']:.1f}s")
     if cache1:
@@ -182,7 +182,7 @@ def print_cache_report(run1_stats, run2_stats):
 
     # Run 2 (Warm start)
     cache2 = run2_stats['cache_stats']
-    print(f"\n📊 RUN 2 (Warm Start - Load Cache)")
+    print(f"\nRUN 2 (Warm Start - Load Cache)")
     print(f"   Configurations: {run2_stats['n_configs']}")
     print(f"   Time: {run2_stats['elapsed_seconds']:.1f}s")
     if cache2:
@@ -191,7 +191,7 @@ def print_cache_report(run1_stats, run2_stats):
         print(f"   Hit Rate: {cache2['metrics']['hit_rate']*100:.1f}%")
 
     # Performance comparison
-    print(f"\n⚡ PERFORMANCE")
+    print(f"\nPERFORMANCE")
     speedup = run1_stats['elapsed_seconds'] / run2_stats['elapsed_seconds']
     time_saved = run1_stats['elapsed_seconds'] - run2_stats['elapsed_seconds']
     print(f"   Cold Start: {run1_stats['elapsed_seconds']:.1f}s")
@@ -200,25 +200,25 @@ def print_cache_report(run1_stats, run2_stats):
     print(f"   Time Saved: {time_saved:.1f}s")
 
     # Validation
-    print(f"\n✓ VALIDATION")
+    print(f"\nVALIDATION")
 
     expected_cache_hits = run1_stats['n_configs'] * 3  # 3 subjects (LOSO folds)
     actual_hits = cache2['metrics']['hits'] if cache2 else 0
 
     if actual_hits >= expected_cache_hits:
-        print(f"   ✅ All models cached: {actual_hits}/{expected_cache_hits} hits")
+        print(f"   All models cached: {actual_hits}/{expected_cache_hits} hits")
     else:
-        print(f"   ⚠️  Some misses: {actual_hits}/{expected_cache_hits} hits")
+        print(f"   ️  Some misses: {actual_hits}/{expected_cache_hits} hits")
 
     if cache2 and cache2['metrics']['hit_rate'] >= 0.95:
-        print(f"   ✅ High cache hit rate: {cache2['metrics']['hit_rate']*100:.1f}%")
+        print(f"   High cache hit rate: {cache2['metrics']['hit_rate']*100:.1f}%")
     else:
-        print(f"   ⚠️  Low hit rate: {cache2['metrics']['hit_rate']*100:.1f}%")
+        print(f"   ️  Low hit rate: {cache2['metrics']['hit_rate']*100:.1f}%")
 
     if speedup >= 1.2:
-        print(f"   ✅ Significant speedup: {speedup:.1f}x")
+        print(f"   Significant speedup: {speedup:.1f}x")
     else:
-        print(f"   ⚠️  Limited speedup: {speedup:.1f}x")
+        print(f"   ️  Limited speedup: {speedup:.1f}x")
 
     print("="*70)
 
@@ -249,15 +249,15 @@ def main():
         n_epochs_per_subject=200,
         n_features=149
     )
-    print(f"   ✓ Generated {len(features_df)} epochs")
-    print(f"   ✓ {len(np.unique(subject_ids))} subjects")
-    print(f"   ✓ {features_df.shape[1]} features")
-    print(f"   ✓ Class distribution: {dict(zip(*np.unique(labels, return_counts=True)))}")
+    print(f"   Generated {len(features_df)} epochs")
+    print(f"   {len(np.unique(subject_ids))} subjects")
+    print(f"   {features_df.shape[1]} features")
+    print(f"   Class distribution: {dict(zip(*np.unique(labels, return_counts=True)))}")
 
     # Create configs
     print("\n[2/5] Creating configuration grid...")
     configs = create_test_configs(include_fnn=True)
-    print(f"   ✓ Created {len(configs)} configurations")
+    print(f"   Created {len(configs)} configurations")
     for i, config in enumerate(configs, 1):
         print(f"      {i}. {config.get_config_id()}")
 
@@ -277,7 +277,7 @@ def main():
         print("\n[5/5] Generating cache report...")
         print_cache_report(run1_stats, run2_stats)
 
-    print("\n✅ Test complete!")
+    print("\nTest complete!")
 
     # Return success if cache hit rate is good
     cache2 = run2_stats['cache_stats']
