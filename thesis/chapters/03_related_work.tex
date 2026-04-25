@@ -98,12 +98,16 @@ check that prevents redundant training before it begins.
       provide no integrity guarantee that training and evaluation sets are
       correctly separated across cache hits.
 
-\item \textbf{Weights \& Biases:} Excels at metric visualisation and experiment
-      logging~\cite{wandb2024docs}, but functions as an observation layer
-      rather than a computational cache. Reliance on proprietary, cloud-hosted
-      metadata stores introduces vendor dependency that can threaten long-term
-      experiment reproducibility. This motivates the independent, self-hosted
-      framework proposed in this thesis.
+\item \textbf{Neptune AI and Weights \& Biases:} These platforms excel at
+      metric visualisation and experiment logging~\cite{wandb2024docs}, but
+      function as observation layers rather than computational caches.
+      Proprietary, cloud-hosted metadata stores introduce vendor dependency
+      that can threaten long-term experiment reproducibility: the
+      discontinuation of Neptune.ai services in 2026~\cite{neptune2026shutdown}
+      illustrates that experiment records held in third-party platforms may
+      become inaccessible when the provider exits the market. This motivates
+      the independent, self-hosted framework proposed in this thesis, where
+      all cached artefacts reside on researcher-controlled storage.
 \end{itemize}
 
 The limitations identified across academic work and commercial platforms converge
@@ -131,7 +135,7 @@ April~2026.}
 MLflow        & Step-level (opt.)    & Parameter hashing         & Model only        & Manual fold param. \\
 DVC           & Pipeline stage       & MD5 (code + inputs)       & Stage outputs     & Manual pipeline \\
 ZenML         & Step-level           & SHA-256 (inputs+code+env) & Step outputs      & Custom materializers \\
-W\&B          & None (tracking)      & N/A                       & None              & N/A \\
+Neptune/W\&B  & None (tracking)      & N/A                       & None              & N/A \\
 \textbf{This thesis} & \textbf{Hierarchical} & \textbf{SHA-256 + subject ID} & \textbf{Features + Models} & \textbf{Native} \\
 \bottomrule
 \end{tabular}
