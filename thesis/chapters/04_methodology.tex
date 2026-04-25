@@ -568,24 +568,23 @@ models.
 
 \subsection{Cache Storage Structure}
 
-Table~\ref{tab:cache_structure} summarises the two-layer directory layout.
-Layer~1 filenames carry no fingerprint because features are
-configuration-independent. Layer~2 filenames embed the fingerprint, so any
-hyperparameter or subject change produces a different key and forces a cache
-miss---preventing accidental reuse of a stale model.
+The two-layer directory layout reflects the key/no-key distinction:
+Layer~1 filenames carry no fingerprint (features are configuration-independent);
+Layer~2 filenames embed the 32-character fingerprint so any parameter or
+subject change forces a cache miss and prevents accidental reuse.
 
 \begin{table}[htbp]
 \centering
-\caption{Cache directory structure. Layer~1 features are fingerprint-free
-(always valid); Layer~2 models are fingerprint-keyed (invalidated on config change).}
+\caption{Cache directory layout. Layer~1 paths are fingerprint-free (always valid);
+Layer~2 paths embed the fingerprint (invalidated on any config change).}
 \label{tab:cache_structure}
-\begin{tabular}{llp{5.5cm}}
+\begin{tabular}{lp{4cm}p{4.5cm}}
 \toprule
-\textbf{Path} & \textbf{Fingerprint} & \textbf{Description} \\
+\textbf{Layer} & \textbf{Path pattern} & \textbf{Contents} \\
 \midrule
-\texttt{features/sub-N\_full.npz}          & None & 149 features per subject, config-independent \\
-\texttt{loso\_model\_cache/\{fp\}\_sub-N.joblib} & SHA-256 prefix & Trained model, invalidated on any config change \\
-\texttt{loso\_model\_cache/cache\_registry.json} & --- & Fingerprint $\to$ config metadata index \\
+1 & \texttt{features/sub-N\_full.npz} & 149 features per subject \\
+2 & \texttt{models/\{fp32\}\_sub-N.joblib} & Trained model (invalidated on config change) \\
+2 & \texttt{models/registry.json} & Fingerprint $\to$ config metadata index \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -593,39 +592,35 @@ miss---preventing accidental reuse of a stale model.
 \subsection{Cache Hit/Miss Logic}
 
 For each LOSO fold, the system generates the configuration fingerprint and
-checks whether \verb|{fingerprint}_{subject}.joblib| exists on disk. On a
-\textbf{cache hit}, the model is loaded (XGBoost: $\sim$58~ms; RF:
-$\sim$2.5~s). On a \textbf{cache miss}, the model is trained (XGBoost:
-$\sim$29~s; RF: $\sim$248~s) and saved to disk for future reuse.
+checks whether the corresponding joblib file exists on disk. On a cache hit,
+the model is loaded (XGBoost: $\sim$58~ms; RF: $\sim$2.5~s). On a cache miss,
+the model is trained (XGBoost: $\sim$29~s; RF: $\sim$248~s) and saved for
+future reuse. This single-tier disk-based approach suits the batch-oriented
+workflow, where each model is accessed exactly once per run.
 
-This single-tier disk-based approach is well-suited to the batch-oriented
-experimental workflow, where each model is accessed once per run.
+An in-memory LRU tier was considered but not implemented: because each model
+is accessed once per run, an in-memory layer would never produce a second hit.
+Two-tier RAM+disk caching is discussed as a future extension in Chapter~5.
 
+\subsection{Cache Invalidation}
 
-\textbf{Note on Two-Tier RAM+Disk Caching:} An in-memory caching layer
-(LRU cache in RAM, backed by disk) was considered but not implemented. The
-batch-oriented experimental workflow accesses each model exactly once per run,
-so the RAM layer would not achieve repeated hits. Additionally, preliminary
-testing indicated that the performance bottleneck is disk I/O throughput rather
-than seek latency---an in-memory tier did not meaningfully reduce loading times
-for the model sizes encountered. A detailed discussion of two-tier caching as
-a future extension is provided in Chapter~5 (Future Work).
-
-\subsection{Handling Data Changes and Cache Invalidation}
-
-A critical challenge in ML experiment caching is ensuring cache validity when underlying data changes. Our implementation addresses this through a multi-layered integrity system embedded in the cache metadata. Each cached entry stores a configuration fingerprint---a SHA-256 hash of all preprocessing parameters, alongside explicit version identifiers (\texttt{data\_version} and \texttt{feature\_version}) and source file metadata.
-
-When raw data modifications occur, three invalidation strategies are available:
+Two invalidation strategies handle data or code changes:
 
 \begin{enumerate}
-\item \textbf{Version Bumping:} Incrementing the \texttt{data\_version} parameter in the configuration file causes the fingerprint to change, automatically invalidating all cached entries without requiring manual intervention. This approach preserves the cache structure while ensuring fresh computation.
+\item \textbf{Version bumping.} Incrementing the \texttt{code\_version} string
+in the configuration changes the fingerprint, automatically invalidating all
+cached entries without deleting files. The \texttt{code\_version} field is
+currently set to a fixed semantic string (\texttt{"1.0.0"}); in a CI/CD
+deployment it could be populated automatically from the Git commit hash
+(e.g.\ \texttt{git rev-parse HEAD}), ensuring automatic cache invalidation
+whenever the codebase changes.
 
-\item \textbf{Cache Purging:} For significant data changes or version migrations, the global cache directory can be deleted entirely, triggering a complete recomputation on the next execution.
-
-\item \textbf{Strict Validation:} An optional \texttt{strict\_validation} mode computes file checksums during cache lookup, detecting any byte-level changes to source files. While more computationally expensive, this provides cryptographic guarantees of data integrity.
+\item \textbf{Cache purging.} For major data or model changes, the cache
+directory is deleted entirely, triggering full recomputation on the next run.
 \end{enumerate}
 
-Our implementation defaults to version-based validation (Option 1), balancing integrity assurance with computational efficiency. The fingerprint system ensures that configuration drift---such as modified filter parameters or channel selections---automatically triggers recomputation, while unchanged configurations benefit from cached results. This approach aligns with reproducibility requirements in scientific computing, where identical inputs must yield identical outputs.
+Both strategies are available; the benchmark uses version bumping for
+controlled invalidation tests and purging for full cold-start baselines.
 
 
 
@@ -634,18 +629,40 @@ Our implementation defaults to version-based validation (Option 1), balancing in
 
 \subsection{Technical Environment}
 
-All experiments were executed on a custom desktop workstation (Intel Core
-Ultra~9, 64~GB RAM, NVMe SSD, NVIDIA RTX~5090 Mobile) running Python~3.12.2
-with pinned dependencies listed in \texttt{requirements.txt} (scikit-learn
-1.4.x, XGBoost~3.0.2, MNE-Python~1.9.0, joblib~1.5.1, NumPy~2.1.3).
-All stochastic operations use \texttt{random\_state=42}.
+Two machines were used across the project lifecycle
+(Table~\ref{tab:hardware_env}). The HP ProBook laptop was used for initial
+pipeline development and unit testing; all timing benchmarks reported in
+this thesis were run on the desktop workstation.
 
-All timing results and speedup measurements reported in this thesis were
-obtained on this machine. Absolute timing values are hardware-dependent;
-as discussed in Section~\ref{sec:results_viability}, relative speedup ratios
-and VIABLE/NOT\_VIABLE verdicts generalise across hardware configurations
-because they are determined by model serialization characteristics, not
-machine speed.
+\begin{table}[htbp]
+\centering
+\caption{Hardware used for development and benchmarking.}
+\label{tab:hardware_env}
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Development (HP ProBook)} & \textbf{Benchmark (Desktop)} \\
+\midrule
+CPU     & AMD Ryzen 7 4700U (8 cores) & Intel Core Ultra 9 275HX (2.70 GHz) \\
+RAM     & 16 GB                       & 64 GB \\
+Storage & SSD                         & NVMe SSD \\
+OS      & Windows 11 Pro              & Windows 11 Pro \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The software stack is Python~3.12.2 with pinned dependencies (scikit-learn
+1.4.x, XGBoost~3.0.2, MNE-Python~1.9.0, joblib~1.5.1, NumPy~2.1.3,
+antropy~0.1.6). All stochastic operations use \texttt{random\_state=42}.
+Full dependency versions are pinned in \texttt{requirements.txt}.
+
+Absolute timing values are hardware-dependent; however, cache speedup
+\textit{ratios} are hardware-portable. Both cold-start training and warm
+cache loading scale proportionally with hardware speed: a machine that
+trains 3$\times$ faster also reads from an NVMe cache approximately
+3$\times$ faster, leaving the speedup ratio approximately constant.
+VIABLE/NOT\_VIABLE verdicts are therefore determined by model serialization
+size, not by which machine produced the timings
+(Section~\ref{sec:results_viability}).
 \subsection{Experimental Grid}
 
 The experiments evaluate 18 configurations, as shown in Table~\ref{tab:exp_grid}.
