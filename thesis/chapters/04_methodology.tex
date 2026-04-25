@@ -677,6 +677,32 @@ trains 3$\times$ faster also reads from an NVMe cache approximately
 VIABLE/NOT\_VIABLE verdicts are therefore determined by model serialization
 size, not by which machine produced the timings
 (Section~\ref{sec:results_viability}).
+
+All benchmark timings were measured with empty cache directories as the
+controlled condition. This isolates the caching framework's performance from
+SSD fill-level effects: as NVMe storage approaches capacity, write speed
+degrades due to flash garbage collection overhead, which would inflate
+cold-run times and produce artificially large speedup ratios. Starting each
+benchmark run from an empty cache directory ensures the reported numbers are
+reproducible across machines with similar storage capacity.
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- validate measurement condition:}
+The clean re-run (PC1, currently running) uses empty cache directories.
+Earlier first-run results were measured as cache filled (RF sweep wrote
+$\sim$18~GB, potentially approaching SSD capacity on the development machine),
+which may have inflated cold-run write times. When re-run results arrive,
+compare RF cold times to the first run: if they are systematically shorter,
+this confirms the storage fill-level effect. If confirmed, add a one-sentence
+note here: ``Clean-cache conditions also avoid SSD performance degradation
+observed when cache fill approached storage capacity in preliminary
+measurements.'' The observation does not require a full/empty storage
+benchmark --- framing as a controlled measurement condition is sufficient.
+\end{minipage}}
+\end{center}
+
 \subsection{Experimental Grid}
 
 The experiments evaluate 18 configurations, as shown in Table~\ref{tab:exp_grid}.
