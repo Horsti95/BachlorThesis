@@ -300,7 +300,7 @@ evaluation: no single subject's distribution is representative of the pool.}
 \end{figure}
 
 
-\section{Data Validation and Integrity Verification}
+\subsection{Data Validation and Integrity Verification}
 \label{sec:data_validation}
 
 Prior to feature extraction, each recording undergoes an automated 12-point
@@ -574,6 +574,12 @@ migration introduces a bug or modifies model behaviour, the resulting fingerprin
 differs from previous versions, preventing retrieval of stale cached
 models.
 
+Table~\ref{tab:fingerprint_integrity} shows representative fingerprints generated
+across different configurations, confirming that every distinct parameter combination
+produces a unique 32-character SHA-256 prefix.
+
+\input{tables/tab5_fingerprint_integrity}
+
 \subsection{Cache Storage Structure}
 
 The two-layer directory layout reflects the key/no-key distinction:
@@ -708,13 +714,53 @@ preprocessing (invalidates both layers); (4)~changed feature selection
 (Layer~1 hit, Layer~2 miss per changed config); (5)~new subjects added
 (existing subjects hit, new subjects miss).
 
-\section{Cache Verification Testing}
+\section{Evaluation Metrics}
+\label{sec:evaluation_plan}
+
+The experimental evaluation used three categories of metrics, corresponding to
+the primary caching contribution, the secondary classification validation, and
+the reproducibility requirements.
+
+\subsection{Primary Metrics: Caching Efficiency}
+
+The primary thesis contribution was evaluated through caching metrics:
+
+\begin{itemize}
+\item \textbf{Cache Hit Rate:} $\frac{\text{hits}}{\text{hits} + \text{misses}}$ per stage
+\item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
+\item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
+\item \textbf{Storage Overhead:} Total cache size in MB/GB
+\end{itemize}
+
+\subsection{Secondary Metrics: Classification Performance}
+
+Classification metrics validated that the caching framework produced correct results:
+
+\begin{itemize}
+\item \textbf{Accuracy:} Overall correct classifications
+\item \textbf{Macro F1-Score:} Mean F1 across all classes (handles class imbalance)
+\item \textbf{Cohen's Kappa:} Agreement beyond chance
+\item \textbf{Per-Class F1:} Identifies problematic classes (especially N1)
+\item \textbf{Confusion Matrix:} 5$\times$5 aggregated across all LOSO folds
+\end{itemize}
+
+\subsection{Reproducibility Validation}
+
+Reproducibility is validated at three levels: fingerprint determinism
+(identical configurations produce identical SHA-256 hashes across multiple
+independent runs), result consistency (identical fingerprints produce
+bitwise-identical predictions and metrics within floating-point tolerance),
+and resumability (an interrupted pipeline restarted from cache yields the
+same final results as an uninterrupted run). All three properties were
+confirmed across all 18 configurations in the full-scale experiment.
+
+\section{Cache Implementation Validation}
 \label{sec:verification}
 
 Prior to conducting the full 18-configuration experiment, the caching system
 underwent preliminary verification on a reduced grid to confirm correctness
 before committing to the full-scale runs. The full-scale results
-(Chapter~\ref{chap:results}) supersede the preliminary numbers reported here.
+(Section~\ref{sec:results_caching}) supersede the preliminary numbers reported here.
 
 \subsection{Test Design}
 
@@ -830,47 +876,6 @@ retrieved for the wrong subject. These results justified proceeding to the
 full 2{,}304-operation experiment
 (Section~\ref{sec:results_caching}).
 
-
-\section{Evaluation Metrics}
-\label{sec:evaluation_plan}
-
-The experimental evaluation used three categories of metrics, corresponding to
-the primary caching contribution, the secondary classification validation, and
-the reproducibility requirements.
-
-\subsection{Primary Metrics: Caching Efficiency}
-
-The primary thesis contribution was evaluated through caching metrics:
-
-\begin{itemize}
-\item \textbf{Cache Hit Rate:} $\frac{\text{hits}}{\text{hits} + \text{misses}}$ per stage
-\item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
-\item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
-\item \textbf{Storage Overhead:} Total cache size in MB/GB
-\end{itemize}
-
-\subsection{Secondary Metrics: Classification Performance}
-
-Classification metrics validated that the caching framework produced correct results:
-
-\begin{itemize}
-\item \textbf{Accuracy:} Overall correct classifications
-\item \textbf{Macro F1-Score:} Mean F1 across all classes (handles class imbalance)
-\item \textbf{Cohen's Kappa:} Agreement beyond chance
-\item \textbf{Per-Class F1:} Identifies problematic classes (especially N1)
-\item \textbf{Confusion Matrix:} 5$\times$5 aggregated across all LOSO folds
-\end{itemize}
-
-\subsection{Reproducibility Validation}
-
-Reproducibility is validated at three levels: fingerprint determinism
-(identical configurations produce identical SHA-256 hashes across multiple
-independent runs), result consistency (identical fingerprints produce
-bitwise-identical predictions and metrics within floating-point tolerance),
-and resumability (an interrupted pipeline restarted from cache yields the
-same final results as an uninterrupted run). All three properties were
-confirmed across all 18 configurations in the full-scale experiment.
-
 % ============================================================================
 % RESULTS — within Chapter 4 per professor's structure
 % ============================================================================
@@ -952,10 +957,17 @@ corr=None, k=50  & 50  & 5{,}465.4  & 305.2 & 17.9$\times$ & 17.5 \\
 \end{tabular}
 \end{table}
 
+% TODO: re-run or validate — RF corr=None, k=None cold=31,679s may include
+% thermal throttling on 9-hour mobile run. RF corr=None, k=30 (11,331s, marked *)
+% is anomalous vs. similar configs; likely process interruption during measurement.
 Random Forest caching provides significant time savings (up to 110$\times$ speedup)
 but at substantially higher storage cost ($\sim$18.5~GB per configuration vs.\ $\sim$185~MB
 for XGBoost). As with XGBoost, all 1{,}152 warm-cache operations achieved a 100\% cache hit rate.
 Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
+Two cold-run measurements are flagged for re-validation: the 149-feature run
+(31{,}679~s, possibly inflated by thermal throttling on a 9-hour mobile run) and
+config~7 (corr=None, k=30: 11{,}331~s, marked~* in the table, possibly due to
+process interruption). These outliers do not affect the viability verdict.
 Verdict: \textbf{BORDERLINE}, meaningful speedup but GB-scale storage makes this
 impractical for repeated experimentation without large-capacity storage.
 
@@ -991,10 +1003,13 @@ distribution.
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig1_speedup_bar.pdf}
 \caption{Cache speedup comparison across 9 configurations for XGBoost and
-Random Forest (128-fold LOSO).}
+Random Forest (128-fold LOSO). Note: y-axis is log scale; numeric labels
+should be added to small bars for readability.}
 \label{fig:speedup_bar}
 \end{figure}
 
+% TODO: re-run or validate — verify data accuracy of cache efficiency scatter
+% after clean re-run completes (RF cold-run outliers may shift point positions)
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
@@ -1027,8 +1042,9 @@ The best-performing configuration (\mbox{XGBoost, no correlation filter, all 149
 achieved \textbf{84.9\% accuracy} ($\kappa = 0.726$, F1-macro $= 0.629$) in LOSO
 cross-validation across 128 subjects. XGBoost occupies the top 7 positions in the
 ranking, with Random Forest configurations placing 8th--18th. The N1 sleep stage
-consistently shows lower per-class F1 due to its transitional nature and similarity
-to adjacent stages. Figure~\ref{fig:per_class_f1} shows the per-class F1 breakdown.
+consistently shows lower per-class F1 due to its transitional nature, similarity
+to adjacent stages Wake and N2, and severe class imbalance (3.7\% of all epochs;
+Section~\ref{sec:data}). Figure~\ref{fig:per_class_f1} shows the per-class F1 breakdown.
 
 \begin{figure}[htbp]
 \centering
@@ -1041,7 +1057,7 @@ N1 shows lowest F1 due to transitional stage characteristics.}
 \subsection{Multi-Model Cache Viability}
 \label{sec:results_viability}
 
-XGBoost and Random Forest were chosen as primary models for the EEG sleep staging task, but the fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. To validate this generalizability, cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families.
+Having validated the primary framework on XGBoost and Random Forest, this section extends the viability analysis to a broader model landscape. XGBoost and Random Forest were chosen as primary models for the EEG sleep staging task, but the fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. To validate this generalizability, cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families.
 
 Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
 tested on the full 128-subject dataset (5 LOSO folds).
@@ -1124,15 +1140,12 @@ scale of the experiment.
 \label{fig:svm_scaling}
 \end{figure}
 
-\subsection{Reproducibility Validation}
+\subsection{Reproducibility Results}
 \label{sec:results_reproducibility}
 
-Table~\ref{tab:fingerprint_integrity} demonstrates fingerprint uniqueness across
-representative configurations.
-
-\input{tables/tab5_fingerprint_integrity}
-
-Reproducibility was validated across all 18 configurations and 128 LOSO folds
+Reproducibility was validated across all 18 configurations and 128 LOSO folds.
+Fingerprint uniqueness across representative configurations is demonstrated in
+Table~\ref{tab:fingerprint_integrity} (Section~\ref{sec:fingerprint_generation}).
 (CPU-based sklearn estimators with fixed \texttt{random\_state}; GPU-level
 non-determinism~\cite{nvidia2024cudnn} does not apply here).
 
@@ -1151,7 +1164,7 @@ non-determinism~\cite{nvidia2024cudnn} does not apply here).
 \label{sec:findings}
 % ============================================================================
 
-Six claims formulated at the outset of this thesis were validated through
+Seven claims formulated at the outset of this thesis were validated through
 systematic experimentation:
 
 \begin{enumerate}
@@ -1185,6 +1198,13 @@ systematic experimentation:
       magnitudes differ between the development laptop and the desktop machine,
       but the ranking is consistent, confirming that the framework's behaviour
       generalises across hardware configurations.
+
+\item \textbf{Layer~1 cache provides universally viable speedup.}
+      Feature extraction caching (227$\times$ speedup, Layer~1) benefits all
+      model types regardless of their Layer~2 viability verdict. Even models
+      classified as NOT\_VIABLE at Layer~2 (e.g., Random Forest, KNN) still
+      avoid a $\sim$53-minute cold extraction on warm runs, making Layer~1
+      caching unambiguously worthwhile for any repeated LOSO experiment.
 \end{enumerate}
 
 % ============================================================================
@@ -1201,8 +1221,18 @@ higher classification accuracy (84.9\% vs.\ 81.5\%), higher cache speedup
 Random Forest and XGBoost are interchangeable ensemble alternatives. For
 LOSO-style experimentation with repeated runs, XGBoost is the clearly
 preferable choice, not merely for accuracy, but for practical workflow efficiency.
+Additionally, combining Mutual Information feature selection with Random Forest
+would compound both bottlenecks: MI is 174$\times$ slower than ANOVA and RF is
+borderline cache-viable, making such a pipeline doubly impractical for iterative
+experimentation.
 
 \subsection{Why Tree Ensembles and KNN Are Not Cache-Viable}
+
+A model is classified as \textbf{NOT\_VIABLE} when its warm-load time approaches
+or exceeds its cold-train time on the target hardware, negating the caching benefit,
+or when the serialized model size makes repeated storage impractical.
+Formally: caching is viable when $T_{\text{load}} \ll T_{\text{train}}$
+and the per-configuration disk footprint is manageable.
 
 The NOT\_VIABLE verdict for Random Forest, Extra Trees, and KNN stems from
 a fundamental serialization characteristic. Tree-ensemble models store an
@@ -1218,6 +1248,12 @@ regularisation and shallow trees (often depth 3--6) that serialise to compact
 representations of 1--8~MB, loading in under one second.
 
 \subsection{Storage vs.\ Speed Tradeoff}
+
+The fundamental tradeoff is: $T_{\text{load}}(M) = \text{size}(M) / B_{\text{disk}}$,
+where $B_{\text{disk}}$ is disk read throughput. Models with small serialized sizes
+load in milliseconds and are unambiguously viable; models with large sizes
+(100s of MB to GB per fold) have load times that approach training time, and viability
+depends on hardware and how many re-runs are planned.
 
 The framework exposes a clear storage-speed tradeoff that depends on the
 experimental context. For XGBoost ($\sim$185~MB per 9-config run), caching
@@ -1244,6 +1280,8 @@ across $N \in \{3, 5, 10, 20\}$ subjects with both XGBoost and Random Forest.
 
 \input{tables/tab8_global_vs_fold}
 
+% TODO: re-run or validate — fix overlapping axis labels (+0.006/-0.01 range)
+% in global vs per-fold bar chart after clean re-run completes
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_global_vs_perfold.pdf}
