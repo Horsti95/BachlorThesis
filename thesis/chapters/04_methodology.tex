@@ -626,7 +626,6 @@ Table~\ref{tab:technical_env} specifies the software environment for reproducibi
 Python        & 3.12.2   & Core language \\
 scikit-learn  & 1.4.x+   & ML models (Random Forest, feature selection) \\
 XGBoost       & 3.0.2    & Gradient boosting classifier (primary model) \\
-PyTorch       & 2.7.0    & Deep learning framework (FNN, future work) \\
 MNE-Python    & 1.9.0    & EEG data loading and signal processing \\
 SciPy         & 1.15.3   & Signal filtering, spectral analysis \\
 NumPy         & 2.1.3    & Numerical computations, array operations \\
@@ -724,10 +723,6 @@ Top-K Features & 30, 50, None (all 149) & 3 \\
 \end{table}
 
 Each configuration underwent Leave-One-Subject-Out (LOSO) cross-validation with 128 folds, resulting in 2{,}304 total model training iterations.
-
-\textbf{Note on FNN:} A Feedforward Neural Network was implemented but
-excluded from the benchmark experiments; see Section~\ref{chap:summary}
-(Future Work) for details.
 
 \subsection{Implementation Challenge: Incomplete Fingerprinting}
 \label{sec:implementation_challenges}
