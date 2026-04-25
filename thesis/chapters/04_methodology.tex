@@ -999,17 +999,35 @@ Figure~\ref{fig:speedup_bar} visualises the speedup comparison, and
 Figure~\ref{fig:cache_efficiency} shows cold start vs.\ warm run time
 distribution.
 
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- figure update pending:}
+Speedup bar chart needs two fixes before submission:
+(1) add ``log scale'' label to the y-axis title;
+(2) annotate each bar with its numeric speedup value (especially the small RF bars
+which are hard to read on a log scale).
+Regenerate after re-run confirms final numbers.
+\end{minipage}}
+\end{center}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig1_speedup_bar.pdf}
 \caption{Cache speedup comparison across 9 configurations for XGBoost and
-Random Forest (128-fold LOSO). Note: y-axis is log scale; numeric labels
-should be added to small bars for readability.}
+Random Forest (128-fold LOSO, log scale). Numeric speedup values annotated
+per bar.}
 \label{fig:speedup_bar}
 \end{figure}
 
-% TODO: re-run or validate — verify data accuracy of cache efficiency scatter
-% after clean re-run completes (RF cold-run outliers may shift point positions)
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- re-run pending:}
+Cache efficiency scatter (fig below) may shift once clean re-run completes
+(RF cold-run outliers at 11{,}331~s and 31{,}679~s could move RF points).
+Regenerate figure from updated benchmark JSON after re-run.
+\end{minipage}}
+\end{center}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
@@ -1274,14 +1292,34 @@ cost-effective compared to full recomputation.}
 \label{fig:crossover}
 \end{figure}
 
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- placement decision pending:}
+Table~\ref{tab:global_vs_fold} (global vs.\ per-fold feature selection) is currently
+here in Storage vs.\ Speed Tradeoff (§4.12.3) but it is primarily about
+\textit{accuracy vs.\ speed} for feature selection scope, not storage.
+Options after re-run: (A) move to §4.10.2 Classification Performance as a
+sub-result, (B) keep here but reframe the surrounding text, or (C) cut the
+table and keep only Figure~\ref{fig:global_vs_perfold}.
+\end{minipage}}
+\end{center}
 Table~\ref{tab:global_vs_fold} presents the empirical tradeoff for feature
 selection strategy --- global selection versus per-fold selection, measured
 across $N \in \{3, 5, 10, 20\}$ subjects with both XGBoost and Random Forest.
 
 \input{tables/tab8_global_vs_fold}
 
-% TODO: re-run or validate — fix overlapping axis labels (+0.006/-0.01 range)
-% in global vs per-fold bar chart after clean re-run completes
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- figure update pending:}
+Global vs.\ per-fold bar chart has overlapping axis labels on the accuracy
+difference panel ($+0.006$/$-0.01$ range is too narrow for current tick spacing).
+Fix: widen y-axis range, move bar value annotations inside bars or increase
+figure height. Regenerate after re-run.
+\end{minipage}}
+\end{center}
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_global_vs_perfold.pdf}
