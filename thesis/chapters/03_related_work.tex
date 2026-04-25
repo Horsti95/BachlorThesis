@@ -1,12 +1,23 @@
 \chapter{Related Works}
 
-This chapter reviews existing solutions for ML experiment caching and sleep
-stage classification, and identifies the specific gap this thesis addresses:
-the lack of validated best practices for caching in Leave-One-Subject-Out
-(LOSO) cross-validation scenarios.
+This chapter surveys related work along two tracks that together motivate
+and contextualise this thesis. The first track
+(Sections~\ref{sec:related_academic}--\ref{sec:related_gap}) reviews
+existing approaches to ML experiment caching---academic memoisation
+research, commercial MLOps tools, and their shared limitation: none provides
+validated, fold-aware caching for Leave-One-Subject-Out (LOSO)
+cross-validation. The second track
+(Sections~\ref{sec:related_sleep}--\ref{sec:related_industrial}) positions
+the application domain: it surveys sleep stage classification methods to
+establish where this thesis sits in that literature, and examines industrial
+deployment challenges to show why reproducibility and configuration
+management remain unsolved in practice. Together, the two tracks establish
+both the methodological gap this thesis fills and the domain in which it is
+validated.
 
 % ============================================================================
 \section{Academic Research on ML Caching}
+\label{sec:related_academic}
 % ============================================================================
 
 Research at the intersection of caching and machine learning divides into two
@@ -60,6 +71,7 @@ reference implementation and empirical benchmarks on a 128-subject dataset.
 
 % ============================================================================
 \section{Commercial MLOps Tools}
+\label{sec:related_commercial}
 % ============================================================================
 Commercial MLOps platforms---MLflow, DVC, ZenML, and experiment-tracking tools
 such as Weights \& Biases---provide general pipeline caching and experiment
@@ -115,6 +127,7 @@ on a single unaddressed gap, which the following section characterises formally.
 
 % ============================================================================
 \section{Research Gap Analysis}
+\label{sec:related_gap}
 % ============================================================================
 Despite the widespread adoption of CRISP-DM as the standard process model for data mining projects~\cite{schroer2021crispdmslr}, and the subsequent quality assurance extensions proposed by CRISP-ML(Q)~\cite{studer2021crispmlq}, these frameworks remain at a procedural level---they prescribe \textit{what} should be done but do not enforce \textit{how} reproducibility is achieved technically. The framework developed in this thesis addresses this gap by enforcing reproducibility not as a guideline but through strict configuration fingerprinting and caching, eliminating the manual error sources identified as a key barrier to ML maturity~\cite{googlemlops2023}.
 
@@ -219,6 +232,13 @@ of generalisation. The computational cost scales directly with subject pool
 size: 128 subjects $\times$ 18 configurations yields 2{,}304 training
 operations, making caching essential for practical parameter search.
 
+Having established both the caching gap
+(Sections~\ref{sec:related_academic}--\ref{sec:related_gap}) and the
+sleep staging domain context (Section~\ref{sec:related_sleep}), the
+following section examines how both converge in industrial deployment,
+where reproducibility and configuration management become critical
+production requirements.
+
 % ============================================================================
 \section{Industrial Research and Applications}
 \label{sec:related_industrial}
@@ -256,15 +276,6 @@ approval requiring full audit trails, and reproducibility across device
 batches with sensor variability. Reproducibility and experiment management have been identified as primary
 barriers to the transition from research prototype to production
 deployment~\cite{kreuzberger2023mlops}.
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{TODO before submission:} Verify the ``fewer than 15\,\%'' production
-deployment statistic in Kreuzberger et al.\ (2023). If not found there,
-either locate the original source (often cited from Gartner) or rephrase
-as ``only a small fraction.''
-\end{minipage}}
-\end{center}
 
 \textbf{Research-to-Production Gap:}
 The transition from research prototype to production deployment requires
