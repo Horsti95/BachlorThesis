@@ -76,8 +76,8 @@ The feature extraction layer computes \textbf{all 149 features} for each subject
     \item The full feature set is extracted once; downstream selection operates on this cached superset
 \end{itemize}
 
-What distinguishes this from plain file storage is the automated lookup protocol: before any feature extraction, the pipeline checks for the subject's NPZ file and bypasses extraction entirely if found. Without this check-and-bypass logic it would be cold storage; with it, it is a subject-keyed persistent store.
-
+In this implementation, the pipeline checks for \texttt{\{subject\_id\}.npz}
+before extracting; if found, it is loaded directly and extraction is skipped.
 This layer is fully implemented and provides measured speedups of approximately 227$\times$ for feature loading compared to re-extraction.
 
 \subsubsection{Layer 2: LOSO Model Caching (Primary Contribution)}

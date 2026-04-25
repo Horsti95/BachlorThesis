@@ -342,6 +342,9 @@ they persist until explicitly deleted. The distinction within this thesis is:
 the Fingerprint-based Model Cache (Tier~2) behaves as a true cache in that
 a fingerprint mismatch bypasses the stored result; the Persistent Feature
 Store (Tier~1) is a permanent store that is never invalidated by design.
+What elevates any persistent memoisation above cold file storage is the
+automated check-and-bypass protocol: the pipeline queries for a key before
+computing, and loads the stored result if found rather than recomputing.
 
 MLOps pipeline caching implements content-addressable storage: when pipeline
 inputs and tracked parameters match previous runs (verified through hash comparison),
