@@ -291,6 +291,15 @@ Several factors drive this resource consumption:
 
 While caching can help, traditional research in cache management---such as the ML-aided hardware strategies surveyed by Krishna (2025)---focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artefacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
 
+Caching shifts the bottleneck from computation time to storage space --- a
+trade-off whose viability depends on the serialised model size, the expected
+number of re-runs, and available storage capacity. Whether that trade-off is
+worthwhile therefore depends on what you need: for compact models re-run
+frequently, caching is clearly beneficial; for very large models run only
+once, the storage overhead may outweigh the savings. This thesis addresses
+this trade-off explicitly through a model viability analysis in
+Chapter~\ref{chap:methodology}.
+
 This thesis addresses these inefficiencies through a deterministic, fingerprint-based caching framework. By encoding complete experiment configurations (including cross-validation fold identity) into cryptographic SHA-256 cache keys, the framework enables automatic result reuse that is mathematically tied to the scientific parameters, ensuring both efficiency and reproducibility.
 
 % ============================================================================
