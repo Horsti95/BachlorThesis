@@ -1105,9 +1105,7 @@ deterministic; GPU-level non-determinism~\cite{nvidia2024cudnn} does not apply h
       data loss or serialization errors.
 \end{itemize}
 
-\subsection{Extended Analyses}
-\label{sec:results_extended}
-
+\noindent\textbf{Extended analyses.}
 The primary benchmark (Sections~\ref{sec:results_caching}--\ref{sec:results_reproducibility})
 evaluated the framework on XGBoost and Random Forest across 18 configurations and 128 folds.
 After confirming the primary results, two secondary studies were conducted to test whether
@@ -1119,7 +1117,7 @@ serialization size, independent of model family.
 \subsection{Multi-Model Cache Viability}
 \label{sec:results_viability}
 
-Having validated the primary framework on XGBoost and Random Forest, this section extends the viability analysis to a broader model landscape. XGBoost and Random Forest were chosen as primary models for the EEG sleep staging task, but the fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. To validate this generalizability, cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families.
+The fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. Cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families to validate this generalizability.
 
 Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
 tested on the full 128-subject dataset (5 LOSO folds).
@@ -1393,6 +1391,25 @@ figure height. Regenerate after re-run.
 \item \textbf{No multi-user evaluation:} The framework was designed for
       single-researcher workflows. Cache sharing across multiple concurrent
       users would require locking mechanisms not implemented here.
+
+\item \textbf{Configuration space governance:} Because every unique parameter
+      combination produces a distinct SHA-256 fingerprint, an unconstrained
+      parameter space yields thousands of distinct cache keys each populated
+      at most once, delivering zero reuse. The framework is technically correct
+      in this scenario but provides no speedup. Effective use requires an
+      agreed set of parameter values before experimentation begins; the
+      fingerprinting mechanism then guarantees that any re-run within that
+      grid is fully cached. This governance responsibility sits with the
+      research team, not the framework.
+
+\item \textbf{Thermal throttling on resource-constrained hardware:}
+      Cold-run timing measurements on sustained workloads (e.g., the 9-hour
+      RF 149-feature run) may be inflated by CPU thermal throttling.
+      The measured speedup ratios are therefore conservative upper bounds on
+      throttled hardware; on a temperature-controlled workstation the cold-run
+      time would be lower and the speedup ratio smaller, though the
+      VIABLE/NOT\_VIABLE verdict is unchanged because it depends on model
+      serialization size, not absolute timings.
 \end{itemize}
 
 % Additional figures available but not referenced:

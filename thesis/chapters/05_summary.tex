@@ -76,48 +76,58 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
 
 \subsection{Research Questions Revisited}
 
-The four research questions posed in Chapter~1 are answered as follows:
+The four research questions posed in Chapter~1 are answered below. Where the
+answer is affirmative, the nuance matters as much as the confirmation.
 
 \begin{itemize}
-\item \textbf{RQ1 (Efficiency):} The fingerprint-based caching framework
-      achieved a 100\% cache hit rate across all 2{,}304 warm-cache operations
-      (18 configurations $\times$ 128 LOSO folds). Median speedups were
-      178$\times$ for XGBoost and 17.7$\times$ for Random Forest, with peak
-      speedups of 498$\times$ and 110$\times$ respectively. The persistent feature store
-      (Layer~1) eliminated redundant feature extraction entirely across
-      experimental iterations.
+\item \textbf{RQ1 (Efficiency):} Confirmed, but efficiency is model-dependent.
+      The framework delivers order-of-magnitude speedups for compact models
+      (XGBoost median 178$\times$, peak 498$\times$) and the persistent
+      Layer~1 feature store eliminates redundant extraction entirely. However,
+      the speedup ratio is not a fixed property of the framework --- it
+      reflects the ratio of training time to serialization size, and ranges
+      from 12$\times$ for borderline-viable models to over 18{,}000$\times$
+      for the most compact boosting models. Efficiency is the framework's
+      primary claim; it is real, but the magnitude depends on model choice.
 
-\item \textbf{RQ2 (Reproducibility):} SHA-256 fingerprinting ensures
-      reproducibility by construction: identical configurations produce
-      identical fingerprints, and cached models produce bitwise-identical
-      predictions to freshly trained models (verified via
-      \texttt{numpy.array\_equal()} across all 18 configurations). The
-      fingerprint simultaneously serves as cache key, reproducibility
-      identifier, and experiment label, unifying concerns that are typically
-      handled by separate tools.
+\item \textbf{RQ2 (Reproducibility):} Confirmed unconditionally for
+      deterministic estimators. Identical configurations produce identical
+      SHA-256 fingerprints, and cached models produce bitwise-identical
+      predictions across all 18 configurations and 128 LOSO folds. The
+      key design insight --- encoding the held-out subject ID in the cache
+      key --- enforces fold isolation structurally rather than by convention,
+      eliminating a class of subtle scientific validity bugs without any
+      performance cost.
 
-\item \textbf{RQ3 (Scalability):} Cache benefit increases with dataset
-      size. SVM-RBF speedup grew from 9$\times$ at 10 subjects to
-      201$\times$ at 128 subjects, because training cost grows with data size
-      while cache loading cost remains constant. This confirms that the
-      framework becomes more valuable as studies scale to larger cohorts.
+\item \textbf{RQ3 (Scalability):} Confirmed directionally. Cache benefit
+      increases with dataset size for models whose training complexity scales
+      super-linearly (SVM-RBF: 9$\times$ at 10 subjects to 201$\times$ at 128
+      subjects). For linearly-scaling models the speedup is approximately
+      stable but already high (SVM-Linear: $\sim$2{,}000$\times$ across all
+      scales). The implication is that caching becomes \textit{more} valuable
+      as studies grow, not less --- a counterintuitive result that strengthens
+      the case for adopting it early.
 
-\item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists.
-      Of 15 evaluated model types, 11 are cache-viable (all boosting methods,
-      SVMs, logistic regression, decision trees). The 4 non-viable model
-      types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) produce
-      serialized representations
-      of 130--1{,}544~MB per fold, negating the loading speed advantage.
-      XGBoost caching requires $\sim$185~MB per 9-configuration run; Random
-      Forest requires $\sim$18.5~GB, making it borderline viable depending
-      on available storage and expected number of re-runs.
+\item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists, but
+      the VIABLE/NOT\_VIABLE boundary is not universal --- it depends on the
+      available hardware and how many re-runs are planned. 11 of 15 evaluated
+      model types are unambiguously viable regardless of context. The 4
+      not-viable types (Random Forest, Extra Trees, KNN) fail because their
+      serialized representations (130--1{,}544~MB per fold) make loading
+      approach retraining time. Random Forest occupies a borderline zone: at
+      17.7$\times$ speedup and 18.5~GB per run, one re-run saves $\sim$9~hours
+      at substantial storage cost --- worthwhile for some workflows, not others.
 \end{itemize}
 
 The contribution of this thesis is not a new MLOps platform, but a validated
-approach for extending existing fingerprinting techniques to
-cross-validation contexts. The framework demonstrates that simple SHA-256
-fingerprinting with explicit fold encoding provides substantial efficiency
-gains without requiring sophisticated infrastructure.
+approach for extending fingerprinting techniques to cross-validation contexts.
+All findings reported here are conditional: speedup ratios depend on hardware,
+viability verdicts depend on the threshold a researcher sets, and accuracy
+results are specific to the BOAS EEG dataset and the 149-feature pipeline.
+What the framework provides is not a universal answer but a \textit{methodology
+for arriving at the answer} for a given experimental context --- the fingerprint
+mechanism, the viability measurement approach, and the two-layer cache design
+are transferable; the specific numbers are not.
 
 
 % ============================================================================
@@ -158,43 +168,46 @@ ANOVA (\texttt{f\_classif}) is a fully deterministic computation: given the
 same training subjects and selection parameters, it always produces the same
 ranked feature list. Two implementation variants are conceivable.
 
-\textbf{Version A --- Determinism-based key (recommended).}
+\textbf{Version A --- Determinism-based key (recommended for static datasets).}
 Remove the selected feature names from the model-cache fingerprint and
-introduce a lightweight \emph{selection registry} keyed solely by experiment
+introduce a lightweight \emph{selection registry} keyed by experiment
 configuration and fold identity:
 %
 \begin{equation*}
   k_{\text{sel}} = \text{SHA-256}\!\left(
+    \textit{dataset\_version} \;\Vert\; \textit{code\_version} \;\Vert\;
     \textit{corr} \;\Vert\; \textit{top\_k} \;\Vert\; \textit{method}
     \;\Vert\; \textit{held\_out\_subject}
   \right)
 \end{equation*}
 %
-On a cold run, ANOVA is fitted, and the sorted selected feature names are
-stored under $k_{\text{sel}}$.
-On a warm run, the registry is queried first (${\sim}1$~ms); if found, the
-feature list is retrieved, the full model fingerprint is assembled, and the
-cached model is loaded --- without running ANOVA at all.
-This restores warm-run time to ${\approx}7$~s (registry lookup + model load),
-matching current global-selection performance.
+The key must include \texttt{dataset\_version} and \texttt{code\_version} so
+that changes to the dataset (e.g.\ a subject removed or corrected) or the
+preprocessing code correctly invalidate the registry. Without these fields,
+the same key could return a stale feature list after the underlying data
+changes --- a silent correctness bug. On a cold run, ANOVA is fitted and the
+sorted selected feature names are stored under $k_{\text{sel}}$.
+On a warm run, the registry is queried first (${\sim}1$~ms); the feature list
+is retrieved, the full model fingerprint is assembled, and the cached model is
+loaded without running ANOVA at all.
+This restores warm-run time to ${\approx}7$~s (registry lookup + model load).
 The cold-run overhead is $128 \times 22~\text{ms} \approx 2.8~\text{s}$.
-Version A is the preferred design for an immutable dataset such as BOAS:
-the held-out subject uniquely identifies the training fold, and because the
-dataset is frozen, the same key always maps to the same training data.
+Version A is appropriate for a frozen dataset such as BOAS where the
+held-out subject uniquely identifies the training fold.
 
-\textbf{Version B --- Data-aware key.}
+\textbf{Version B --- Data-aware key (recommended for production).}
 Add an explicit training-set fingerprint to $k_{\text{sel}}$, for example a
 hash of the sorted training subject IDs or a checksum of the feature matrix.
-This makes the registry entry unambiguously bound to a specific data snapshot
-and protects against stale cache hits if subjects are later removed,
-preprocessing changes, or fold construction is modified.
-Version B is the safer long-term design for evolving datasets or shared
-multi-user caches, but adds hashing overhead and is unnecessary for the static
-BOAS benchmark setting.
+This binds the registry entry unambiguously to a specific data snapshot and
+protects against stale cache hits if subjects are later removed, preprocessing
+changes, or fold construction is modified. Version B is the production-grade
+design; Version A is a valid shortcut for immutable datasets only.
+Neither variant was implemented in this thesis --- both are designs for
+future work.
 
 In summary, a global-scope fast-screening run (current design) and a per-fold
-final-reporting run (Version A registry) can coexist in the same framework:
-the global run uses a single fingerprint shared by all folds; the per-fold run
+final-reporting run (Version A or B registry) can coexist in the same framework.
+The global run uses a single fingerprint shared by all folds; the per-fold run
 adds one registry lookup per fold and eliminates the residual $0.8\%$ leakage
 by construction.
 
@@ -218,78 +231,79 @@ provide meaningful improvements.
 Currently, each experiment maintains its own cache directory. A shared cache
 repository could enable reuse across experiments with compatible preprocessing
 parameters. For example, if two experiments use the same feature extraction
-pipeline but differ only in model hyperparameters, the persistent feature store (Layer~1)
-could be shared while the model cache (Layer~2) remains experiment-specific.
-This extension would require a cache registry that maps fingerprints to
-shared storage locations and enforces access control.
+pipeline but differ only in model hyperparameters, the persistent feature store
+(Layer~1) could be shared while the model cache (Layer~2) remains
+experiment-specific. This extension would require a cache registry that maps
+fingerprints to shared storage locations and enforces access control.
 
-\subsection{Integration with MLOps Tools}
+\subsection{Scaling to Real-World Use}
 
-The fingerprint-based caching approach could be packaged as plugins for
-established MLOps platforms such as DVC, ZenML, or MLflow. A DVC plugin
-could extend the pipeline definition language to natively parameterise
-LOSO fold identifiers; a ZenML plugin could provide a custom materialiser
-that encodes held-out subject IDs in step cache keys. Such integrations
-would make fold-aware caching accessible without requiring a custom
-framework.
+Two directions would move the framework from research prototype to deployable
+tool.
 
-\subsection{Cross-Domain Validation}
+\textbf{Cross-domain validation.}
+The framework was validated on EEG sleep classification. The underlying
+fingerprinting approach is domain-agnostic, and applying it to other domains
+with subject-level cross-validation --- brain-computer interfaces,
+speaker-independent speech recognition, patient-level medical imaging splits
+--- would test generalisability and surface domain-specific requirements not
+covered by the current implementation.
 
-The caching framework was validated on EEG sleep classification, but the
-underlying fingerprinting approach is domain-agnostic. Applying the framework
-to other domains with subject-level cross-validation---such as brain-computer
-interfaces, speech recognition with speaker-independent evaluation, or
-medical imaging with patient-level splits---would test the generalisability
-of the approach and identify domain-specific requirements not covered by the
-current implementation.
+\textbf{Integration with MLOps platforms.}
+The framework could be packaged as plugins for DVC, ZenML, or MLflow. A DVC
+plugin could extend the pipeline definition language to natively parameterise
+LOSO fold identifiers; a ZenML custom materialiser could encode held-out
+subject IDs in step cache keys. Such integrations would make fold-aware
+caching accessible to researchers who already use these platforms without
+requiring a custom framework. The viability verdicts established in this thesis
+(which model families are and are not worth caching, at what storage cost)
+would directly inform the default caching policy of such plugins.
 
-\subsection{Scalability Challenges}
+\subsection{Scalability and Thermal Constraints}
 
-Scaling the framework to larger configuration spaces (hundreds of
-hyperparameter combinations, dynamic subject subsets, multiple preprocessing
-variants) would introduce cache management challenges. The current
-implementation manages a tractable space of 18 configurations $\times$ 128
-folds. Extending to production environments with thousands of configurations
-would require selective caching policies that prioritise high-reuse,
+Extending to production environments with large configuration spaces would
+require selective caching policies that prioritise high-reuse,
 high-computation-cost artefacts, automatic cache eviction based on access
-frequency and storage budgets, and potentially hierarchical invalidation
-strategies where upstream changes (e.g., preprocessing code updates)
-automatically invalidate all downstream caches.
+frequency and storage budgets, and hierarchical invalidation strategies where
+upstream changes (e.g., preprocessing code updates) automatically invalidate
+all downstream caches.
 
-A practical constraint not addressed by the framework itself is
-\textit{configuration space governance}. Because every unique parameter
-combination produces a unique SHA-256 fingerprint, an unconstrained
-parameter space---for example, a correlation threshold swept in steps of
-0.01 across 50 values, combined with arbitrary top-K choices---yields
-thousands of distinct cache keys, each populated at most once and therefore
-providing zero reuse. In such settings, the framework remains technically
-correct but delivers no speedup. In clinical or institutional deployments,
-this requires an accompanying governance policy: a defined set of
-approved parameter values (e.g., correlation thresholds from
-$\{0.75, 0.90, \text{None}\}$, feature counts from $\{30, 50, 149\}$)
-that is agreed upon before experimentation begins. The fingerprinting
-mechanism then guarantees that any re-run within that approved grid is
-fully cached, while deviations outside it are treated as new experiments.
-This policy responsibility sits outside the framework and with the
-research team or institution operating it.
+A related practical consideration is \textbf{thermal throttling} on
+resource-constrained hardware. Sustained cold runs (the 9-hour RF
+149-feature benchmark is a real example) risk CPU throttling that inflates
+training times and may cause hardware degradation. Caching directly mitigates
+this: the cold run executes once, after which warm runs complete in minutes
+and impose negligible thermal load. A caching-aware workflow on throttled
+hardware could interleave cold runs across sessions --- running 2--3
+configurations, allowing the machine to cool, continuing later --- with the
+guarantee that already-cached configurations are never recomputed. This
+benefit is orthogonal to pure speedup and is not captured by the median
+speedup metric.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note --- Ideas to expand Ch5 to 5 pages:}
-\begin{itemize}
-\item Add a ``Lessons Learned'' subsection: practical deployment insights
-      (fingerprint debugging, the importance of including selected feature
-      names in the hash, partial cache reuse across sweeps, version control
-      as automatic invalidation).
-\item Add a ``Comparison with Existing Tools'' paragraph in Summary: briefly
-      contrast the thesis framework with DVC/ZenML/MLflow capabilities
-      (forward-reference to Table~3.1) and state what the thesis adds.
-\item Expand FNN Future Work: discuss expected challenges (GPU non-determinism,
-      large model serialization, epoch-level vs.\ fold-level caching for
-      neural networks).
-\item Add a closing paragraph connecting the thesis to broader reproducibility
-      initiatives (FAIR principles, open science).
-\end{itemize}
-\end{minipage}}
-\end{center}
+\subsection*{A Research Trajectory}
+
+This thesis is one step in a longer research arc.
+At the bachelor level, the contribution is an empirical viability map:
+which model families are worth caching under LOSO, at what storage cost,
+and under what conditions the benefit scales. The fingerprinting mechanism
+and two-layer cache design are validated but not automated.
+
+A natural master-level extension would exhaustively characterise viability
+across domains, model families, and dataset scales --- building a
+\textit{viability knowledge base} that captures not just which models cache
+well on BOAS, but the generalised conditions under which any model becomes
+cache-viable or not.
+
+At the PhD or applied research level, that knowledge base could power an
+\textit{intelligent caching orchestrator}: a system that accepts a researcher's
+experimental plan (models, hyperparameter grid, dataset, hardware), queries the
+viability knowledge base, and automatically configures a caching strategy ---
+which layers to cache, what storage budget to allocate, when to evict, and
+how to schedule cold runs to avoid thermal constraints. Paired with an
+interactive planning interface (the researcher declares their workflow goals;
+the system recommends a caching configuration before the first run begins),
+this would make fold-aware caching a zero-configuration tool rather than a
+framework a researcher must design themselves. The building blocks are already
+available --- this thesis provides the empirical foundation; the referenced
+MLOps platforms provide the deployment infrastructure. What remains is the
+intelligence that connects them.
