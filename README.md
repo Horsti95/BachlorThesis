@@ -160,9 +160,28 @@ If you want, I can expand any of these into a dedicated markdown under `markdown
 
 ### Step 1: Install Python Dependencies
 
+For development (loose lower-bound pins, latest compatible versions):
+
 ```bash
 pip install -r requirements.txt
 ```
+
+For **reproducing thesis numbers** (exact versions used during the
+thesis experimental run):
+
+```bash
+pip install -r requirements.lock
+```
+
+The `requirements.lock` file pins every direct and transitive
+dependency to the exact version that produced the reported results.
+Anyone re-running the experiments should install from the lock file to
+get a bit-identical Python environment.
+
+**Note:** `requirements.lock` is generated on the thesis-run machine
+with `pip freeze > requirements.lock`. Regenerate before each
+publication / submission so the lock matches the code state being
+reported.
 
 **Key Packages:**
 - `mne >= 1.5.0` - EEG processing
