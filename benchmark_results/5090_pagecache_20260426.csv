@@ -1,0 +1,3 @@
+model,cold_seconds,warm_no_flush_seconds,warm_with_flush_seconds,speedup_no_flush,speedup_with_flush,page_cache_factor,config
+xgboost,1124,20.7,,54.2,,,corr=None_k=None
+random_forest,2598,273.2,,9.5,,,corr=None_k=None

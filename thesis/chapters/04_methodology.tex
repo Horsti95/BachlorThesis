@@ -669,59 +669,37 @@ The software stack is Python~3.12.2 with pinned dependencies (scikit-learn
 antropy~0.1.6). All stochastic operations use \texttt{random\_state=42}.
 Full dependency versions are pinned in \texttt{requirements.txt}.
 
-Absolute timing values are hardware-dependent; however, cache speedup
-\textit{ratios} are hardware-portable. Both cold-start training and warm
-cache loading scale proportionally with hardware speed: a machine that
-trains 3$\times$ faster also reads from an NVMe cache approximately
-3$\times$ faster, leaving the speedup ratio approximately constant.
-VIABLE/NOT\_VIABLE verdicts are therefore determined by model serialization
-size, not by which machine produced the timings
-(Section~\ref{sec:results_viability}).
+Absolute timing values are hardware-dependent. Cross-machine verification
+(same configuration run on both the benchmark desktop and an RTX~5090
+workstation, Table~\ref{tab:hardware_env}) confirms two distinct portability
+properties:
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- cross-machine verification pending:}
-The portability of speedup ratios across machines is being verified with a
-second desktop workstation (Intel Core Ultra 9 275HX, RTX 5090) running the
-same XGBoost and Random Forest configurations. Preliminary results are expected
-during the final writing phase. Update this paragraph once comparison data
-is available: if speedup ratios agree within $\pm$20\%, remove this note and
-assert portability; if they diverge, add a caveat quantifying the difference.
-\end{minipage}}
-\end{center}
+\begin{itemize}
+\item \textbf{VIABLE/NOT\_VIABLE verdicts are hardware-portable.} Both
+      machines agree: XGBoost is VIABLE, Random Forest is BORDERLINE. This
+      holds because viability is determined by serialization size relative to
+      load time, not by absolute timing values.
+\item \textbf{Speedup ratios are \textit{not} hardware-portable.} The RTX~5090
+      machine trains $3.4\times$ faster than the benchmark desktop (cold run:
+      1{,}124~s vs.\ 3{,}773~s for XGBoost), but warm cache load times are
+      nearly identical ($\sim$20~s on both). Since training is CPU-bound and
+      cache loading is I/O-bound, a faster CPU compresses the cold time without
+      proportionally reducing the warm time, yielding a lower speedup ratio:
+      XGBoost 54$\times$ on the RTX~5090 vs.\ 188$\times$ on the benchmark
+      desktop (same configuration, corr=None, k=None).
+\end{itemize}
 
 All benchmark timings were measured with empty cache directories as the
-controlled condition. This isolates the caching framework's performance from
-SSD fill-level effects: as NVMe storage approaches capacity, write speed
-degrades due to flash garbage collection overhead, which would inflate
-cold-run times and produce artificially large speedup ratios. Starting each
-benchmark run from an empty cache directory ensures the reported numbers are
-reproducible across machines with similar storage capacity.
+controlled condition, ensuring results are not inflated by SSD degradation
+under high fill levels.
 
-No explicit OS page cache flush was performed between cold and warm runs;
-consequently, warm-run load times include the benefit of OS-level page caching
-of recently-written model files. This effect is most pronounced for compact
-caches that fit within system RAM (XGBoost, $\approx$185~MB, 16~GB RAM
-available) and negligible for caches that exceed RAM capacity (Random Forest,
-$\approx$18.5~GB).
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- validate measurement condition:}
-The clean re-run (PC1, currently running) uses empty cache directories.
-Earlier first-run results were measured as cache filled (RF sweep wrote
-$\sim$18~GB, potentially approaching SSD capacity on the development machine),
-which may have inflated cold-run write times. When re-run results arrive,
-compare RF cold times to the first run: if they are systematically shorter,
-this confirms the storage fill-level effect. If confirmed, add a one-sentence
-note here: ``Clean-cache conditions also avoid SSD performance degradation
-observed when cache fill approached storage capacity in preliminary
-measurements.'' The observation does not require a full/empty storage
-benchmark --- framing as a controlled measurement condition is sufficient.
-\end{minipage}}
-\end{center}
+OS page cache effect was measured explicitly on the benchmark desktop by
+comparing warm runs with and without a page cache flush. For both XGBoost
+($\approx$185~MB cache) and Random Forest ($\approx$18.5~GB cache), the
+flush made no meaningful difference: warm times changed by less than 10\%
+(XGBoost: 20.1~s no-flush vs.\ 18.8~s flushed; Random Forest: 356.9~s
+vs.\ 323.6~s). Warm-run timings therefore reflect SSD read performance rather
+than OS-level page caching.
 
 \subsection{Experimental Grid}
 

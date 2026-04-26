@@ -59,8 +59,11 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
       A 15-model viability study identified 11 cache-viable models
       (including all boosting methods and SVMs) and 4 non-viable model
       types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) whose
-      large serialised representations negate caching benefits. Viability verdicts were
-      consistent across two different hardware configurations.
+      large serialised representations negate caching benefits. Viability
+      verdicts (VIABLE/NOT\_VIABLE) were consistent across two hardware
+      configurations; absolute speedup ratios were not, since faster CPUs
+      compress cold training time without proportionally reducing I/O-bound
+      warm load time.
 
 \item \textbf{Cache benefit scales with dataset size.}
       SVM-RBF speedup increased from 9$\times$ at 10 subjects to
@@ -85,10 +88,11 @@ answer is affirmative, the nuance matters as much as the confirmation.
       (XGBoost median 54$\times$, peak 202$\times$) and the persistent
       Layer~1 feature store eliminates redundant extraction entirely. However,
       the speedup ratio is not a fixed property of the framework --- it
-      reflects the ratio of training time to serialization size, and ranges
-      from 12$\times$ for borderline-viable models to over 18{,}000$\times$
-      for the most compact boosting models. Efficiency is the framework's
-      primary claim; it is real, but the magnitude depends on model choice.
+      reflects the ratio of training time to serialization size, and depends
+      on hardware: ranges from $\sim$9.5$\times$ (RF on a fast desktop) to
+      over 18{,}000$\times$ for the most compact boosting models at scale.
+      Efficiency is the framework's primary claim; it is real, but the
+      magnitude depends on model choice and hardware speed.
 
 \item \textbf{RQ2 (Reproducibility):} Confirmed unconditionally for
       deterministic estimators. Identical configurations produce identical
