@@ -1041,17 +1041,6 @@ Figure~\ref{fig:speedup_bar} visualises the speedup comparison, and
 Figure~\ref{fig:cache_efficiency} shows cold start vs.\ warm run time
 distribution.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- figure update pending:}
-Speedup bar chart needs two fixes before submission:
-(1) add ``log scale'' label to the y-axis title;
-(2) annotate each bar with its numeric speedup value (especially the small RF bars
-which are hard to read on a log scale).
-Regenerate after re-run confirms final numbers.
-\end{minipage}}
-\end{center}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig1_speedup_bar.pdf}
@@ -1073,15 +1062,6 @@ time saved but with much less margin). The boundary is hardware-dependent
 (faster disk $\Rightarrow$ boundary shifts left), which is why the absolute
 numbers differ across machines while the VIABLE/NOT\_VIABLE rankings do not.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- re-run pending:}
-Cache efficiency scatter may shift once clean re-run completes
-(RF cold-run outliers at 11{,}331~s and 31{,}679~s could move RF points).
-Regenerate figure from updated benchmark JSON after re-run.
-\end{minipage}}
-\end{center}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
