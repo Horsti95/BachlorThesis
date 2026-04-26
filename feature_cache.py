@@ -4,8 +4,8 @@ Feature caching helpers with integrity verification.
 STATUS: IMPLEMENTED ✓ (224× speedup verified)
     This module handles FEATURE-LEVEL caching (Stage 1).
     For MODEL-LEVEL caching (Stage 2 - core thesis work), see:
-    - fingerprint.py (TODO: LOSOFingerprint implementation)
-    - loso_cache.py (TODO: create this module)
+    - fingerprint.py (LOSOFingerprint — implemented)
+    - loso_cache.py (LOSO model cache — implemented)
 
 Cache Architecture:
 ==================
@@ -15,11 +15,11 @@ GLOBAL FEATURE CACHE (results/features_cache_global/) - IMPLEMENTED ✓
     - Purpose: Avoid recomputing expensive feature extraction
     - Status: 128/128 subjects cached, ~146 MB total
     
-LOSO MODEL CACHE (results/loso_model_cache/) - TODO
+LOSO MODEL CACHE (results/loso_model_cache/) - IMPLEMENTED ✓
     - Cache trained models per LOSO fold
     - Key: fingerprint including held_out_subject + training_subjects
     - Purpose: Skip redundant model training across experiments
-    - See: training.py TODO section for integration plan
+    - See: loso_cache.py and training.py integration
     
 PER-EXPERIMENT DATA (results/experiment_*/per_subject/)
     - Isolated to each experiment run
