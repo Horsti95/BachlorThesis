@@ -687,6 +687,12 @@ properties:
       proportionally reducing the warm time, yielding a lower speedup ratio:
       XGBoost 54$\times$ on the RTX~5090 vs.\ 188$\times$ on the benchmark
       desktop (same configuration, corr=None, k=None).
+      The corollary is practically relevant: \textit{caching is most
+      beneficial on slower hardware.} A researcher on a standard laptop who
+      trains $3\times$ slower than the benchmark desktop will observe speedup
+      ratios approximately $3\times$ higher, while cache load time (I/O-bound)
+      remains constant. The framework therefore delivers its largest gains
+      precisely where compute resources are most constrained.
 \end{itemize}
 
 All benchmark timings were measured with empty cache directories as the
@@ -1440,6 +1446,21 @@ figure height. Regenerate after re-run.
 \item \textbf{No multi-user evaluation:} The framework was designed for
       single-researcher workflows. Cache sharing across multiple concurrent
       users would require locking mechanisms not implemented here.
+
+\item \textbf{Layer~1 fingerprint validation is lenient:} The feature cache
+      (Layer~1) stores a preprocessing config fingerprint with each cached
+      file, but loads it in lenient mode by default --- the fingerprint is
+      recorded but not validated against the current config on retrieval.
+      The fingerprint guarantee enforced by the \texttt{LOSOFingerprint} class
+      applies to Layer~2 (the LOSO model cache), where strict SHA-256
+      comparison is the primary contribution of this work. For Layer~1, the
+      design rationale is that preprocessing parameters are fixed for the
+      duration of a thesis project; activating strict Layer~1 validation
+      requires setting \texttt{strict\_validation=True} in \texttt{feature\_cache.py}.
+      The thesis claim ``changing preprocessing parameters invalidates the
+      cache automatically'' therefore applies to Layer~2 only; Layer~1 caches
+      created with legacy code (\texttt{config\_fingerprint="unknown"}) would
+      not be invalidated until manually deleted or regenerated.
 
 \item \textbf{Configuration space governance:} Because every unique parameter
       combination produces a distinct SHA-256 fingerprint, an unconstrained
