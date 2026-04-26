@@ -144,9 +144,20 @@ BachlorThesis/
 ## Installation & Usage
 
 ### Install
+
+**For development (loose version bounds):**
 ```bash
 pip install -r requirements.txt
 ```
+
+**For exact thesis reproduction (pinned versions):**
+```bash
+pip install -r requirements.lock
+```
+`requirements.lock` contains the exact package versions used to produce all
+thesis benchmark numbers (generated via `pip freeze` on the benchmark machine,
+Windows 11, Python 3.12.2). Use this to get bit-identical results.
+To regenerate the lock file on your own machine: `pip freeze > requirements.lock`
 
 **Key Packages:**
 - `mne >= 1.5.0` - EEG processing

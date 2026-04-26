@@ -412,19 +412,27 @@ Mutual Information  & 3.74  & 80.58\% \\
 \end{tabular}
 \end{table}
 
-\textbf{Implementation Note:} Feature selection is performed \textbf{globally}
-(fitted once on all 128 subjects, not independently per fold) for two reasons.
-First, a single global fit yields exactly one stable feature set that serves as a
-consistent fingerprint component across all LOSO folds, without per-fold
-bookkeeping overhead. Second, ANOVA is thereby computed once per configuration
-rather than 128 times, reducing feature-selection overhead from $O(N)$ to $O(1)$
-relative to fold count.
+\textbf{Methodological note on feature-selection scope.}
+Feature selection is performed \textbf{globally} (\texttt{scope=global}): the
+ANOVA selector is fitted once on all 128 subjects and the resulting feature
+set is reused across all LOSO folds, rather than being refitted independently
+inside each fold (\texttt{scope=per\_fold}).
 
-The trade-off is that the held-out subject's labels contribute to the global
-ranking, representing $1/128 \approx 0.8\%$ of the selection data per fold.
-This is a known limitation (Section~\ref{sec:limitations}); the empirical impact
-and the per-fold speedup advantage of global scope are quantified in the
-Discussion (Section~\ref{sec:discussion}).
+Per-fold refitting is the strict best practice in MLOps because it eliminates
+information leakage from the held-out subject's labels into the feature
+ranking. The global variant is used here for computational efficiency in the
+caching study, with the supervisor's prior approval. Performance numbers in
+this thesis should therefore be interpreted as \textit{upper-bound estimates}
+of generalisation accuracy rather than fully unbiased scores: the $1/128
+\approx 0.8\%$ contribution of the held-out subject's labels to the global
+ranking produces a minor optimistic bias. An empirical benchmark
+(Table~\ref{tab:global_vs_fold}) measured this effect at $\leq 1.1\%$
+accuracy difference with no consistent direction, confirming the bias is
+negligible in practice.
+
+The framework supports \texttt{scope=per\_fold} and the same 18-configuration
+experimental grid can be re-run under that setting if a future replication
+requires strict isolation (Section~\ref{sec:limitations}).
 
 \subsection{Feature Extraction Optimization}
 
@@ -625,9 +633,12 @@ Two invalidation strategies handle data or code changes:
 in the configuration changes the fingerprint, automatically invalidating all
 cached entries without deleting files. The \texttt{code\_version} field is
 currently set to a fixed semantic string (\texttt{"1.0.0"}); in a CI/CD
-deployment it could be populated automatically from the Git commit hash
-(e.g.\ \texttt{git rev-parse HEAD}), ensuring automatic cache invalidation
-whenever the codebase changes.
+deployment it would be populated automatically from the Git commit hash
+(e.g.\ \texttt{git rev-parse HEAD}), so that any code change implicitly
+invalidates dependent caches without manual intervention. Manual bumping is
+sufficient for the controlled scope of this thesis, where the codebase is
+frozen for the experimental run, but a production deployment should automate
+this derivation.
 
 \item \textbf{Cache purging.} For major data or model changes, the cache
 directory is deleted entirely, triggering full recomputation on the next run.
@@ -743,6 +754,10 @@ caching behaviour: (1)~cold start (all cache misses, establishes baselines);
 preprocessing (invalidates both layers); (4)~changed feature selection
 (Layer~1 hit, Layer~2 miss per changed config); (5)~new subjects added
 (existing subjects hit, new subjects miss).
+
+Note: feature selection uses \texttt{scope=global} in all 18 configurations;
+the associated methodological disclosure and empirical impact are detailed in
+Section~\ref{sec:features} (Feature Selection Strategy).
 
 \section{Evaluation Metrics}
 \label{sec:evaluation_plan}

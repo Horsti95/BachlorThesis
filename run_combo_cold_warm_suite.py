@@ -69,8 +69,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--extra-timeout-seconds",
         type=int,
-        default=0,
-        help="Timeout per extra script (0 = no timeout)",
+        default=300,
+        help="Timeout per extra script in seconds (default: 300; 0 = no timeout)",
+    )
+    parser.add_argument(
+        "--benchmarks-only",
+        action="store_true",
+        help="When running extras, skip generate_*.py plot scripts and run only benchmark/test scripts",
     )
     return parser.parse_args()
 
@@ -229,35 +234,45 @@ def write_summary_csv(summary_rows: List[Dict], csv_path: Path) -> None:
             writer.writerow(row)
 
 
-def find_extra_scripts(repo_root: Path) -> List[Path]:
+def find_extra_scripts(repo_root: Path, benchmarks_only: bool = False) -> List[Path]:
     candidates: List[Path] = []
 
-    patterns = [
+    benchmark_patterns = [
         "benchmarks_and_tests/*.py",
         "testing/*.py",
-        "generate_*.py",
         "model_tryouts/*.py",
     ]
+    plot_patterns = [
+        "generate_*.py",
+    ]
 
-    for pattern in patterns:
+    for pattern in benchmark_patterns:
         candidates.extend(repo_root.glob(pattern))
+    if not benchmarks_only:
+        for pattern in plot_patterns:
+            candidates.extend(repo_root.glob(pattern))
 
     ignore_names = {
         "__init__.py",
         "run_combo_cold_warm_suite.py",
+        # generate_thesis_figures.py overwrites tab2 with old CSV data — always skip
+        "generate_thesis_figures.py",
     }
 
     unique_sorted = sorted({p.resolve() for p in candidates if p.name not in ignore_names})
     return [Path(p) for p in unique_sorted]
 
 
-def run_extra_scripts(repo_root: Path, output_root: Path, timeout_seconds: int) -> Dict:
-    scripts = find_extra_scripts(repo_root)
+def run_extra_scripts(
+    repo_root: Path, output_root: Path, timeout_seconds: int, benchmarks_only: bool = False
+) -> Dict:
+    scripts = find_extra_scripts(repo_root, benchmarks_only=benchmarks_only)
     logs_dir = output_root / "extras_logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
+    mode_label = "BENCHMARKS ONLY" if benchmarks_only else "ALL SCRIPTS"
     print("\n" + "=" * 80)
-    print(f"RUNNING EXTRA SCRIPTS ({len(scripts)} found)")
+    print(f"RUNNING EXTRA SCRIPTS ({len(scripts)} found, {mode_label})")
     print("=" * 80)
 
     results = []
@@ -332,6 +347,7 @@ def main() -> None:
             repo_root=repo_root,
             output_root=output_root,
             timeout_seconds=args.extra_timeout_seconds,
+            benchmarks_only=args.benchmarks_only,
         )
         with open(output_root / "extras_summary.json", "w", encoding="utf-8") as f:
             json.dump(extras_result, f, indent=2, default=str)
@@ -445,6 +461,7 @@ def main() -> None:
             repo_root=repo_root,
             output_root=output_root,
             timeout_seconds=args.extra_timeout_seconds,
+            benchmarks_only=args.benchmarks_only,
         )
         with open(output_root / "extras_summary.json", "w", encoding="utf-8") as f:
             json.dump(extras_result, f, indent=2, default=str)
