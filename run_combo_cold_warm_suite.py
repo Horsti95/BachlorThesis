@@ -285,6 +285,9 @@ def run_extra_scripts(repo_root: Path, output_root: Path, timeout_seconds: int) 
             exit_code = -1
             stdout = exc.stdout or ""
             stderr = (exc.stderr or "") + "\n[TIMEOUT]"
+        except KeyboardInterrupt:
+            print(f"\n  -> INTERRUPTED — skipping remaining extra scripts")
+            break
 
         elapsed = time.time() - started
         log_base = rel.as_posix().replace("/", "__").replace(".py", "")
