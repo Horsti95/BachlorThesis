@@ -4,15 +4,23 @@ Generate Missing Thesis Figures
 
 Generates the confusion matrix figure (fig_confusion_matrix.pdf).
 
+Uses the best XGBoost configuration (corr=None, top-k=None, 149 features)
+over all 128 LOSO folds to produce an aggregated confusion matrix consistent
+with the performance numbers in Tab 4.18 (PC1 rerun data).
+
 Prerequisites:
   - Feature cache populated (128 subject_N_full.npz files)
-  - Optional: model cache from a previous full training run (makes this ~7s
-    instead of ~43 min via warm cache hits)
+  - Strongly recommended: model cache from a previous full training run
+    (warm run ~7s instead of cold run ~43 min)
 
-Usage:
-    python generate_missing_figures.py --cache "C:/path/to/features_cache_global"
-    python generate_missing_figures.py --cache "C:/path/to/features_cache_global" \
-                                       --model-cache "C:/path/to/model_cache"
+Usage (5090 with model cache — fastest, ~7s):
+    python generate_missing_figures.py \\
+        --cache  "/path/to/features_cache_global" \\
+        --model-cache "/path/to/loso_model_cache"
+
+Usage (PC1 cold run — ~43 min):
+    python generate_missing_figures.py \\
+        --cache "C:/Users/DerHo/Desktop/Data/features_cache_global"
 
 Output:
     thesis/figures/fig_confusion_matrix.pdf

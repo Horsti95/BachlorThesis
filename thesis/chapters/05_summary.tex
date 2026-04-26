@@ -133,23 +133,57 @@ for arriving at the answer} for a given experimental context --- the fingerprint
 mechanism, the viability measurement approach, and the two-layer cache design
 are transferable; the specific numbers are not.
 
+\subsection{Practical Takeaways}
+
+Three concrete guidelines emerge from this work for researchers considering
+fingerprint-based LOSO caching.
+
+\textbf{First, check the cache efficiency metric before committing to a full run.}
+The $\eta$ metric (MB stored per second saved, Section~\ref{sec:evaluation_plan})
+can be estimated from a short pilot (e.g.\ 5 folds) without running the full
+128-fold experiment. A pilot that yields $\eta < 0.5$ reliably predicts a
+full-scale speedup above 10$\times$; a pilot above 2.0 signals that warm
+runs will not recover meaningful time regardless of dataset size.
+
+\textbf{Second, the held-out subject ID must be part of the cache key.}
+Omitting it is the single most dangerous simplification a developer might make
+when adapting this framework to a new context. The structural enforcement
+provided by the fingerprint prevents a subtle correctness bug where models
+trained on overlapping data are silently returned as fold-specific results.
+No test catches this failure without inspecting individual fold compositions.
+
+\textbf{Third, budget for the cold run on slower hardware.}
+The full 18-configuration cold run required approximately 78 hours on a
+standard desktop (PC1) versus 22 hours on a high-end workstation (RTX 5090).
+On resource-constrained hardware, a staged approach---running configurations
+in batches across sessions---is practical because the framework guarantees
+that completed folds are never recomputed between sessions.
+
+\subsection{Limitations and Scope}
+
+The results reported in this thesis are bounded by three scope decisions.
+First, both model families evaluated at full scale (XGBoost, Random Forest)
+are ensemble tree methods; neural network models were excluded due to
+environment constraints. Second, the classification target (five-class AASM
+sleep staging) is moderately imbalanced and domain-specific; results may differ
+on tasks with more extreme imbalance or very high-dimensional inputs.
+Third, the global ANOVA feature selection introduces $\approx 0.8\%$ label
+leakage per fold (Section~\ref{sec:feature_selection_strategy}); the
+empirically measured accuracy impact was $\leq 1.1\%$, which is within
+inter-run variability for this dataset but represents a methodological bound
+on the accuracy estimates reported.
+
+These limitations do not undermine the primary thesis claim --- that
+fingerprint-based LOSO caching is a viable, correct, and reproducible approach
+--- but they define the conditions under which the specific numerical results
+hold.
+
 
 % ============================================================================
 \section{Future Work}
 % ============================================================================
 
 Several directions could extend the framework developed in this thesis.
-
-\subsection{FNN Model Evaluation}
-
-A Feedforward Neural Network (input$\rightarrow$64$\rightarrow$32$\rightarrow$5)
-was implemented and verified on a small pilot (5 subjects, $\sim$78\% accuracy,
-4.2$\times$ speedup on re-runs) but excluded from the full 18-configuration
-experiment because PyTorch was not installed in the benchmark environment. With
-a dedicated GPU available, evaluating the FNN across all 18 configurations and
-128 LOSO folds would extend the viability analysis to deep learning models and
-test whether the fingerprint-based caching approach generalises to
-gradient-based optimisers with non-deterministic training dynamics.
 
 \subsection{Lazy Per-Fold Feature Selection Cache}
 \label{sec:future_work}
@@ -215,31 +249,6 @@ The global run uses a single fingerprint shared by all folds; the per-fold run
 adds one registry lookup per fold and eliminates the residual $0.8\%$ leakage
 by construction.
 
-\subsection{Two-Tier RAM+Disk Caching}
-
-The current implementation uses a single-tier disk-based cache. For interactive
-applications---such as real-time sleep analysis dashboards where the same
-subjects are analysed repeatedly within minutes---an in-memory LRU (Least
-Recently Used) cache layer could reduce latency further by avoiding disk I/O
-entirely for recently accessed models. The two-tier lookup would check RAM
-first ($\sim$0.1~ms), fall back to SSD ($\sim$58~ms for XGBoost), and only
-retrain on a double miss. Preliminary testing during this thesis suggested
-that for the batch-oriented experimental workflow used here, disk I/O was
-not the dominant bottleneck, and in-memory caching did not yield significant
-additional speedup. However, for latency-sensitive production deployments
-with repeated access to the same models, a two-tier architecture could
-provide meaningful improvements.
-
-\subsection{Cross-Experiment Cache Reuse}
-
-Currently, each experiment maintains its own cache directory. A shared cache
-repository could enable reuse across experiments with compatible preprocessing
-parameters. For example, if two experiments use the same feature extraction
-pipeline but differ only in model hyperparameters, the persistent feature store
-(Layer~1) could be shared while the model cache (Layer~2) remains
-experiment-specific. This extension would require a cache registry that maps
-fingerprints to shared storage locations and enforces access control.
-
 \subsection{Scaling to Real-World Use}
 
 Two directions would move the framework from research prototype to deployable
@@ -263,26 +272,22 @@ requiring a custom framework. The viability verdicts established in this thesis
 (which model families are and are not worth caching, at what storage cost)
 would directly inform the default caching policy of such plugins.
 
-\subsection{Scalability and Thermal Constraints}
+\subsection{Production Deployment Considerations}
 
-Extending to production environments with large configuration spaces would
-require selective caching policies that prioritise high-reuse,
-high-computation-cost artefacts, automatic cache eviction based on access
-frequency and storage budgets, and hierarchical invalidation strategies where
-upstream changes (e.g., preprocessing code updates) automatically invalidate
-all downstream caches.
+Extending to production environments would require selective caching policies
+that prioritise high-reuse artefacts, automatic eviction based on access
+frequency and storage budgets, and hierarchical invalidation where upstream
+changes (e.g.\ preprocessing updates) propagate to all dependent caches.
+A shared cache repository would also allow Layer~1 feature stores to be
+reused across experiments that share the same preprocessing pipeline but
+differ in model hyperparameters.
 
-A related practical consideration is \textbf{thermal throttling} on
-resource-constrained hardware. Sustained cold runs (the 9-hour RF
-149-feature benchmark is a real example) risk CPU throttling that inflates
-training times and may cause hardware degradation. Caching directly mitigates
-this: the cold run executes once, after which warm runs complete in minutes
-and impose negligible thermal load. A caching-aware workflow on throttled
-hardware could interleave cold runs across sessions --- running 2--3
-configurations, allowing the machine to cool, continuing later --- with the
-guarantee that already-cached configurations are never recomputed. This
-benefit is orthogonal to pure speedup and is not captured by the median
-speedup metric.
+A practical benefit not captured by the speedup metric is thermal load
+reduction on constrained hardware. Cold runs can be interleaved across
+sessions --- running a batch of configurations, allowing the machine to cool,
+resuming later --- with the guarantee that completed folds are never
+recomputed. The 9-hour RF cold run is the clearest illustration: splitting
+it across three sessions is trivially safe under the fingerprint guarantee.
 
 \subsection*{A Research Trajectory}
 

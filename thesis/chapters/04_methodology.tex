@@ -775,14 +775,29 @@ The primary thesis contribution was evaluated through caching metrics:
 \item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
 \item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
 \item \textbf{Storage Overhead:} Total cache size in MB/GB
-\item \textbf{Cache Efficiency:} Seconds of compute saved per MB of cache storage
-      (higher = more efficient use of disk space; used to rank model types in
-      the viability analysis).
+\item \textbf{Cache Efficiency:} The inverse metric $\eta$ measures MB of cache
+      stored per second of compute saved:
+      \begin{equation}
+        \eta = \frac{\text{cache size per fold (MB)}}{T_{\text{cold}} - T_{\text{warm}}}
+        \quad \text{[MB/s]}
+      \end{equation}
+      Lower $\eta$ means more compute recovered per unit of storage.
+      The thresholds used in this thesis were derived empirically from the
+      observed gap between XGBoost ($\eta \approx 0.15$--$0.25$) and
+      Random Forest ($\eta \approx 2.5$--$5.2$):
+      \begin{itemize}
+        \item $\eta < 0.5$~MB/s $\Rightarrow$ \textbf{VIABLE} (loading is negligible compared to training)
+        \item $0.5 \leq \eta \leq 2.0$~MB/s $\Rightarrow$ \textbf{BORDERLINE} (context-dependent)
+        \item $\eta > 2.0$~MB/s $\Rightarrow$ \textbf{NOT\_VIABLE} (I/O overhead dominates speedup)
+      \end{itemize}
+      These boundaries are applied consistently in Table~\ref{tab:cache_viability}
+      and Figures~\ref{fig:cache_efficiency} and~\ref{fig:viability_scatter}.
+
 \item \textbf{Cache Viability Verdict:} A model is classified as
-      \textbf{VIABLE} when $T_{\text{load}} \ll T_{\text{train}}$ and the
-      per-configuration storage footprint is manageable for repeated
-      experimentation. It is \textbf{NOT\_VIABLE} when warm-load time
-      approaches or exceeds cold-train time, negating the caching benefit.
+      \textbf{VIABLE} when $\eta < 0.5$~MB/s and the per-configuration
+      storage footprint is manageable for repeated experimentation.
+      It is \textbf{NOT\_VIABLE} when $\eta > 2.0$~MB/s, indicating that
+      warm-load time approaches or exceeds cold-train time.
 \end{itemize}
 
 \subsection{Secondary Metrics: Classification Performance}
