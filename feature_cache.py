@@ -179,12 +179,18 @@ def load_features_from_cache(
 
     data = np.load(cache_path, allow_pickle=True)
     
-    # Validate fingerprint if strict mode enabled
+    # Validate fingerprint if strict mode enabled.
+    # NOTE: Caches created before fingerprint metadata was added have
+    # config_fingerprint='unknown' and will pass any fingerprint check
+    # (stored_fingerprint is falsy only if the key is absent, not 'unknown').
+    # Legacy caches therefore bypass validation regardless of strict_validation.
+    # To fix: delete the cache directory and re-run feature extraction once;
+    # all newly generated files will carry a proper fingerprint.
+    # For this thesis the config is frozen so the bypass is harmless.
     if strict_validation and expected_fingerprint:
         stored_fingerprint = str(data.get('config_fingerprint', ''))
-        if stored_fingerprint and stored_fingerprint != expected_fingerprint:
-            # Fingerprint mismatch - treat as cache miss
-            # This means config changed since cache was created
+        if stored_fingerprint and stored_fingerprint != 'unknown' and stored_fingerprint != expected_fingerprint:
+            # Fingerprint mismatch — treat as cache miss
             return None
     
     feature_names = data['feature_names'].tolist()

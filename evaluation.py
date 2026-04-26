@@ -297,7 +297,7 @@ def aggregate_evaluations(
         ]
         if f1_scores:
             result.class_f1_means[class_name] = np.mean(f1_scores)
-            result.class_f1_stds[class_name] = np.std(f1_scores)
+            result.class_f1_stds[class_name] = np.std(f1_scores, ddof=1)
     
     return result
 
