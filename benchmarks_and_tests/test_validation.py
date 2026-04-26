@@ -1,7 +1,10 @@
 """Test the comprehensive data validation."""
 from data_loader_boas import BOASDataLoader
 
-loader = BOASDataLoader('C:/Users/DerHo/Desktop/Data')
+# Local BOAS dataset path. Developer-specific — see README "Local data path".
+DEFAULT_DATA_PATH = 'C:/Users/DerHo/Desktop/Data'
+
+loader = BOASDataLoader(DEFAULT_DATA_PATH)
 raw, ann, meta = loader.load_subject('1', apply_preprocessing=False)
 
 print("\n" + "="*60)
