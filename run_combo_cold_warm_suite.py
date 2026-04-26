@@ -61,6 +61,12 @@ def parse_args() -> argparse.Namespace:
         help="After all 18 combos, run test/exploration scripts",
     )
     parser.add_argument(
+        "--extras-only",
+        metavar="OUTPUT_DIR",
+        default=None,
+        help="Skip benchmark; run only the extra scripts and write logs into OUTPUT_DIR",
+    )
+    parser.add_argument(
         "--extra-timeout-seconds",
         type=int,
         default=0,
@@ -315,6 +321,20 @@ def main() -> None:
     args = parse_args()
     repo_root = Path(__file__).resolve().parent
     subjects = determine_subjects(args)
+
+    if args.extras_only:
+        output_root = Path(args.extras_only)
+        output_root.mkdir(parents=True, exist_ok=True)
+        extras_result = run_extra_scripts(
+            repo_root=repo_root,
+            output_root=output_root,
+            timeout_seconds=args.extra_timeout_seconds,
+        )
+        with open(output_root / "extras_summary.json", "w", encoding="utf-8") as f:
+            json.dump(extras_result, f, indent=2, default=str)
+        print(f"Extras: {extras_result['ok']} OK / {extras_result['failed']} failed")
+        print(f"Logs:   {output_root / 'extras_summary.json'}")
+        return
 
     issues = check_environment()
     if issues:
