@@ -63,9 +63,10 @@ class SignalPreprocessor:
         self.epoch_duration = epoch_duration
         
         # Validation
-        assert target_sfreq >= 2 * bandpass_high, (
-            f"Nyquist violation: {target_sfreq} Hz < 2 × {bandpass_high} Hz"
-        )
+        if target_sfreq < 2 * bandpass_high:
+            raise ValueError(
+                f"Nyquist violation: {target_sfreq} Hz < 2 × {bandpass_high} Hz"
+            )
         
         logger.info(f"Initialized SignalPreprocessor:")
         logger.info(f"  Bandpass: {bandpass_low}-{bandpass_high} Hz")
