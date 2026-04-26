@@ -46,16 +46,24 @@ class FeatureSelectionConfig:
                                   'hybrid' (balanced, ANOVA -> MI two-stage)
                          Default: 'anova' for speed (benchmark validated)
         scope: Scope of feature selection.
-               Options: 'per_fold' (fit on each fold's training data - correct),
-                        'global' (fit once on all data - faster, minor leakage)
-               Default: 'global' for speed (benchmark validated: <1% accuracy diff)
+               Options: 'per_fold' (fit on each fold's training data — strict,
+                                    leakage-free, recommended for production MLOps),
+                        'global' (fit once on all data — faster, but the selector
+                                  sees held-out subjects' labels, introducing
+                                  supervised label leakage)
+               Default: 'global' for the thesis caching study (deliberate choice,
+                        documented in Methodology §Feature Selection Strategy).
+                        Set to 'per_fold' for strict, leakage-free LOSO CV.
         use_hybrid: DEPRECATED - use selection_method='hybrid' instead
         random_state: Random seed for reproducibility
     """
     correlation_threshold: Optional[float] = None
     top_k_features: Optional[int] = None
     selection_method: str = 'anova'  # 'anova', 'mi', 'hybrid' - ANOVA is ~200x faster
-    scope: str = 'global'  # 'per_fold', 'global' - global is faster with minimal leakage
+    scope: str = 'global'  # See class docstring above. 'global' introduces label
+                            # leakage from held-out folds; used here for the caching
+                            # study with prior approval. 'per_fold' is the strict
+                            # MLOps default. See Methodology §Feature Selection.
     use_hybrid: bool = True  # DEPRECATED - kept for backward compatibility
     random_state: int = 42
     
@@ -590,14 +598,19 @@ class FeatureSelectionPipeline:
     - 'mi': SLOWEST (~4300s), uses Mutual Information, ~0.803 accuracy  
     - 'hybrid': BALANCED, uses F-test → MI two-stage
     
-    RECOMMENDATION: Use 'anova' + 'global' scope (validated by benchmark)
-    
+    RECOMMENDATION (this thesis): Use 'anova' + 'global' scope. Note that
+    'global' scope refits the selector on the full dataset and therefore sees
+    held-out subjects' labels, which is supervised label leakage. This is a
+    deliberate methodological choice for the caching study and is disclosed
+    in Methodology §Feature Selection Strategy. For strict, leakage-free LOSO
+    CV use scope='per_fold'.
+
     Usage:
         config = FeatureSelectionConfig(
-            correlation_threshold=0.95, 
+            correlation_threshold=0.95,
             top_k_features=50,
             selection_method='anova',  # FAST
-            scope='global'             # Minor leakage, big speedup
+            scope='global'             # See note above re: label leakage.
         )
         pipeline = FeatureSelectionPipeline(config)
         X_train_selected = pipeline.fit_transform(X_train, y_train)
@@ -818,8 +831,10 @@ def create_feature_selection_grid(
     Args:
         selection_method: 'anova' (fast), 'mi' (slow), 'hybrid' (balanced)
                          Default: 'anova' (benchmark validated: 200× faster)
-        scope: 'global' (fast, minor leakage) or 'per_fold' (correct, slower)
-               Default: 'global' (benchmark validated: <1% accuracy diff)
+        scope: 'global' (fast; selector sees held-out labels — supervised
+                          leakage; disclosed in thesis Methodology) or
+                'per_fold' (strict, leakage-free, slower).
+               Default: 'global' for the thesis caching study.
     
     Returns:
         List of FeatureSelectionConfig objects

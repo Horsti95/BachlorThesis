@@ -1136,7 +1136,10 @@ def create_optimized_thesis_grid(random_state: int = 42) -> List[TrainingConfig]
     
     This grid uses:
     - selection_method='anova' (FAST)
-    - scope='global' (FAST, minor leakage acceptable for thesis)
+    - scope='global' (selector refit once on full dataset — introduces
+      supervised label leakage from held-out subjects. Deliberate choice
+      for the caching study, disclosed in Methodology §Feature Selection
+      Strategy. Set scope='per_fold' for strict, leakage-free LOSO CV.)
     
     Expected time savings:
     - Before: ~63 hours for 18 configs (MI + per-fold)

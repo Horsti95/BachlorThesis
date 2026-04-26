@@ -309,6 +309,13 @@ class FNNModel(BaseModel):
         )
         
         # Training loop
+        # TODO (post-thesis): The "early stopping" below tracks training loss,
+        # not validation loss, so it cannot detect overfitting — it only stops
+        # once training loss stops decreasing. To make `patience` meaningful,
+        # carve a 10-15% validation split off X/y here, evaluate val_loss each
+        # epoch, and drive the patience counter off val_loss. The FNN model is
+        # implemented but not evaluated in the thesis, so this is deferred.
+        # See ML audit 2026-04 for details.
         epochs = self.params['epochs']
         best_loss = float('inf')
         patience_counter = 0
