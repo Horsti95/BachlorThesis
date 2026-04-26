@@ -1,20 +1,30 @@
 """
 Page-cache effect quantification + cross-machine spot check.
 
-Runs three experiments back-to-back on the same machine:
+Two modes:
 
-  1. XGBoost best config (corr=None, top_k=None) — cold -> warm WITHOUT flush
-     (current default behaviour; warm load benefits from OS page cache)
-  2. XGBoost best config — cold -> FLUSH PAGE CACHE -> warm
-     (warm load forced to read from SSD)
-  3. Random Forest best config — cold -> warm (no flush)
-     (RF cache exceeds typical RAM, so page cache effect is minimal anyway)
+  Default (cross-device check, e.g. on the 5090):
+      cold -> warm (no flush)        for XGB and RF best configs
 
-Output: results/pagecache_comparison/comparison_summary.json + .csv
+  --with-flush (full page-cache test, e.g. on PC1):
+      cold -> warm (no flush) -> FLUSH PAGE CACHE -> warm (with flush)
+      for XGB and RF best configs
+
+The single-cold-double-warm structure lets us measure how much of the
+"warm" speedup comes from realistic OS page caching vs true SSD reads,
+without paying for two cold runs per model.
+
+Output: results/pagecache_comparison/run_<ts>/comparison_summary.{json,csv}
 
 Usage:
-  python run_pagecache_comparison.py --data-path "C:/path/to/Data"
-  python run_pagecache_comparison.py --data-path "C:/path/to/Data" --subjects 128
+  # 5090: cross-device comparison (no flush, both models)
+  python run_pagecache_comparison.py --data-path "C:/path/Data"
+
+  # PC1: full page-cache test (both models, with flush)
+  python run_pagecache_comparison.py --data-path "C:/path/Data" --with-flush --flush-gb 10
+
+  # XGB only:
+  python run_pagecache_comparison.py --data-path "C:/path/Data" --with-flush --models xgboost
 """
 import argparse
 import gc
@@ -45,14 +55,10 @@ def clear_loso_cache() -> int:
 def flush_page_cache(target_gb: float) -> float:
     """
     Force OS to evict page cache by allocating a large numpy array.
-
-    Allocating ~`target_gb` GB pressures Windows/Linux into freeing
-    page-cache memory to satisfy the request. After deallocation, the
-    page cache is largely empty and subsequent file reads come from disk.
     """
     import numpy as np
 
-    print(f"Flushing OS page cache (allocating {target_gb:.0f} GB)...")
+    print(f"  Flushing OS page cache (allocating {target_gb:.0f} GB)...")
     started = time.time()
     n_floats = int(target_gb * (1024 ** 3) // 8)
     big = np.zeros(n_floats, dtype=np.float64)
@@ -60,81 +66,102 @@ def flush_page_cache(target_gb: float) -> float:
     del big
     gc.collect()
     elapsed = time.time() - started
-    print(f"  flush complete in {elapsed:.1f}s")
+    print(f"    flush complete in {elapsed:.1f}s")
     return elapsed
 
 
-def run_one(
-    label: str,
-    subjects,
-    output_dir: Path,
-    model: str,
-    flush_before_warm: bool,
-    flush_gb: float,
-):
+def time_run(label, subjects, output_dir, model):
+    started = time.time()
+    result = run_stage2_training(
+        subjects=subjects,
+        output_dir=output_dir,
+        experiment_name=label,
+        enable_model_cache=True,
+        models=[model],
+        correlation_thresholds=[None],
+        top_k_features=[None],
+    )
+    elapsed = time.time() - started
+    return elapsed, result
+
+
+def measure_model(model: str, subjects, output_dir: Path, with_flush: bool, flush_gb: float):
     print("\n" + "=" * 80)
-    print(f"RUN: {label}")
+    print(f"MODEL: {model.upper()}")
     print("=" * 80)
 
     deleted = clear_loso_cache()
-    print(f"Cleared {deleted} cached models before COLD")
+    print(f"  Cleared {deleted} cached models before COLD")
 
-    cold_start = time.time()
-    cold = run_stage2_training(
-        subjects=subjects,
-        output_dir=output_dir,
-        experiment_name=f"cold_{label}",
-        enable_model_cache=True,
-        models=[model],
-        correlation_thresholds=[None],
-        top_k_features=[None],
+    print(f"\n  [1/{'3' if with_flush else '2'}] COLD run...")
+    cold_seconds, cold_result = time_run(f"cold_{model}", subjects, output_dir, model)
+    print(f"    COLD: {cold_seconds:.1f}s")
+
+    print(f"\n  [2/{'3' if with_flush else '2'}] WARM run (no flush)...")
+    warm_no_flush_seconds, warm_no_flush_result = time_run(
+        f"warm_noflush_{model}", subjects, output_dir, model
     )
-    cold_seconds = time.time() - cold_start
-    print(f"  COLD: {cold_seconds:.1f}s")
+    print(f"    WARM (no flush): {warm_no_flush_seconds:.1f}s")
+    print(f"    Speedup vs cold: {cold_seconds/warm_no_flush_seconds:.1f}x")
 
     flush_seconds = 0.0
-    if flush_before_warm:
+    warm_with_flush_seconds = None
+    warm_with_flush_result = None
+    if with_flush:
+        print(f"\n  [3/3] Flushing page cache then WARM run (with flush)...")
         flush_seconds = flush_page_cache(flush_gb)
-
-    warm_start = time.time()
-    warm = run_stage2_training(
-        subjects=subjects,
-        output_dir=output_dir,
-        experiment_name=f"warm_{label}",
-        enable_model_cache=True,
-        models=[model],
-        correlation_thresholds=[None],
-        top_k_features=[None],
-    )
-    warm_seconds = time.time() - warm_start
-    print(f"  WARM: {warm_seconds:.1f}s")
-    speedup = cold_seconds / warm_seconds if warm_seconds > 0 else 0.0
-    print(f"  SPEEDUP: {speedup:.1f}x")
-
-    cold_acc = (cold.get("best_result") or {}).get("accuracy_mean")
-    warm_acc = (warm.get("best_result") or {}).get("accuracy_mean")
+        warm_with_flush_seconds, warm_with_flush_result = time_run(
+            f"warm_flushed_{model}", subjects, output_dir, model
+        )
+        print(f"    WARM (with flush): {warm_with_flush_seconds:.1f}s")
+        print(f"    Speedup vs cold: {cold_seconds/warm_with_flush_seconds:.1f}x")
 
     return {
-        "label": label,
         "model": model,
-        "flush_before_warm": flush_before_warm,
-        "flush_seconds": round(flush_seconds, 2),
         "cold_seconds": round(cold_seconds, 3),
-        "warm_seconds": round(warm_seconds, 3),
-        "speedup_factor": round(speedup, 2),
-        "cold_best_accuracy": cold_acc,
-        "warm_best_accuracy": warm_acc,
-        "cold_cache_metrics": cold.get("model_cache_metrics", {}),
-        "warm_cache_metrics": warm.get("model_cache_metrics", {}),
+        "warm_no_flush_seconds": round(warm_no_flush_seconds, 3),
+        "warm_with_flush_seconds": (
+            round(warm_with_flush_seconds, 3) if warm_with_flush_seconds is not None else None
+        ),
+        "flush_seconds": round(flush_seconds, 2),
+        "speedup_no_flush": round(cold_seconds / warm_no_flush_seconds, 2)
+        if warm_no_flush_seconds > 0
+        else 0.0,
+        "speedup_with_flush": (
+            round(cold_seconds / warm_with_flush_seconds, 2)
+            if warm_with_flush_seconds is not None and warm_with_flush_seconds > 0
+            else None
+        ),
+        "page_cache_factor": (
+            round(warm_with_flush_seconds / warm_no_flush_seconds, 2)
+            if warm_with_flush_seconds is not None and warm_no_flush_seconds > 0
+            else None
+        ),
+        "cold_best_accuracy": (cold_result.get("best_result") or {}).get("accuracy_mean"),
+        "warm_no_flush_accuracy": (warm_no_flush_result.get("best_result") or {}).get(
+            "accuracy_mean"
+        ),
+        "warm_with_flush_accuracy": (
+            (warm_with_flush_result.get("best_result") or {}).get("accuracy_mean")
+            if warm_with_flush_result
+            else None
+        ),
     }
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Quantify OS page-cache contribution to warm-run speed; spot-check XGB+RF on host"
+        description="Page-cache effect + cross-machine comparison (XGB and RF best configs)"
     )
     parser.add_argument("--data-path", required=True, help="Path to BOAS dataset root")
-    parser.add_argument("--subjects", type=int, default=128, help="Number of subjects (default: 128)")
+    parser.add_argument(
+        "--subjects", type=int, default=128, help="Number of subjects (default: 128)"
+    )
+    parser.add_argument(
+        "--with-flush",
+        action="store_true",
+        help="Add a third warm run with OS page cache flushed (PC1 mode)",
+    )
     parser.add_argument(
         "--flush-gb",
         type=float,
@@ -142,20 +169,24 @@ def main():
         help="GB to allocate to evict page cache (default: 50; tune to RAM size)",
     )
     parser.add_argument(
-        "--skip-rf",
-        action="store_true",
-        help="Skip the Random Forest run (only compare XGB with/without flush)",
+        "--models",
+        type=str,
+        default="xgboost,random_forest",
+        help="Comma-separated models to test (default: xgboost,random_forest)",
     )
     args = parser.parse_args()
 
+    models = [m.strip() for m in args.models.split(",") if m.strip()]
     subjects = [str(i) for i in range(1, args.subjects + 1)]
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = RESULTS_DIR / f"run_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output: {output_dir}")
+    print(f"Mode:   {'WITH flush' if args.with_flush else 'NO flush'}")
+    print(f"Models: {models}")
+    print(f"N subj: {len(subjects)}")
 
-    # Stage 1 once
     print("\n[Stage 1] Ensuring feature cache is ready...")
     stage1_start = time.time()
     run_stage1_feature_extraction(
@@ -166,37 +197,13 @@ def main():
     print(f"  Stage 1 done in {time.time() - stage1_start:.1f}s")
 
     runs = []
-
-    runs.append(
-        run_one(
-            "xgb_no_flush",
-            subjects,
-            output_dir,
-            model="xgboost",
-            flush_before_warm=False,
-            flush_gb=args.flush_gb,
-        )
-    )
-
-    runs.append(
-        run_one(
-            "xgb_with_flush",
-            subjects,
-            output_dir,
-            model="xgboost",
-            flush_before_warm=True,
-            flush_gb=args.flush_gb,
-        )
-    )
-
-    if not args.skip_rf:
+    for model in models:
         runs.append(
-            run_one(
-                "rf_no_flush",
-                subjects,
-                output_dir,
-                model="random_forest",
-                flush_before_warm=False,
+            measure_model(
+                model=model,
+                subjects=subjects,
+                output_dir=output_dir,
+                with_flush=args.with_flush,
                 flush_gb=args.flush_gb,
             )
         )
@@ -204,7 +211,9 @@ def main():
     summary = {
         "timestamp": timestamp,
         "n_subjects": len(subjects),
-        "flush_gb_target": args.flush_gb,
+        "with_flush": args.with_flush,
+        "flush_gb_target": args.flush_gb if args.with_flush else None,
+        "models": models,
         "runs": runs,
     }
 
@@ -214,33 +223,37 @@ def main():
 
     csv_path = output_dir / "comparison_summary.csv"
     with open(csv_path, "w", encoding="utf-8") as f:
-        f.write("label,model,flush_before_warm,cold_seconds,warm_seconds,speedup_factor,cold_best_accuracy\n")
+        f.write(
+            "model,cold_seconds,warm_no_flush_seconds,warm_with_flush_seconds,"
+            "speedup_no_flush,speedup_with_flush,page_cache_factor,"
+            "cold_accuracy\n"
+        )
         for r in runs:
             f.write(
-                f"{r['label']},{r['model']},{r['flush_before_warm']},"
-                f"{r['cold_seconds']},{r['warm_seconds']},{r['speedup_factor']},"
-                f"{r['cold_best_accuracy']}\n"
+                f"{r['model']},{r['cold_seconds']},{r['warm_no_flush_seconds']},"
+                f"{r['warm_with_flush_seconds']},"
+                f"{r['speedup_no_flush']},{r['speedup_with_flush']},"
+                f"{r['page_cache_factor']},{r['cold_best_accuracy']}\n"
             )
 
     print("\n" + "=" * 80)
     print("FINAL COMPARISON")
     print("=" * 80)
     for r in runs:
-        flush_tag = "FLUSH" if r["flush_before_warm"] else "no flush"
+        print(f"\n  {r['model'].upper()}:")
+        print(f"    cold:                 {r['cold_seconds']:.0f}s")
         print(
-            f"  {r['label']:<22} {flush_tag:<10}  "
-            f"cold={r['cold_seconds']:.0f}s  warm={r['warm_seconds']:.1f}s  "
-            f"speedup={r['speedup_factor']:.1f}x"
+            f"    warm (no flush):      {r['warm_no_flush_seconds']:.1f}s "
+            f"(speedup {r['speedup_no_flush']:.1f}x)"
         )
-
-    if len(runs) >= 2 and runs[0]["model"] == runs[1]["model"]:
-        no_flush_warm = runs[0]["warm_seconds"]
-        with_flush_warm = runs[1]["warm_seconds"]
-        ratio = with_flush_warm / no_flush_warm if no_flush_warm > 0 else 0
-        print(
-            f"\n  Page-cache contribution: warm time grows {ratio:.2f}x when flushed "
-            f"({no_flush_warm:.1f}s -> {with_flush_warm:.1f}s)"
-        )
+        if r["warm_with_flush_seconds"] is not None:
+            print(
+                f"    warm (with flush):    {r['warm_with_flush_seconds']:.1f}s "
+                f"(speedup {r['speedup_with_flush']:.1f}x)"
+            )
+            print(
+                f"    page-cache factor:    {r['page_cache_factor']:.2f}x slower when flushed"
+            )
 
     print(f"\n  Summary: {summary_path}")
     print(f"  CSV:     {csv_path}")
