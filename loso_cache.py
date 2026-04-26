@@ -56,6 +56,10 @@ class CacheMetrics:
     misses: int = 0
     time_saved_seconds: float = 0.0
     time_spent_training: float = 0.0
+
+    def record_training_time(self, training_time: float):
+        """Record training time for a cold run without incrementing miss count."""
+        self.time_spent_training += training_time
     
     @property
     def total(self) -> int:
@@ -487,8 +491,6 @@ class LOSOModelCache:
         """
         # Check disk space constraints before writing
         if not self._check_space_and_evict():
-            if record_metrics:
-                self.metrics.record_miss(training_time)
             return False
 
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
@@ -500,9 +502,9 @@ class LOSOModelCache:
                 joblib.dump(model.scaler, str(cache_path) + "_scaler.joblib", compress=3)
             else:
                 joblib.dump(model, cache_path, compress=3)
-            # Record metrics
+            # Record training time only — miss was already recorded by get_model()
             if record_metrics:
-                self.metrics.record_miss(training_time)
+                self.metrics.record_training_time(training_time)
             # Update registry
             if self.enable_registry:
                 cache_key = f"{fingerprint}_{held_out_subject}"
