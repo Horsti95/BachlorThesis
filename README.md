@@ -186,6 +186,15 @@ dir "C:\Users\DerHo\Desktop\Data\sub-1"
 #   sub-1/eeg/sub-1_task-Sleep_acq-psg_events.txt
 ```
 
+#### Local data path (developer note)
+
+The BOAS data path is hardcoded as `C:/Users/DerHo/Desktop/Data` in
+`benchmarks_and_tests/test_validation.py` (constant `DEFAULT_DATA_PATH` at the
+top of the file). If you run this code on a different machine, edit that
+constant to point at your local copy of the dataset. The path is intentionally
+not configured via env var or YAML because this is a single-developer thesis
+project.
+
 ### Step 3: Test Installation
 
 ```bash
