@@ -34,7 +34,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Default code version - update on releases or use git hash
+# Code version — manually bumped for the thesis run.
+#
+# Limitation (disclosed in Methodology §Fingerprint Generation):
+#   This string feeds the cache fingerprint, so two checkouts that share
+#   the same string but differ in source will silently reuse cached
+#   models. For the thesis the codebase is frozen during the experimental
+#   run, so a static literal is sufficient. For production / continued
+#   work, replace this with a runtime lookup such as:
+#       subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+#   (with a non-git fallback) or any equivalent build-time identifier
+#   from CI / a release pipeline. That ties the cache key to a real-
+#   world version anchor and invalidates caches automatically on every
+#   commit.
+# TODO (post-thesis): wire this to git SHA / build identifier.
 __version__ = "1.0.0"
 
 
