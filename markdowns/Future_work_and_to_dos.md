@@ -901,7 +901,48 @@ class ModelRegistry:
 
 ---
 
+## Codebase Refactoring (deferred)
+
+Tasks identified during the 2026-04 codebase audit that were intentionally
+**not** executed in the cleanup commits because they touch import paths or
+require non-trivial structural changes. Each should be its own follow-up
+PR with tests passing before/after.
+
+### Repository structure
+- Move all 25 root `.py` modules into a package directory (e.g.
+  `src/sleepedf/`) and add a `pyproject.toml` declaring the package and
+  pinning dev tools.
+- Convert flat imports (`from config import X`) to package imports
+  (`from sleepedf.config import X`) — touches every file.
+- Move `main.tex`, `references.bib`, `imc-inf.cls`, and the IMC logo
+  images into `thesis/` next to `thesis/template/`.
+- Rename `todonow/` to `docs/planning/` and consolidate with `markdowns/`
+  under a single `docs/` tree.
+
+### Module-level splits
+- `training.py` (1226 lines) → split into `training/runner.py`,
+  `training/grid.py`, `training/cache_io.py`.
+- `feature_selection.py` (942 lines) → split by selector type
+  (filter / wrapper / embedded).
+
+### Function-level refactors
+- `training.py:run_single_config` (317 lines, `training.py:459-775`) →
+  break into `prepare_fold` / `fit_model` / `evaluate_fold` / `persist_results`.
+- `data_loader_boas.py:validate_subject_data` (163 lines) → extract
+  per-check helpers.
+- `visualization.py:generate_all_figures` (147 lines) → split per figure type.
+- `pipeline.py:process_all_subjects` (128 lines) → extract per-subject loop.
+
+### Hygiene
+- Replace bare `requirements.txt` with `pyproject.toml` and pin a lockfile
+  (`uv.lock` or `pip-tools` output) for reproducibility.
+- Add a `LICENSE` file.
+- Add a minimal CI workflow (`.github/workflows/`) running `pytest` and
+  `python -m py_compile`.
+
+---
+
 *Document End*
 
-**Last Updated**: December 27, 2025  
+**Last Updated**: 2026-04-26 (deferred-refactor section appended)
 **Next Review**: After LOSO Model Cache implementation
