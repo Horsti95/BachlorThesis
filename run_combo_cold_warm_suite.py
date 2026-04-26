@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
         description="Run each thesis combo as cold+warm benchmark with cache reset between combos"
     )
 
-    size_group = parser.add_mutually_exclusive_group(required=True)
+    size_group = parser.add_mutually_exclusive_group(required=False)
     size_group.add_argument("--quick", action="store_true", help="3 subjects")
     size_group.add_argument("--pilot", action="store_true", help="10 subjects")
     size_group.add_argument("--full", action="store_true", help="128 subjects")
@@ -52,8 +52,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-path",
         type=str,
-        required=True,
-        help="Path to BOAS dataset root (contains sub-* directories)",
+        default=None,
+        help="Path to BOAS dataset root (required unless using --extras-only)",
     )
     parser.add_argument(
         "--run-extras",
@@ -338,6 +338,16 @@ def run_extra_scripts(
 def main() -> None:
     args = parse_args()
     repo_root = Path(__file__).resolve().parent
+
+    # --extras-only does not need --data-path or a size flag
+    if not args.extras_only:
+        if not args.data_path:
+            print("error: --data-path is required unless using --extras-only")
+            sys.exit(1)
+        if not (args.quick or args.pilot or args.full):
+            print("error: one of --quick / --pilot / --full is required unless using --extras-only")
+            sys.exit(1)
+
     subjects = determine_subjects(args)
 
     if args.extras_only:
