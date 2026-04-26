@@ -255,8 +255,10 @@ def find_extra_scripts(repo_root: Path, benchmarks_only: bool = False) -> List[P
     ignore_names = {
         "__init__.py",
         "run_combo_cold_warm_suite.py",
-        # generate_thesis_figures.py overwrites tab2 with old CSV data — always skip
+        # always skip — overwrites manually updated tab2 with stale CSV data
         "generate_thesis_figures.py",
+        # always skip — requires --subjects/--cache-dir args and runs hours of training
+        "benchmark_njobs.py",
     }
 
     unique_sorted = sorted({p.resolve() for p in candidates if p.name not in ignore_names})
