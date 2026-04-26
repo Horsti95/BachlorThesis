@@ -277,15 +277,15 @@ def aggregate_evaluations(
     
     result = AggregatedEvaluation(
         accuracy_mean=np.mean(accuracies),
-        accuracy_std=np.std(accuracies),
+        accuracy_std=np.std(accuracies, ddof=1),
         kappa_mean=np.mean(kappas),
-        kappa_std=np.std(kappas),
+        kappa_std=np.std(kappas, ddof=1),
         f1_macro_mean=np.mean(f1_macros),
-        f1_macro_std=np.std(f1_macros),
+        f1_macro_std=np.std(f1_macros, ddof=1),
         n_evaluations=len(evaluations),
         config_id=config_id,
     )
-    
+
     # Per-class F1 aggregation
     for class_name in CLASS_NAMES:
         f1_scores = [
@@ -295,7 +295,7 @@ def aggregate_evaluations(
         ]
         if f1_scores:
             result.class_f1_means[class_name] = np.mean(f1_scores)
-            result.class_f1_stds[class_name] = np.std(f1_scores)
+            result.class_f1_stds[class_name] = np.std(f1_scores, ddof=1)
     
     return result
 

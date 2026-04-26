@@ -33,12 +33,25 @@ Cache Integrity Strategy:
 - On load, optionally validate against current config
 - Manual data_version bump if raw data changes
 
-NOTE: Current cached files have config_fingerprint="unknown" because they
-were created before fingerprint metadata was added. Regenerate cache to
-include fingerprints (optional - config is fixed for thesis).
+NOTE on legacy "unknown" fingerprints (decision: option-b, leave as-is):
+    Cache files produced before the config_fingerprint field was added do
+    not store the field at all. On load, get_cache_info() substitutes the
+    string "unknown" for display, and load_features_from_cache() with
+    strict_validation=False (the default) accepts these legacy files
+    without checking. This is intentional for the thesis: existing
+    feature caches were produced under a fixed, frozen preprocessing
+    config and are correct; forcing regeneration would cost hours of
+    re-extraction for zero scientific benefit. The thesis disclosure
+    accompanies this choice (Methodology §Fingerprint Generation).
+
+    For post-thesis / production work: flip strict_validation to True
+    by default and treat stored 'unknown' as a fingerprint mismatch —
+    the next pipeline run will regenerate every legacy cache with a
+    proper fingerprint, after which validation actually means something.
 
 When to invalidate cache:
 - Change preprocessing params → fingerprint changes automatically
+  (only enforced when strict_validation=True; see above)
 - Change feature extraction → bump feature_version
 - Raw data changes → bump data_version OR delete cache
 """
@@ -178,8 +191,19 @@ def load_features_from_cache(
         return None
 
     data = np.load(cache_path, allow_pickle=True)
-    
-    # Validate fingerprint if strict mode enabled
+
+    # Validate fingerprint if strict mode enabled.
+    #
+    # NOTE on legacy 'unknown' fingerprints: caches produced before the
+    # config_fingerprint field was added do not store the field at all.
+    # The .get(...) default below ('') makes the inner `if stored_fingerprint
+    # and ...` condition false, so legacy caches load even in strict mode.
+    # That is the intentional thesis behaviour (preprocessing config is
+    # frozen, regenerating would cost hours for zero benefit). For
+    # post-thesis / production: change the default to 'unknown' and add an
+    # explicit `or stored_fingerprint == 'unknown'` to the mismatch check
+    # so legacy caches are forced through regeneration. See module
+    # docstring for the full rationale.
     if strict_validation and expected_fingerprint:
         stored_fingerprint = str(data.get('config_fingerprint', ''))
         if stored_fingerprint and stored_fingerprint != expected_fingerprint:

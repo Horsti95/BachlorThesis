@@ -26,7 +26,6 @@ import time
 from typing import Tuple, List, Optional, Dict, Any
 from dataclasses import dataclass, field
 from sklearn.feature_selection import SelectKBest, mutual_info_classif, f_classif
-from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
 
@@ -631,8 +630,8 @@ class FeatureSelectionPipeline:
         self.anova_selector_: Optional[ANOVATopKSelector] = None
         self.top_k_selector_: Optional[TopKSelector] = None
         self.hybrid_selector_: Optional[HybridTopKSelector] = None
-        self.scaler_: Optional[StandardScaler] = None
-        
+
+
         # Statistics
         self.n_features_input_: int = 0
         self.n_features_after_corr_: int = 0
