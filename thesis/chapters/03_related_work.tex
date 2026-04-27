@@ -64,36 +64,16 @@ by definition for each held-out subject.
 Taken together, these papers confirm that memoization is a validated
 acceleration technique for ML pipelines and hyperparameter search.
 Neither work, however, provides a validated pattern for fold-aware caching in
-LOSO scenarios. The challenge of encoding held-out subject identity into a
-deterministic cache key --- and validating cache integrity against fold
-assignments to prevent silent cross-subject contamination --- remains
-unaddressed in the cited literature. This thesis fills that gap with a
-reference implementation and empirical benchmarks on a 128-subject dataset.
-
-
-\subsection{Related Caching Approaches}
-
-Beyond the ML workflow caching approaches reviewed above, other caching paradigms exist in adjacent domains. Contrasting these with the approach developed in this thesis clarifies the scope of the contribution:
-
-\textbf{Large Language Model (LLM) Inference Caching} addresses inference
-latency by managing attention key-value tensors during autoregressive
-generation. vLLM's PagedAttention~\cite{kwon2023pagedattention} solves
-memory fragmentation by treating the KV cache as a virtual memory system
-with non-contiguous blocks.
-
-\textbf{Learned Caching for Deep Networks} employs neural networks to predict
-hidden layer outputs, enabling layer skipping during inference.
-GATI~\cite{balasubramanian2021accelerating} uses learned models to make
-sophisticated cache eviction decisions.
-
-\textbf{High-Energy Physics (HEP) Data Caching} operates at petabyte scale
-for experimental data distribution.
-XRootD/XCache~\cite{sim2023xcache} provides distributed file caching across
-global collaborations through locality-aware placement.
-
-In contrast to these domain-specific approaches, this thesis implements
-deterministic, hash-based caching for cross-validation experiments where
-validity depends on configuration and fold identity.
+LOSO scenarios. Adjacent caching paradigms---LLM inference caching
+(KV-cache management~\cite{kwon2023pagedattention}), layer-skipping for deep
+networks~\cite{balasubramanian2021accelerating}, and petabyte-scale HEP data
+distribution~\cite{sim2023xcache}---address different problem structures and
+make no claim about cross-validation fold integrity. The challenge of encoding
+held-out subject identity into a deterministic cache key --- and validating
+cache integrity against fold assignments to prevent silent cross-subject
+contamination --- remains unaddressed in the cited literature. This thesis
+fills that gap with a reference implementation and empirical benchmarks on a
+128-subject dataset.
 
 
 % ============================================================================
@@ -156,7 +136,7 @@ on a single unaddressed gap, which the following section characterises formally.
 \section{Research Gap Analysis}
 \label{sec:related_gap}
 % ============================================================================
-Despite the widespread adoption of CRISP-DM as the standard process model for data mining projects~\cite{schroer2021crispdmslr}, and the subsequent quality assurance extensions proposed by CRISP-ML(Q)~\cite{studer2021crispmlq}, these frameworks remain at a procedural level---they prescribe \textit{what} should be done but do not enforce \textit{how} reproducibility is achieved technically. The framework developed in this thesis addresses this gap by enforcing reproducibility not as a guideline but through strict configuration fingerprinting and caching, eliminating the manual error sources identified as a key barrier to ML maturity~\cite{googlemlops2023}.
+The academic work and commercial tools reviewed above share a structural limitation: none provides a validated, documented pattern for fold-aware caching in LOSO cross-validation workflows. Process-level frameworks such as CRISP-ML(Q) prescribe \textit{what} reproducibility requires but do not enforce \textit{how} it is achieved technically~\cite{studer2021crispmlq}. The framework developed in this thesis closes this gap by encoding fold identity cryptographically, making correct cache reuse a structural property rather than a convention.
 
 Table~\ref{tab:related_works_comparison} compares caching capabilities of
 existing tools relevant to this thesis.
@@ -230,8 +210,12 @@ limited~\cite{satapathy2024multimodal}.
 
 This thesis follows the feature-based paradigm: 149 handcrafted features per
 30-second epoch across 6 EEG channels, classified using XGBoost and Random
-Forest. Feature-based models have the advantage of compact serialized
-representations well-suited to fingerprint-based caching.
+Forest. For reference, Bakian Dogaheh and Moradi (2023) report 81.3\%
+accuracy and Kappa 0.74 using XGBoost on 5-class AASM staging from a
+comparable EEG feature set~\cite{bakian2023xgboost}, providing a benchmark
+against which the 85.5\% LOSO accuracy achieved in this thesis can be
+situated. Feature-based models have the additional advantage of compact
+serialized representations well-suited to fingerprint-based caching.
 
 \subsection{Deep Learning Approaches}
 
@@ -253,10 +237,12 @@ approximately 1--2~MB per fold (XGBoost) to 120--180~MB per fold
 \subsection{LOSO Evaluation in EEG Research}
 
 LOSO cross-validation is preferred in EEG research because EEG signals
-contain strong subject-specific signatures. LOSO ensures the model is
-evaluated on subjects it has never seen, providing a conservative estimate
-of generalisation. The computational cost scales directly with subject pool
-size: 128 subjects $\times$ 18 configurations yields 2{,}304 training
+contain strong subject-specific signatures that cause standard $k$-fold
+evaluation to overestimate generalisation performance on unseen
+subjects~\cite{kunjan2021loso}. LOSO ensures the model is evaluated on
+subjects it has never seen, providing a conservative estimate of
+generalisation ability. The computational cost scales directly with subject
+pool size: 128 subjects $\times$ 18 configurations yields 2{,}304 training
 operations, making caching essential for practical parameter search.
 
 Having established both the caching gap
