@@ -118,8 +118,9 @@ the following noise sources:
 \item \textbf{Downsampling:} High sampling rates are reduced to the minimum
       sufficient to capture all sleep-relevant frequencies ($\leq$40~Hz),
       halving computational costs while preserving signal fidelity.
-\item \textbf{Epoch rejection:} Epochs with excessive amplitude, NaN values,
-      or flat channels are excluded as artefacts.
+\item \textbf{Epoch rejection:} Epochs contaminated by motion artefacts,
+      excessive amplitude, or flat channels may be excluded before feature
+      extraction; whether to apply this step depends on dataset quality.
 \end{itemize}
 
 The specific filter parameters and rejection thresholds applied in this

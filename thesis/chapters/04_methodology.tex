@@ -342,9 +342,13 @@ Continuous signals are segmented into 30-second epochs aligned with hypnogram an
 
 \subsection{Quality Control}
 
-Epochs failing the criteria established in Section~\ref{sec:data_validation}
-(amplitude $>\pm500~\mu$V, NaN/infinite values, or invalid annotations) are
-excluded before feature extraction.
+The pipeline includes an optional per-epoch rejection step (threshold
+$\pm$1{,}000~$\mu$V; flags NaN/infinite values and flat channels), but this
+is disabled in the main benchmark pipeline (\texttt{validate\_quality=False}).
+Recording-level quality screening is performed by the 12-point subject
+validation described in Section~\ref{sec:data_validation}; the BOAS dataset
+shows minimal artefact contamination ($<$0.1\% of epochs), making per-epoch
+rejection unnecessary for this study.
 
 \section{Feature Extraction: The 149-Feature Set}
 \label{sec:features}
