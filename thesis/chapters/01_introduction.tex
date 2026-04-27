@@ -1,33 +1,6 @@
 
 \chapter{Introduction}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Global Pre-Submission Formatting Checklist (remove before final):}
-\begin{itemize}
-  \item \textbf{Dashes:} Search for lone \texttt{-} used as a dash (should be
-        \texttt{--} for ranges and \texttt{---} for em-dashes). Also check
-        \texttt{--} used where \texttt{---} is needed (sentence breaks,
-        parenthetical clauses).
-  \item \textbf{Bold (\texttt{\textbackslash textbf}):} Confirm every bold
-        instance is a defined term, table header, or finding label.
-        Remove decorative bold from running prose.
-  \item \textbf{Italic (\texttt{\textbackslash textit} / \texttt{\textbackslash emph}):}
-        Italics are for first-use technical terms and titles only.
-        Remove italic emphasis used for rhetorical stress.
-  \item \textbf{Yellow boxes:} Remove all \texttt{Working Draft Note} boxes
-        before submission.
-  \item \textbf{Figures missing:} \texttt{fig\_sleep\_stage\_distribution.pdf}
-        --- run \texttt{python generate\_distribution\_figure.py} (no data
-        required, uses hardcoded counts, works on any machine).
-        \texttt{fig\_confusion\_matrix.pdf} --- run
-        \texttt{python generate\_missing\_figures.py} on the benchmark
-        desktop (requires trained model cache).
-\end{itemize}
-\end{minipage}}
-\end{center}
-
 \section{Introduction and Motivation}
 
 This thesis originated from a practical challenge encountered during a subject-independent sleep stage classification project. The task involved training machine learning models to automatically label 30-second EEG epochs as Wake, N1, N2, N3, or REM. While the classification performance was successful, the iteration speed proved to be a significant bottleneck.
@@ -155,27 +128,9 @@ This thesis follows a quantitative experimental methodology to evaluate a finger
     \item \textbf{Extended Validation:}
     Additional experiments assess generalizability and robustness:
     multi-model cache viability analysis, scaling experiments with increasing subject counts, and feature-selection efficiency analysis (ANOVA versus Mutual Information).
-
+    Cached model outputs are validated by verifying bitwise-identical predictions against freshly trained baselines; a cache hit is accepted only when every tracked configuration parameter --- including the held-out subject identifier --- matches the stored fingerprint exactly.
 
 \end{enumerate}
-
-\subsection{Evaluation Dimensions}
-
-The evaluation is structured along two orthogonal dimensions: the
-\textbf{optimization objective} (quantifying time savings and cache hit rates
-achieved by deterministic cache reuse) and \textbf{caching placement}
-(assessing a two-tier architecture where Tier~1 stores extracted features
-once per subject and Tier~2 stores fold-specific models under SHA-256
-fingerprints). Full details of both tiers are given in
-Chapter~\ref{chap:methodology}.
-
-\subsection{Validity and Reproducibility Criteria}
-
-A cache hit is considered valid only when the full fingerprinted configuration
-matches. If any tracked parameter changes, the fingerprint changes and cached
-outputs are bypassed. Validation confirms both performance gains from warm-cache
-execution and bitwise-identical predictions between cached and freshly trained
-models.
 
 \section{Structure of the Thesis}
 This thesis is structured as follows:
@@ -203,6 +158,7 @@ and the full experimental results including cache speedups, classification
 performance, model viability analysis, and discussion.
 
 \item \textbf{Chapter 5: Summary and Future Work} summarises the contributions
-of the fingerprint-based caching framework and discusses extensions including
-two-tier RAM+Disk caching and cross-experiment cache reuse.
+of the fingerprint-based caching framework, revisits the research questions,
+and discusses directions for extending the approach to other domains and tooling
+ecosystems.
 \end{itemize}
