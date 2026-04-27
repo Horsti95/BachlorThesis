@@ -181,6 +181,38 @@ Additionally, both models handle the 149-dimensional feature space
 effectively and provide interpretable feature importance scores for
 post-hoc analysis.
 
+\subsection{Leave-One-Subject-Out Cross-Validation}
+\label{sec:loso_background}
+
+EEG signals exhibit high inter-subject variability: brain activity patterns
+differ substantially between individuals due to anatomical differences,
+electrode placement tolerances, and inter-individual variation in
+neurophysiology~\cite{huang2023intersubject}. This variability means that
+a model trained on data from subjects $S_1, \ldots, S_{N-1}$ and evaluated
+on a held-in portion of those same subjects' data will overestimate real-world
+performance on a new, unseen subject. Standard $k$-fold cross-validation does
+not account for this: train and test folds typically contain epochs from the
+same subjects, producing accuracy estimates that are misleadingly optimistic
+for subject-independent deployment.
+
+Leave-One-Subject-Out (LOSO) cross-validation addresses this by training
+on all subjects except one and evaluating on the excluded subject, cycling
+through every subject as the test case. Kunjan et al.\ demonstrate directly
+that for scalp-recorded EEG classification, $k$-fold results are misleading
+for unseen-subject performance, and conclude that LOSO evaluation is
+necessary for any EEG-based machine learning study~\cite{kunjan2021loso}.
+
+The computational cost is proportional to the cohort size: with $N = 128$
+subjects, a single experimental configuration requires 128 separate model
+training runs. Each run produces a distinct trained model valid only for
+evaluating its specific held-out subject --- a model trained with subject
+$S_i$ excluded cannot be reused to evaluate subject $S_j$, because the
+training population differs. This fold-specificity is what makes LOSO the
+primary driver of the caching framework: without persistent, fold-aware
+storage of trained models, every configuration change triggers 128
+redundant retraining operations regardless of how little the configuration
+actually changed.
+
 % ============================================================================
 \section{Machine Learning Research Methodology}
 \label{sec:mlresearch}
