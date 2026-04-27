@@ -808,13 +808,32 @@ The primary thesis contribution was evaluated through caching metrics:
       speedup margins erode on smaller datasets, not that caching is
       net-negative in absolute terms.
       These boundaries are applied consistently in Table~\ref{tab:cache_viability}
-      and Figures~\ref{fig:cache_efficiency} and~\ref{fig:viability_scatter}.
+      and Figures~\ref{fig:cache_efficiency},~\ref{fig:viability_scatter},
+      and~\ref{fig:dual_metrics}.
+
+\item \textbf{Relative Cache Efficiency:} The complementary metric
+      $\rho$ expresses the speedup factor per MB of cache stored:
+      \begin{equation}
+        \rho = \frac{T_{\text{cold}} / T_{\text{warm}}}{\text{cache size per fold (MB)}}
+        \quad [\times\!/\text{MB}]
+      \end{equation}
+      Higher $\rho$ means a larger \emph{proportional} acceleration per MB.
+      Where $\eta$ captures absolute time value (seconds recovered),
+      $\rho$ captures relative improvement (how much faster warm runs are).
+      The two metrics are complementary: a model can score highly on one
+      while being marginal on the other.
+      In the 15-model study, $\rho$ ranged from $<0.01$~$\times$/MB (KNN, Extra
+      Trees) to $>10^{5}$~$\times$/MB (SVM-Linear, AdaBoost).
+      The practical separation between viable and non-viable models
+      ($\rho > 1$~$\times$/MB) agrees with the $\eta$-based threshold across
+      all 15 models. Figure~\ref{fig:dual_metrics} shows both metrics side by side.
 
 \item \textbf{Cache Viability Verdict:} A model is classified as
-      \textbf{VIABLE} when $\eta > 2$~s/MB and the per-configuration
-      storage footprint is manageable for repeated experimentation.
-      It is \textbf{NOT\_VIABLE} when $\eta < 0.5$~s/MB, indicating that
-      warm-load time approaches cold-train time and the caching benefit erodes.
+      \textbf{VIABLE} when $\eta > 2$~s/MB ($\rho > 1$~$\times$/MB) and the
+      per-configuration storage footprint is manageable for repeated
+      experimentation. It is \textbf{NOT\_VIABLE} when $\eta < 0.5$~s/MB,
+      indicating that warm-load time approaches cold-train time.
+      The two metrics agree on all 15 evaluated model types.
 \end{itemize}
 
 \subsection{Secondary Metrics: Classification Performance}
@@ -1191,9 +1210,27 @@ the viability spectrum.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig4b_viability_scatter.pdf}
-\caption{Cache viability across 15 model types, ranked by seconds of compute saved per MB of cache (higher = more efficient). Green bars are cache-viable; red bars
-are not viable because loading time approaches retraining time.}
+\caption{Cache viability across 15 model types, ranked by absolute efficiency
+$\eta$ (seconds of training saved per MB stored; higher is better).
+Blue bars are cache-viable ($\eta > 2$~s/MB); red bars are not viable
+($\eta < 0.5$~s/MB).}
 \label{fig:viability_scatter}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4c_dual_metrics.pdf}
+\caption{Dual-metric cache viability comparison. \textbf{Left:} absolute
+efficiency $\eta$ (s/MB, Section~\ref{sec:evaluation_plan}) — seconds of
+training saved per MB stored. \textbf{Right:} relative efficiency $\rho$
+(speedup factor per MB) — proportional acceleration per MB stored.
+Models are sorted by $\eta$ in both panels; rank shifts in the right panel
+reveal where the two metrics diverge. Notably, SVM-RBF ranks lower by $\rho$
+because its 62~MB cache compresses its per-MB speedup, while Ridge Classifier
+has high $\eta$ and $\rho$ but delivers only a 2$\times$ absolute speedup
+--- underlining that both metrics should be read alongside the raw speedup
+column in Table~\ref{tab:cache_viability}.}
+\label{fig:dual_metrics}
 \end{figure}
 
 \subsubsection{Cache Scaling with Dataset Size}

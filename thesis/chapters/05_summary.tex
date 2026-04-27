@@ -53,10 +53,15 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
       (including all boosting methods and SVMs) and 4 non-viable model
       types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) whose
       large serialised representations negate caching benefits. Viability
-      verdicts (VIABLE/NOT\_VIABLE) were consistent across two hardware
-      configurations; absolute speedup ratios were not, since faster CPUs
-      compress cold training time without proportionally reducing I/O-bound
-      warm load time.
+      verdicts were confirmed using two complementary metrics: $\eta$
+      (seconds of training saved per MB stored, an absolute measure) and
+      $\rho$ (speedup factor per MB, a relative measure). Both metrics
+      agree on all 15 model types, with a near-decade gap between the
+      viable cluster ($\eta \approx 4$--$5{,}000$~s/MB) and the non-viable
+      cluster ($\eta \approx 0$--$0.4$~s/MB). Verdicts were consistent
+      across two hardware configurations; absolute speedup ratios were not,
+      since faster CPUs compress cold training time without proportionally
+      reducing I/O-bound warm load time.
 
 \item \textbf{Cache benefit scales with dataset size.}
       SVM-RBF speedup increased from 9$\times$ at 10 subjects to
@@ -117,10 +122,13 @@ answer is affirmative, the nuance matters as much as the confirmation.
       model types are unambiguously viable regardless of context. The 4
       not-viable types (Random Forest, Extra Trees, KNN) fail because their
       serialized representations (130--1{,}544~MB per fold) make loading
-      approach retraining time. Random Forest occupies a borderline zone: at
-      11.6$\times$ median speedup and 18.5~GB per run, one re-run saves up to
-      $\sim$2~hours per configuration at substantial storage cost --- worthwhile
-      for some workflows, not others.
+      approach retraining time. This conclusion is robust: it holds under
+      both the absolute efficiency metric $\eta$ (s/MB) and the relative
+      metric $\rho$ ($\times$/MB), with a near-decade gap separating the
+      two clusters on both scales. Random Forest occupies a borderline zone:
+      at 11.6$\times$ median speedup and 18.5~GB per run, one re-run saves
+      up to $\sim$2~hours per configuration at substantial storage cost ---
+      worthwhile for some workflows, not others.
 \end{itemize}
 
 The contribution of this thesis is not a new MLOps platform, but a validated
@@ -138,13 +146,16 @@ are transferable; the specific numbers are not.
 Three concrete guidelines emerge from this work for researchers considering
 fingerprint-based LOSO caching.
 
-\textbf{First, check the cache efficiency metric before committing to a full run.}
-The $\eta$ metric (seconds of compute saved per MB stored,
-Section~\ref{sec:evaluation_plan}) can be estimated from a short pilot
-(e.g.\ 5 folds) without running the full 128-fold experiment.
-A pilot that yields $\eta > 2$~s/MB reliably predicts a full-scale speedup
-above 10$\times$; a pilot below 0.5~s/MB signals that warm runs will not
-recover meaningful time regardless of dataset size.
+\textbf{First, check both efficiency metrics before committing to a full run.}
+A short pilot (e.g.\ 5 folds) is sufficient to estimate $\eta$ (seconds
+saved per MB, absolute) and $\rho$ (speedup factor per MB, relative).
+A pilot with $\eta > 2$~s/MB and $\rho > 1$~$\times$/MB reliably predicts
+a full-scale speedup above 10$\times$; a pilot below both thresholds signals
+that warm runs will not recover meaningful time regardless of dataset size.
+Reading both metrics alongside the raw speedup ratio guards against edge
+cases where one metric can be misleadingly high (e.g.\ a model with a
+2$\times$ speedup and tiny cache scores well on $\eta$ and $\rho$ but is
+barely worth caching in practice).
 
 \textbf{Second, the held-out subject ID must be part of the cache key.}
 Omitting it is the single most dangerous simplification a developer might make

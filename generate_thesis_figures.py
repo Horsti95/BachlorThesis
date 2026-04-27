@@ -442,6 +442,121 @@ def fig4b_viability_scatter(show: bool):
 
 
 # ===================================================================
+# 4c. Dual-Metric Viability: η (s/MB) and Speedup/MB side by side
+# ===================================================================
+def fig4c_dual_metrics(show: bool):
+    """Two-panel horizontal bar chart showing η (s/MB) and Speedup/MB.
+
+    Both panels share the same y-axis (sorted by η so rank shifts in the
+    right panel reveal models whose relative efficiency differs from their
+    absolute efficiency). This is the paper-friendly alternative to a 3-D plot.
+    """
+    import matplotlib.pyplot as plt
+
+    df = pd.read_csv(VIABILITY_CSV)
+
+    # Compute metrics; cap near-zero denominators
+    df["eta_s_per_mb"] = df["mb_per_second_saved"].apply(
+        lambda v: 1.0 / v if v > 1e-6 else 1e7
+    )
+    df["speedup_per_mb"] = df.apply(
+        lambda r: r["speedup_ratio"] / r["cache_size_per_fold_mb"]
+        if r["cache_size_per_fold_mb"] > 0.001 else 1e7,
+        axis=1,
+    )
+
+    # Sort ascending by η so the most efficient model appears at the TOP
+    df = df.sort_values("eta_s_per_mb", ascending=True).reset_index(drop=True)
+
+    colors_map = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
+    bar_colors = [colors_map.get(v, "#999") for v in df["cache_verdict"]]
+
+    y_pos = np.arange(len(df))
+
+    # Display cap (log scale, just for rendering)
+    ETA_DISPLAY_CAP   = 2e5
+    SP_MB_DISPLAY_CAP = 5e5
+    eta_disp   = df["eta_s_per_mb"].clip(upper=ETA_DISPLAY_CAP)
+    sp_mb_disp = df["speedup_per_mb"].clip(upper=SP_MB_DISPLAY_CAP)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+    fig.subplots_adjust(wspace=0.04)
+
+    # ── Panel A: η (s/MB) ──────────────────────────────────────────
+    ax1.barh(y_pos, eta_disp, color=bar_colors, edgecolor="white", linewidth=0.4)
+    ax1.axvline(x=2.0, color="#009E73", linestyle="--", linewidth=1.8, alpha=0.85,
+                label="Viable  η > 2 s/MB")
+    ax1.axvline(x=0.5, color="#D55E00", linestyle=":",  linewidth=1.5, alpha=0.7,
+                label="Not-viable  η < 0.5 s/MB")
+    ax1.set_xscale("log")
+    ax1.set_xlabel(
+        "Absolute efficiency  η  [s/MB]\n"
+        "seconds of training saved per MB stored   (higher → better)",
+        fontsize=9.5,
+    )
+    ax1.set_title("Absolute Efficiency  (η)", fontsize=11, fontweight="bold")
+    ax1.legend(fontsize=8, loc="lower right")
+    ax1.grid(True, alpha=0.2, axis="x", which="both")
+    ax1.invert_yaxis()
+
+    # ── Panel B: Speedup / MB ──────────────────────────────────────
+    ax2.barh(y_pos, sp_mb_disp, color=bar_colors, edgecolor="white", linewidth=0.4)
+    # Threshold lies between RF (0.11) and SVM-RBF (2.2) → use 1 ×/MB
+    ax2.axvline(x=1.0, color="#009E73", linestyle="--", linewidth=1.8, alpha=0.85,
+                label="Approx. viable  > 1 ×/MB")
+    ax2.set_xscale("log")
+    ax2.set_xlabel(
+        "Relative efficiency  [×/MB]\n"
+        "speedup factor per MB stored   (higher → better)",
+        fontsize=9.5,
+    )
+    ax2.set_title("Relative Efficiency  (Speedup/MB)", fontsize=11, fontweight="bold")
+    ax2.legend(fontsize=8, loc="lower right")
+    ax2.grid(True, alpha=0.2, axis="x", which="both")
+
+    # Annotate models whose rank changes noticeably between panels
+    svm_rbf_idx = df[df["model_name"] == "svm_rbf"].index[0]
+    ax2.annotate(
+        "SVM-RBF:\n62 MB cache\ndrags rank",
+        xy=(df.loc[svm_rbf_idx, "speedup_per_mb"], svm_rbf_idx),
+        xytext=(80, svm_rbf_idx - 1.5),
+        fontsize=7, color="#555555",
+        arrowprops=dict(arrowstyle="->", color="#aaa", lw=0.8),
+    )
+    ridge_idx = df[df["model_name"] == "ridge_classifier"].index[0]
+    ax2.annotate(
+        "Ridge:\nhigh η, but\nonly 2× speedup",
+        xy=(df.loc[ridge_idx, "speedup_per_mb"], ridge_idx),
+        xytext=(8000, ridge_idx + 1.5),
+        fontsize=7, color="#555555",
+        arrowprops=dict(arrowstyle="->", color="#aaa", lw=0.8),
+    )
+
+    # Y-axis labels on left panel
+    ylabels = [
+        f"{r['model_name']}  ({r['speedup_ratio']:.0f}×, "
+        f"{r['cache_size_per_fold_mb']:.1f} MB/fold)"
+        for _, r in df.iterrows()
+    ]
+    ax1.set_yticks(y_pos)
+    ax1.set_yticklabels(ylabels, fontsize=8.5)
+
+    fig.suptitle(
+        "Cache Viability: Absolute vs. Relative Efficiency\n"
+        "Blue = VIABLE  |  Red = NOT VIABLE  |  Sorted by η (absolute)",
+        fontsize=11,
+        fontweight="bold",
+    )
+
+    out = FIG_DIR / "fig4c_dual_metrics.pdf"
+    fig.savefig(out, bbox_inches="tight")
+    print(f"  [4c] Saved fig4c_dual_metrics.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
 # 5. Fingerprint Integrity Example
 # ===================================================================
 def tab5_fingerprint(show: bool):
@@ -992,6 +1107,7 @@ def main():
     fig3b_crossover(args.show)
     tab4_viability(args.show)
     fig4b_viability_scatter(args.show)
+    fig4c_dual_metrics(args.show)
     tab5_fingerprint(args.show)
     fig6_per_class_f1(args.show)
     fig7_feature_importance(args.show)
