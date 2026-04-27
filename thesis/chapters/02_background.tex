@@ -71,22 +71,31 @@ cache fingerprint.
 
 \subsection{Frequency Bands}
 
-In this work, EEG signals are decomposed into distinct frequency bands. While specific boundaries vary slightly in literature, this study utilizes the ranges specified in \autoref{tab:eeg_bands}, which align with standard AASM guidelines and recent functional connectivity research in sleep staging \cite{huang2021eeg}.
+In this work, EEG signals are decomposed into six frequency bands.
+Table~\ref{tab:eeg_bands} lists the ranges as implemented in the feature
+extraction pipeline. Two boundaries deviate from the conventional literature
+values~\cite{niedermeyer2011}: Beta starts at 16~Hz rather than the
+conventional 13~Hz to avoid overlap with the Sigma band (12--16~Hz), and
+Gamma is capped at 40~Hz to match the bandpass filter cutoff rather than
+the commonly cited 45~Hz upper limit.
 
 \begin{table}[htbp]
 \centering
-\caption[EEG frequency bands used for feature extraction and their sleep-relevant associations]{EEG frequency bands used for feature extraction and their sleep-relevant associations (adapted from \cite{huang2021eeg}).}
+\caption[EEG frequency bands as used in this thesis]{EEG frequency bands
+as implemented in this thesis and their sleep-stage associations.
+Beta and Gamma boundaries differ slightly from conventional ranges
+(see text).}
 \label{tab:eeg_bands}
 \begin{tabular}{lll}
 \toprule
 \textbf{Band} & \textbf{Range (Hz)} & \textbf{Sleep Stage Association} \\
 \midrule
-Delta    & 0.5--4.0   & Predominant in N3 (Deep sleep); indicates sleep pressure \\
-Theta    & 4.0--8.0   & Associated with N1 and REM stages; drowsiness \\
-Alpha    & 8.0--13.0  & Hallmarked by relaxed wakefulness; key for Stage W \\
-Sigma    & 12.0--16.0 & Sleep spindles; the definitive marker for N2 sleep \\
-Beta     & 13.0--30.0 & Active wakefulness; power decreases during NREM sleep \\
-Gamma    & 30.0--45.0 & High-frequency processing; typically minimal in sleep \\
+Delta    & 0.5--4.0   & Predominant in N3 (deep sleep); indicates sleep pressure \\
+Theta    & 4.0--8.0   & Associated with N1 and REM; drowsiness marker \\
+Alpha    & 8.0--13.0  & Relaxed wakefulness; key marker for Stage W \\
+Sigma    & 12.0--16.0 & Sleep spindles; definitive marker for N2 sleep \\
+Beta     & 16.0--30.0 & Active wakefulness; power decreases during NREM \\
+Gamma    & 30.0--40.0 & High-frequency processing; typically minimal in sleep \\
 \bottomrule
 \end{tabular}
 \end{table}
