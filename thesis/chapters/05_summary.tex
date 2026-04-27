@@ -189,130 +189,52 @@ Several directions could extend the framework developed in this thesis.
 \label{sec:future_work}
 
 The global ANOVA feature selection used in this thesis introduces minor
-information leakage: each LOSO fold's held-out subject contributes
+information leakage: each fold's held-out subject contributes
 $1/128 \approx 0.8\%$ of the data used to fit the global feature ranking.
-A scientifically correct implementation would fit ANOVA independently within
-each fold on the 127 training subjects only.
-Na\"ively, this requires re-running ANOVA on every warm run before the cache
-key can even be computed --- because the current fingerprint includes the
-selected feature names, which are only known after ANOVA has run.
-Our benchmark (Figure~\ref{fig:global_vs_perfold}) quantifies the consequence:
-without a fix, the XGBoost warm-run speedup degrades from 22.9$\times$
-(global) to 4.4$\times$ (na\"ive per-fold) at $N=20$ subjects, because ANOVA
-re-runs 20 times even on a full cache hit.
+A na\"ive per-fold fix requires re-running ANOVA on every warm run before
+the cache key can even be computed, degrading XGBoost warm-run speedup from
+22.9$\times$ (global) to 4.4$\times$ at $N=20$ subjects
+(Figure~\ref{fig:global_vs_perfold}).
 
-A \textit{lazy selection cache} resolves this without any accuracy cost.
-ANOVA (\texttt{f\_classif}) is a fully deterministic computation: given the
-same training subjects and selection parameters, it always produces the same
-ranked feature list. Two implementation variants are conceivable.
-
-\textbf{Version A --- Determinism-based key (recommended for static datasets).}
-Remove the selected feature names from the model-cache fingerprint and
-introduce a lightweight \emph{selection registry} keyed by experiment
-configuration and fold identity:
+A \textit{lazy selection cache} resolves this without accuracy cost.
+Because \texttt{f\_classif} is fully deterministic, the selected feature list
+can be stored under its own fingerprint:
 %
 \begin{equation*}
   k_{\text{sel}} = \text{SHA-256}\!\left(
     \textit{dataset\_version} \;\Vert\; \textit{code\_version} \;\Vert\;
-    \textit{corr} \;\Vert\; \textit{top\_k} \;\Vert\; \textit{method}
-    \;\Vert\; \textit{held\_out\_subject}
+    \textit{corr} \;\Vert\; \textit{top\_k} \;\Vert\;
+    \textit{held\_out\_subject}
   \right)
 \end{equation*}
 %
-The key must include \texttt{dataset\_version} and \texttt{code\_version} so
-that changes to the dataset (e.g.\ a subject removed or corrected) or the
-preprocessing code correctly invalidate the registry. Without these fields,
-the same key could return a stale feature list after the underlying data
-changes --- a silent correctness bug. On a cold run, ANOVA is fitted and the
-sorted selected feature names are stored under $k_{\text{sel}}$.
-On a warm run, the registry is queried first (${\sim}1$~ms); the feature list
-is retrieved, the full model fingerprint is assembled, and the cached model is
-loaded without running ANOVA at all.
-This restores warm-run time to ${\approx}7$~s (registry lookup + model load).
-The cold-run overhead is $128 \times 22~\text{ms} \approx 2.8~\text{s}$.
-Version A is appropriate for a frozen dataset such as BOAS where the
-held-out subject uniquely identifies the training fold.
+On a warm run the registry is queried first (${\sim}1$~ms), restoring
+warm-run time to ${\approx}7$~s without re-running ANOVA.
+For production use, a data-aware key variant should additionally hash the
+training subject IDs to protect against stale cache hits if the dataset
+changes. Neither variant was implemented in this thesis.
 
-\textbf{Version B --- Data-aware key (recommended for production).}
-Add an explicit training-set fingerprint to $k_{\text{sel}}$, for example a
-hash of the sorted training subject IDs or a checksum of the feature matrix.
-This binds the registry entry unambiguously to a specific data snapshot and
-protects against stale cache hits if subjects are later removed, preprocessing
-changes, or fold construction is modified. Version B is the production-grade
-design; Version A is a valid shortcut for immutable datasets only.
-Neither variant was implemented in this thesis --- both are designs for
-future work.
+\subsection{Cross-Domain Validation and MLOps Integration}
 
-In summary, a global-scope fast-screening run (current design) and a per-fold
-final-reporting run (Version A or B registry) can coexist in the same framework.
-The global run uses a single fingerprint shared by all folds; the per-fold run
-adds one registry lookup per fold and eliminates the residual $0.8\%$ leakage
-by construction.
-
-\subsection{Scaling to Real-World Use}
-
-Two directions would move the framework from research prototype to deployable
-tool.
-
-\textbf{Cross-domain validation.}
-The framework was validated on EEG sleep classification. The underlying
-fingerprinting approach is domain-agnostic, and applying it to other domains
+The fingerprinting approach is domain-agnostic. Applying it to other domains
 with subject-level cross-validation --- brain-computer interfaces,
-speaker-independent speech recognition, patient-level medical imaging splits
---- would test generalisability and surface domain-specific requirements not
-covered by the current implementation.
-
-\textbf{Integration with MLOps platforms.}
-The framework could be packaged as plugins for DVC, ZenML, or MLflow. A DVC
-plugin could extend the pipeline definition language to natively parameterise
-LOSO fold identifiers; a ZenML custom materialiser could encode held-out
-subject IDs in step cache keys. Such integrations would make fold-aware
-caching accessible to researchers who already use these platforms without
-requiring a custom framework. The viability verdicts established in this thesis
-(which model families are and are not worth caching, at what storage cost)
+speaker-independent speech recognition, patient-level medical imaging ---
+would test generalisability and surface requirements not covered by the current
+implementation. On the tooling side, the framework could be packaged as
+plugins for DVC, ZenML, or MLflow, encoding held-out subject IDs in step
+cache keys and making fold-aware caching accessible to researchers who already
+use these platforms. The $\eta$-based viability verdicts established here
 would directly inform the default caching policy of such plugins.
-
-\subsection{Production Deployment Considerations}
-
-Extending to production environments would require selective caching policies
-that prioritise high-reuse artefacts, automatic eviction based on access
-frequency and storage budgets, and hierarchical invalidation where upstream
-changes (e.g.\ preprocessing updates) propagate to all dependent caches.
-A shared cache repository would also allow Layer~1 feature stores to be
-reused across experiments that share the same preprocessing pipeline but
-differ in model hyperparameters.
-
-A practical benefit not captured by the speedup metric is thermal load
-reduction on constrained hardware. Cold runs can be interleaved across
-sessions --- running a batch of configurations, allowing the machine to cool,
-resuming later --- with the guarantee that completed folds are never
-recomputed. The 9-hour RF cold run is the clearest illustration: splitting
-it across three sessions is trivially safe under the fingerprint guarantee.
 
 \subsection*{A Research Trajectory}
 
-This thesis is one step in a longer research arc.
-At the bachelor level, the contribution is an empirical viability map:
-which model families are worth caching under LOSO, at what storage cost,
-and under what conditions the benefit scales. The fingerprinting mechanism
-and two-layer cache design are validated but not automated.
-
-A natural master-level extension would exhaustively characterise viability
-across domains, model families, and dataset scales --- building a
-\textit{viability knowledge base} that captures not just which models cache
-well on BOAS, but the generalised conditions under which any model becomes
-cache-viable or not.
-
-At the PhD or applied research level, that knowledge base could power an
-\textit{intelligent caching orchestrator}: a system that accepts a researcher's
-experimental plan (models, hyperparameter grid, dataset, hardware), queries the
-viability knowledge base, and automatically configures a caching strategy ---
-which layers to cache, what storage budget to allocate, when to evict, and
-how to schedule cold runs to avoid thermal constraints. Paired with an
-interactive planning interface (the researcher declares their workflow goals;
-the system recommends a caching configuration before the first run begins),
-this would make fold-aware caching a zero-configuration tool rather than a
-framework a researcher must design themselves. The building blocks are already
-available --- this thesis provides the empirical foundation; the referenced
-MLOps platforms provide the deployment infrastructure. What remains is the
-intelligence that connects them.
+This thesis provides an empirical viability map at the bachelor level: which
+model families are worth caching under LOSO, at what storage cost, and under
+what conditions the benefit scales. A natural master-level extension would
+build a \textit{viability knowledge base} generalising these verdicts across
+domains, model families, and dataset scales. At the PhD level, that knowledge
+base could power an \textit{intelligent caching orchestrator} --- a system
+that accepts a researcher's experimental plan and automatically configures a
+caching strategy before the first run begins, making fold-aware caching a
+zero-configuration tool rather than a framework a researcher must design
+themselves.

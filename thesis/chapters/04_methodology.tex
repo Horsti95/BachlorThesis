@@ -782,14 +782,30 @@ The primary thesis contribution was evaluated through caching metrics:
         \quad \text{[MB/s]}
       \end{equation}
       Lower $\eta$ means more compute recovered per unit of storage.
-      The thresholds used in this thesis were derived empirically from the
-      observed gap between XGBoost ($\eta \approx 0.15$--$0.25$) and
-      Random Forest ($\eta \approx 2.5$--$5.2$):
+      The thresholds used in this thesis were calibrated empirically: after
+      measuring all 15 model types, the viable cluster (boosting methods, SVMs,
+      linear models) fell in the range $\eta \approx 0.0004$--$0.25$~MB/s,
+      while the non-viable cluster (tree ensembles, KNN) fell in the range
+      $\eta \approx 2.5$--$5.2$~MB/s. The gap between clusters spans nearly a
+      decade on a log scale, making the exact position of the boundary
+      non-critical. The thresholds were set to bracket this gap:
       \begin{itemize}
-        \item $\eta < 0.5$~MB/s $\Rightarrow$ \textbf{VIABLE} (loading is negligible compared to training)
-        \item $0.5 \leq \eta \leq 2.0$~MB/s $\Rightarrow$ \textbf{BORDERLINE} (context-dependent)
-        \item $\eta > 2.0$~MB/s $\Rightarrow$ \textbf{NOT\_VIABLE} (I/O overhead dominates speedup)
+        \item $\eta < 0.5$~MB/s $\Rightarrow$ \textbf{VIABLE}: loading cost is
+              negligible relative to training time; caching is unambiguously beneficial.
+        \item $0.5 \leq \eta \leq 2.0$~MB/s $\Rightarrow$ \textbf{BORDERLINE}:
+              depends on dataset size and storage budget; evaluate per use case.
+        \item $\eta > 2.0$~MB/s $\Rightarrow$ \textbf{NOT\_VIABLE}: I/O overhead
+              consumes a significant fraction of the time saved; benefit erodes on
+              smaller datasets or faster hardware.
       \end{itemize}
+      A value of $\eta = 0.5$ means that every 0.5~MB stored recovers one second
+      of compute. On a typical consumer SSD (read throughput $\approx 400$~MB/s),
+      loading 0.5~MB takes $\approx 1.25$~ms --- an overhead three orders of magnitude
+      smaller than the recovered second. Even the borderline threshold $\eta = 2.0$
+      yields a $>100{\times}$ ratio of compute recovered to I/O cost; the NOT\_VIABLE
+      classification at this level reflects the \textit{practical} concern that
+      speedup margins shrink on smaller datasets, not that caching becomes
+      net-negative in absolute terms.
       These boundaries are applied consistently in Table~\ref{tab:cache_viability}
       and Figures~\ref{fig:cache_efficiency} and~\ref{fig:viability_scatter}.
 
