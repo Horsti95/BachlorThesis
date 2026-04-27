@@ -96,10 +96,8 @@ Power spectral density (PSD) in these bands, computed via Welch's method, forms 
 \subsection{Standard Preprocessing Pipeline}
 
 Raw EEG signals contain multiple sources of contamination that must be
-addressed before feature extraction. The preprocessing protocol described
-here builds on a pipeline originally developed in a prior university
-course project on sleep stage classification by the same author, subsequently
-adapted and extended for the BOAS dataset used in this thesis.
+addressed before feature extraction. Standard EEG preprocessing targets
+the following noise sources:
 
 \begin{itemize}
 \item \textbf{DC offset and slow drift:} Removed by high-pass filtering
@@ -108,15 +106,15 @@ adapted and extended for the BOAS dataset used in this thesis.
       (typically $\leq$40~Hz for sleep staging).
 \item \textbf{Power line interference:} A 50~Hz (Europe) or 60~Hz (USA)
       notch filter removes electrical mains noise.
-\item \textbf{Downsampling:} The original 256~Hz sampling rate of the BOAS
-      dataset is downsampled to 128~Hz, sufficient for capturing all
-      sleep-relevant frequencies ($\leq$40~Hz) while halving computational costs.
-\item \textbf{Epoch rejection:} Epochs with amplitudes exceeding $\pm$500~$\mu$V,
-      NaN values, or flat channels are excluded as artefacts.
+\item \textbf{Downsampling:} High sampling rates are reduced to the minimum
+      sufficient to capture all sleep-relevant frequencies ($\leq$40~Hz),
+      halving computational costs while preserving signal fidelity.
+\item \textbf{Epoch rejection:} Epochs with excessive amplitude, NaN values,
+      or flat channels are excluded as artefacts.
 \end{itemize}
 
-These steps constitute the preprocessing pipeline used in this thesis,
-producing clean 30-second epochs ready for feature extraction.
+The specific filter parameters and rejection thresholds applied in this
+thesis are described in Section~\ref{sec:preprocessing}.
 
 % ============================================================================
 \section{Machine Learning Ensemble Methods}
