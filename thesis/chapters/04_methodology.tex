@@ -25,19 +25,34 @@ defines the evaluation metrics.
 \section{Theoretical Framework}
 \label{sec:theoretical}
 
-The framework is grounded in three key concepts: configuration fingerprinting, a distinction between persistent storage and intelligent caching, and two orthogonal evaluation dimensions.
+The central engineering challenge in LOSO caching is determining when two
+experimental runs are \emph{identical enough} to reuse prior results. A
+traditional approach would compare configuration files by hand or rely on
+naming conventions, both of which are error-prone and do not scale to
+2{,}304 operations across 18 configurations. The framework introduced here
+instead encodes every relevant parameter into a deterministic cryptographic
+key, so correctness becomes structural rather than a matter of human
+discipline. Three design concepts underpin this approach.
 
 \subsection{Configuration Fingerprinting}
 
-Configuration fingerprinting provides the foundation for cache key generation and reproducibility tracking. Each experiment configuration is uniquely identified by a cryptographic hash computed as:
+Configuration fingerprinting provides the foundation for cache key generation
+and reproducibility tracking. Each experiment configuration --- comprising
+model hyperparameters, feature-selection settings, random seed, code version,
+and the held-out subject identifier --- is serialised to a canonical JSON
+string and hashed with SHA-256, truncated to 32 hex characters (128 bits)
+for filesystem compatibility:
 
-\begin{equation}
-\text{fingerprint} = \text{SHA256}(\text{canonical\_json}(\text{config}))[:32]
-\end{equation}
+\begin{center}
+\texttt{fingerprint = sha256(canonical\_json(config))[:32]}
+\end{center}
 
-The fingerprint uses 32 hexadecimal characters (128 bits), providing strong
-collision resistance. Table~\ref{tab:fingerprint_fields} lists the tracked
-fields and their role.
+\noindent
+The 32-character prefix provides ample collision resistance at the
+experimental scale ($\sim$2{,}300 configurations), and the canonical
+serialisation (\texttt{sort\_keys=True}, compact separators) ensures
+identical output regardless of dictionary insertion order.
+Table~\ref{tab:fingerprint_fields} lists the tracked fields.
 
 \begin{table}[htbp]
 \centering
@@ -85,8 +100,8 @@ Table~\ref{tab:storage_hierarchy} summarizes this distinction:
 \textbf{Layer} & \textbf{Artifact} & \textbf{Size/fold} & \textbf{Type} & \textbf{Speedup (median)} \\
 \midrule
 Layer 1 & 149 features (NPZ)     & $\sim$1.1~MB & Persistent Storage  & 227$\times$ \\
-Layer 2 & XGBoost model (joblib) & $\sim$1--2~MB  & Fingerprint Cache & 178$\times$ \\
-Layer 2 & Random Forest (joblib) & $\sim$120--180~MB & Fingerprint Cache & 17.7$\times$ \\
+Layer 2 & XGBoost model (joblib) & $\sim$1--2~MB  & Fingerprint Cache & 54$\times$ \\
+Layer 2 & Random Forest (joblib) & $\sim$120--180~MB & Fingerprint Cache & 11.6$\times$ \\
 \bottomrule
 \end{tabular}
 \caption[Two-layer cache storage hierarchy]{Storage hierarchy. Layer~2 cache sizes differ fundamentally by model
@@ -1252,8 +1267,9 @@ systematic experimentation:
 
 \begin{enumerate}
 \item \textbf{Cache provides significant LOSO speedup.}
-      XGBoost: 122--498$\times$ (median 178$\times$).
-      SVM-Linear: 1{,}550--3{,}093$\times$ scaling with dataset size.
+      Main 18-config benchmark (128 folds): XGBoost 37.5--202$\times$ (median
+      54$\times$); Random Forest 11--23.5$\times$ (median 11.6$\times$).
+      SVM-Linear in the scaling study: 1{,}550--3{,}093$\times$.
       The framework delivers order-of-magnitude reductions in experiment time.
 
 \item \textbf{Cached models produce identical results.}
@@ -1329,7 +1345,7 @@ verdicts before a single measurement is taken; the empirical results confirm it.
 
 XGBoost outperforms Random Forest on every measured dimension in this study:
 higher classification accuracy (84.9\% vs.\ 81.5\%), higher cache speedup
-(178$\times$ vs.\ 17.7$\times$), and dramatically smaller cache storage
+(median 54$\times$ vs.\ 11.6$\times$), and dramatically smaller cache storage
 (185~MB vs.\ 18.5~GB). This result challenges the common assumption that
 Random Forest and XGBoost are interchangeable ensemble alternatives. For
 LOSO-style experimentation with repeated runs, XGBoost is the clearly

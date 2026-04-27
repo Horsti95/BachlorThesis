@@ -142,20 +142,20 @@ Table~\ref{tab:related_works_comparison} compares caching capabilities of
 existing tools relevant to this thesis.
 \begin{table}[htbp]
 \centering
-\caption{Comparison of caching capabilities in MLOps tools. ``LOSO Support''
-indicates whether the tool natively encodes fold assignments in cache keys
-or requires manual configuration. ``Levels'' indicates which pipeline
-artefacts are cached. Verified against official documentation as of
-April~2026.}
+\small
+\caption[Caching capabilities comparison: MLOps tools vs.\ this thesis]{Caching capabilities of relevant MLOps tools.
+\emph{LOSO Support}: whether fold assignments are encoded natively in cache
+keys or require manual configuration. \emph{Artefacts}: pipeline stages
+that are cached. Verified against official documentation as of April~2026.}
 \label{tab:related_works_comparison}
-\begin{tabular}{lllll}
+\begin{tabular}{@{}lp{2.4cm}p{3.0cm}p{2.4cm}p{2.4cm}@{}}
 \toprule
-\textbf{Tool} & \textbf{Strategy} & \textbf{Fingerprinting} & \textbf{Levels} & \textbf{LOSO Support} \\
+\textbf{Tool} & \textbf{Strategy} & \textbf{Fingerprinting} & \textbf{Artefacts} & \textbf{LOSO Support} \\
 \midrule
-MLflow        & Step-level (opt.)    & Parameter hashing         & Model only        & Manual fold param. \\
-DVC           & Pipeline stage       & MD5 (code + inputs)       & Stage outputs     & Manual pipeline \\
-ZenML         & Step-level           & SHA-256 (inputs+code+env) & Step outputs      & Custom materializers \\
-Neptune/W\&B  & None (tracking)      & N/A                       & None              & N/A \\
+MLflow        & Step-level (opt.) & Parameter hashing          & Model only        & Manual \\
+DVC           & Pipeline stage    & MD5 (code + inputs)        & Stage outputs     & Manual \\
+ZenML         & Step-level        & SHA-256 (inputs+code+env)  & Step outputs      & Custom \\
+Neptune/W\&B  & None (tracking)   & N/A                        & None              & N/A \\
 \textbf{This thesis} & \textbf{Hierarchical} & \textbf{SHA-256 + subject ID} & \textbf{Features + Models} & \textbf{Native} \\
 \bottomrule
 \end{tabular}
