@@ -211,8 +211,8 @@ def fig3_efficiency(show: bool):
             s=120,
             edgecolors="black",
             linewidth=0.5,
-            label=f"{verdict.replace('_', ' ').title()}  (MB/s < 0.5)" if verdict == "VIABLE"
-                  else f"{verdict.replace('_', ' ').title()}  (MB/s > 2.0)",
+            label=f"{verdict.replace('_', ' ').title()}  (η > 2 s/MB)" if verdict == "VIABLE"
+                  else f"{verdict.replace('_', ' ').title()}  (η < 0.5 s/MB)",
             zorder=5,
         )
 
