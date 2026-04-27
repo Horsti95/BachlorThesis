@@ -235,13 +235,13 @@ def fig3_efficiency(show: bool):
             color="#333333",
         )
 
-    # Draw viability boundary: MB/s-saved = 0.5 means time_saved = cache_size / 0.5
-    # i.e., time_saved = 2 * cache_size
+    # η = 2 s/MB boundary: time_saved = 2 × cache_size  (VIABLE above)
+    # η = 0.5 s/MB boundary: time_saved = 0.5 × cache_size  (NOT_VIABLE below)
     x_line = np.logspace(-3, 3, 100)
-    ax.plot(x_line, x_line / 0.5, "--", color="#888888", linewidth=1.5, alpha=0.6,
-            label="Viability boundary (0.5 MB/s)")
-    ax.plot(x_line, x_line / 2.0, ":", color="#D55E00", linewidth=1.2, alpha=0.5,
-            label="Not-viable boundary (2.0 MB/s)")
+    ax.plot(x_line, 2.0 * x_line, "--", color="#888888", linewidth=1.5, alpha=0.6,
+            label="Viable boundary (η = 2 s/MB)")
+    ax.plot(x_line, 0.5 * x_line, ":", color="#D55E00", linewidth=1.2, alpha=0.5,
+            label="Not-viable boundary (η = 0.5 s/MB)")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -399,34 +399,36 @@ def fig4b_viability_scatter(show: bool):
     import matplotlib.pyplot as plt
 
     df = pd.read_csv(VIABILITY_CSV)
-    df = df.sort_values("mb_per_second_saved")
+    # Compute η = seconds saved per MB (higher = better)
+    df["eta_s_per_mb"] = 1.0 / df["mb_per_second_saved"]
+    df = df.sort_values("eta_s_per_mb")  # ascending: not-viable at bottom
 
-    # Horizontal bar chart: MB/s-saved per model, colored by verdict
     colors_map = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
     bar_colors = [colors_map.get(v, "#999") for v in df["cache_verdict"]]
 
     fig, ax = plt.subplots(figsize=(10, 6))
     y_pos = np.arange(len(df))
-    bars = ax.barh(y_pos, df["mb_per_second_saved"], color=bar_colors,
-                   edgecolor="white", linewidth=0.5)
+    ax.barh(y_pos, df["eta_s_per_mb"], color=bar_colors,
+            edgecolor="white", linewidth=0.5)
 
-    # Labels: model name + speedup
-    labels = [f"{row['model_name']}  ({row['speedup_ratio']:.0f}x, "
-              f"{row['cache_size_per_fold_mb']:.1f} MB)"
+    labels = [f"{row['model_name']}  ({row['speedup_ratio']:.0f}×, "
+              f"{row['cache_size_per_fold_mb']:.1f} MB/fold)"
               for _, row in df.iterrows()]
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels, fontsize=9)
 
-    # Threshold lines
-    ax.axvline(x=0.5, color="#888888", linestyle="--", linewidth=2, alpha=0.8,
-               label="Viable threshold (< 0.5)")
-    ax.axvline(x=2.0, color="#D55E00", linestyle=":", linewidth=2, alpha=0.7,
-               label="Not-viable threshold (> 2.0)")
+    # Threshold lines: VIABLE η > 2 s/MB, NOT_VIABLE η < 0.5 s/MB
+    ax.axvline(x=2.0, color="#888888", linestyle="--", linewidth=2, alpha=0.8,
+               label="Viable threshold (η > 2 s/MB)")
+    ax.axvline(x=0.5, color="#D55E00", linestyle=":", linewidth=2, alpha=0.7,
+               label="Not-viable threshold (η < 0.5 s/MB)")
 
     ax.set_xscale("log")
-    ax.set_xlabel("MB per second saved (lower = more efficient cache)", fontsize=11)
-    ax.set_title("Cache Viability Metric: Storage Cost per Second of Compute Saved\n"
-                 "Blue = viable, Vermillion = not viable (I/O dominates)", fontsize=11)
+    ax.set_xlabel("Seconds of compute saved per MB of cache  η  [s/MB]  (higher = more efficient)",
+                  fontsize=11)
+    ax.set_title("Cache Viability: Compute Value per MB of Storage\n"
+                 "Blue = viable (η > 2), Vermillion = not viable (η < 0.5)",
+                 fontsize=11)
     ax.legend(fontsize=9, loc="lower right")
     ax.grid(True, alpha=0.2, axis="x", which="both")
     ax.invert_yaxis()

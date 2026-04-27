@@ -139,11 +139,12 @@ Three concrete guidelines emerge from this work for researchers considering
 fingerprint-based LOSO caching.
 
 \textbf{First, check the cache efficiency metric before committing to a full run.}
-The $\eta$ metric (MB stored per second saved, Section~\ref{sec:evaluation_plan})
-can be estimated from a short pilot (e.g.\ 5 folds) without running the full
-128-fold experiment. A pilot that yields $\eta < 0.5$ reliably predicts a
-full-scale speedup above 10$\times$; a pilot above 2.0 signals that warm
-runs will not recover meaningful time regardless of dataset size.
+The $\eta$ metric (seconds of compute saved per MB stored,
+Section~\ref{sec:evaluation_plan}) can be estimated from a short pilot
+(e.g.\ 5 folds) without running the full 128-fold experiment.
+A pilot that yields $\eta > 2$~s/MB reliably predicts a full-scale speedup
+above 10$\times$; a pilot below 0.5~s/MB signals that warm runs will not
+recover meaningful time regardless of dataset size.
 
 \textbf{Second, the held-out subject ID must be part of the cache key.}
 Omitting it is the single most dangerous simplification a developer might make

@@ -775,45 +775,46 @@ The primary thesis contribution was evaluated through caching metrics:
 \item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
 \item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
 \item \textbf{Storage Overhead:} Total cache size in MB/GB
-\item \textbf{Cache Efficiency:} The inverse metric $\eta$ measures MB of cache
-      stored per second of compute saved:
+\item \textbf{Cache Efficiency:} The metric $\eta$ measures seconds of compute
+      saved per MB of cache stored:
       \begin{equation}
-        \eta = \frac{\text{cache size per fold (MB)}}{T_{\text{cold}} - T_{\text{warm}}}
-        \quad \text{[MB/s]}
+        \eta = \frac{T_{\text{cold}} - T_{\text{warm}}}{\text{cache size per fold (MB)}}
+        \quad \text{[s/MB]}
       \end{equation}
-      Lower $\eta$ means more compute recovered per unit of storage.
+      Higher $\eta$ means more compute recovered per MB stored.
       The thresholds used in this thesis were calibrated empirically: after
       measuring all 15 model types, the viable cluster (boosting methods, SVMs,
-      linear models) fell in the range $\eta \approx 0.0004$--$0.25$~MB/s,
+      linear models) fell in the range $\eta \approx 4$--$2{,}500$~s/MB,
       while the non-viable cluster (tree ensembles, KNN) fell in the range
-      $\eta \approx 2.5$--$5.2$~MB/s. The gap between clusters spans nearly a
+      $\eta \approx 0.19$--$0.4$~s/MB. The gap between clusters spans nearly a
       decade on a log scale, making the exact position of the boundary
       non-critical. The thresholds were set to bracket this gap:
       \begin{itemize}
-        \item $\eta < 0.5$~MB/s $\Rightarrow$ \textbf{VIABLE}: loading cost is
-              negligible relative to training time; caching is unambiguously beneficial.
-        \item $0.5 \leq \eta \leq 2.0$~MB/s $\Rightarrow$ \textbf{BORDERLINE}:
+        \item $\eta > 2$~s/MB $\Rightarrow$ \textbf{VIABLE}: each MB stored saves
+              over 2 seconds of training; loading overhead is negligible.
+        \item $0.5 \leq \eta \leq 2$~s/MB $\Rightarrow$ \textbf{BORDERLINE}:
               depends on dataset size and storage budget; evaluate per use case.
-        \item $\eta > 2.0$~MB/s $\Rightarrow$ \textbf{NOT\_VIABLE}: I/O overhead
-              consumes a significant fraction of the time saved; benefit erodes on
-              smaller datasets or faster hardware.
+        \item $\eta < 0.5$~s/MB $\Rightarrow$ \textbf{NOT\_VIABLE}: each MB stored
+              saves less than half a second; I/O overhead consumes a significant
+              fraction of the benefit on smaller datasets or faster hardware.
       \end{itemize}
-      A value of $\eta = 0.5$ means that every 0.5~MB stored recovers one second
-      of compute. On a typical consumer SSD (read throughput $\approx 400$~MB/s),
-      loading 0.5~MB takes $\approx 1.25$~ms --- an overhead three orders of magnitude
-      smaller than the recovered second. Even the borderline threshold $\eta = 2.0$
-      yields a $>100{\times}$ ratio of compute recovered to I/O cost; the NOT\_VIABLE
-      classification at this level reflects the \textit{practical} concern that
-      speedup margins shrink on smaller datasets, not that caching becomes
+      To put these values in context: on a typical consumer SSD
+      (read throughput $\approx 400$~MB/s), loading 1~MB takes
+      $\approx 2.5$~ms. At $\eta = 2$~s/MB, that 1~MB loaded in 2.5~ms
+      recovers 2 full seconds of training --- an $800{\times}$ net gain
+      after I/O cost. Even at the NOT\_VIABLE boundary $\eta = 0.5$~s/MB,
+      caching still yields a $200{\times}$ ratio of compute recovered to
+      I/O cost; the verdict reflects the \textit{practical} concern that
+      speedup margins erode on smaller datasets, not that caching is
       net-negative in absolute terms.
       These boundaries are applied consistently in Table~\ref{tab:cache_viability}
       and Figures~\ref{fig:cache_efficiency} and~\ref{fig:viability_scatter}.
 
 \item \textbf{Cache Viability Verdict:} A model is classified as
-      \textbf{VIABLE} when $\eta < 0.5$~MB/s and the per-configuration
+      \textbf{VIABLE} when $\eta > 2$~s/MB and the per-configuration
       storage footprint is manageable for repeated experimentation.
-      It is \textbf{NOT\_VIABLE} when $\eta > 2.0$~MB/s, indicating that
-      warm-load time approaches or exceeds cold-train time.
+      It is \textbf{NOT\_VIABLE} when $\eta < 0.5$~s/MB, indicating that
+      warm-load time approaches cold-train time and the caching benefit erodes.
 \end{itemize}
 
 \subsection{Secondary Metrics: Classification Performance}
