@@ -367,6 +367,7 @@ def tab4_viability(show: bool):
 
     df_disp.insert(0, "Rank", range(1, len(df_disp) + 1))
     df_disp["Model"]        = df_disp["Model"].map(_model_names).fillna(df_disp["Model"])
+    df_disp["Category"]     = df_disp["Category"].str.replace("_", " ")
     df_disp["Cold/fold (s)"]= df_disp["Cold/fold (s)"].apply(lambda x: f"{x:.2f}")
     df_disp["Warm/fold (s)"]= df_disp["Warm/fold (s)"].apply(lambda x: f"{x:.3f}")
     df_disp["Speedup"]      = df_disp["Speedup"].apply(lambda x: f"${x:,.0f}\\times$")
@@ -454,6 +455,17 @@ def fig4c_dual_metrics(show: bool):
     import matplotlib.pyplot as plt
 
     df = pd.read_csv(VIABILITY_CSV)
+    df = df[df["model_name"] != "knn_10"].reset_index(drop=True)
+
+    _model_names = {
+        "gradient_boosting": "Gradient Boosting", "adaboost": "AdaBoost",
+        "svm_linear": "SVM Linear",  "decision_tree": "Decision Tree",
+        "catboost": "CatBoost",      "svm_rbf": "SVM RBF",
+        "xgboost": "XGBoost",        "lightgbm": "LightGBM",
+        "logistic_regression": "Logistic Reg.", "random_forest": "Random Forest",
+        "naive_bayes": "Naive Bayes", "knn_5": r"kNN ($k$=5)",
+        "extra_trees": "Extra Trees", "ridge_classifier": "Ridge Classifier",
+    }
 
     # Compute metrics; cap near-zero denominators
     df["eta_s_per_mb"] = df["mb_per_second_saved"].apply(
@@ -479,7 +491,7 @@ def fig4c_dual_metrics(show: bool):
     eta_disp   = df["eta_s_per_mb"].clip(upper=ETA_DISPLAY_CAP)
     sp_mb_disp = df["speedup_per_mb"].clip(upper=SP_MB_DISPLAY_CAP)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7), sharey=True)
     fig.subplots_adjust(wspace=0.04)
 
     # ── Panel A: η (s/MB) ──────────────────────────────────────────
@@ -495,7 +507,7 @@ def fig4c_dual_metrics(show: bool):
         fontsize=9.5,
     )
     ax1.set_title("Absolute Efficiency  (η)", fontsize=11, fontweight="bold")
-    ax1.legend(fontsize=8, loc="lower right")
+    ax1.legend(fontsize=8, loc="upper right")
     ax1.grid(True, alpha=0.2, axis="x", which="both")
     ax1.invert_yaxis()
 
@@ -511,35 +523,17 @@ def fig4c_dual_metrics(show: bool):
         fontsize=9.5,
     )
     ax2.set_title("Relative Efficiency  (Speedup/MB)", fontsize=11, fontweight="bold")
-    ax2.legend(fontsize=8, loc="lower right")
+    ax2.legend(fontsize=8, loc="upper right")
     ax2.grid(True, alpha=0.2, axis="x", which="both")
 
-    # Annotate models whose rank changes noticeably between panels
-    svm_rbf_idx = df[df["model_name"] == "svm_rbf"].index[0]
-    ax2.annotate(
-        "SVM-RBF:\n62 MB cache\ndrags rank",
-        xy=(df.loc[svm_rbf_idx, "speedup_per_mb"], svm_rbf_idx),
-        xytext=(80, svm_rbf_idx - 1.5),
-        fontsize=7, color="#555555",
-        arrowprops=dict(arrowstyle="->", color="#aaa", lw=0.8),
-    )
-    ridge_idx = df[df["model_name"] == "ridge_classifier"].index[0]
-    ax2.annotate(
-        "Ridge:\nhigh η, but\nonly 2× speedup",
-        xy=(df.loc[ridge_idx, "speedup_per_mb"], ridge_idx),
-        xytext=(8000, ridge_idx + 1.5),
-        fontsize=7, color="#555555",
-        arrowprops=dict(arrowstyle="->", color="#aaa", lw=0.8),
-    )
-
     # Y-axis labels on left panel
-    ylabels = [
-        f"{r['model_name']}  ({r['speedup_ratio']:.0f}×, "
-        f"{r['cache_size_per_fold_mb']:.1f} MB/fold)"
-        for _, r in df.iterrows()
-    ]
+    _BOLD_MODELS = {"XGBoost", "Random Forest"}
+    ylabels = [_model_names.get(r["model_name"], r["model_name"]) for _, r in df.iterrows()]
     ax1.set_yticks(y_pos)
-    ax1.set_yticklabels(ylabels, fontsize=8.5)
+    ax1.set_yticklabels(ylabels, fontsize=10)
+    for lbl in ax1.get_yticklabels():
+        if lbl.get_text() in _BOLD_MODELS:
+            lbl.set_fontweight("bold")
 
     fig.suptitle(
         "Cache Viability: Absolute vs. Relative Efficiency\n"
@@ -569,12 +563,17 @@ def tab5_fingerprint(show: bool):
         {"model": "random_forest", "corr": "None", "top_k": "149", "seed": 42, "subject": "sub-001"},
     ]
 
+    _tab5_names = {
+        "xgboost": "XGBoost", "random_forest": "Random Forest",
+        "gradient_boosting": "Gradient Boosting", "svm_linear": "SVM Linear",
+    }
+
     rows = []
     for ex in examples:
         raw = f"v1.0|{ex['seed']}|{ex['model']}|corr={ex['corr']}|k={ex['top_k']}|{ex['subject']}"
         h = sha256(raw.encode()).hexdigest()[:32]
         rows.append({
-            "Model": ex["model"],
+            "Model": _tab5_names.get(ex["model"], ex["model"]),
             "Corr": ex["corr"],
             "Top-K": ex["top_k"],
             "Subject": ex["subject"],
