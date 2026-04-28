@@ -225,6 +225,16 @@ changes. A single experiment may require hours or days of computation, and
 the cumulative cost of redundant retraining translates into substantial GPU
 hours and researcher time~\cite{schubotz2022caching}.
 
+Standardised process models describe this iteration. CRISP-DM~\cite{crispdm2000}
+defines a cyclic workflow (Business Understanding $\to$ Data Understanding
+$\to$ Data Preparation $\to$ Modelling $\to$ Evaluation $\to$ Deployment)
+that practitioners revisit repeatedly as findings emerge. Each cycle back
+to the Modelling phase can trigger full retraining if intermediate artefacts
+are not persisted. The fingerprint-based caching framework developed in this
+thesis operates precisely at this transition: by memoising trained models
+under a cryptographic key, it collapses repeated Modelling cycles from
+hours to seconds without changing the workflow structure.
+
 Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
 support experiment tracking by recording parameters, metrics, implementation
 versions, and artefacts for each run, enabling comparison and reproducibility.
@@ -233,7 +243,8 @@ searches. In Leave-One-Subject-Out cross-validation with 128 subjects, a
 single parameter change invalidates 128 individually trained models rather
 than one---making the absence of fold-aware caching not merely inconvenient
 but a potential source of silent scientific errors.
-Despite these advances, reproducibility remains a pervasive challenge in ML
+
+Reproducibility remains a pervasive challenge in ML
 research~\cite{semmelrock2025reproducibility}. Kreuzberger et al.\ define
 reproducibility as the ability to obtain identical results under identical
 conditions (Principle~P3) and emphasise metadata tracking for model lineage
@@ -241,40 +252,20 @@ conditions (Principle~P3) and emphasise metadata tracking for model lineage
 three interdependent components: input data, tracked parameters, and the
 execution environment. Challenges arise from:
 \begin{itemize}
-    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
+    \item \textbf{Lack of Records and Hyperparameter Inconsistency:}
           Unrecorded decisions or parameter changes hinder replication.
-    
     \item \textbf{Data and Environment Volatility:} Dataset alterations,
           framework updates, and inconsistent compute environments cause
           divergent outcomes. Rzig et al.\ find that 61.8\% of CI/CD
           pipeline modifications in ML projects address build policies and
-          dependency management rather than model logic~\cite{rzig2024empirical},
-          indicating that infrastructure concerns dominate ML maintenance effort
-          over algorithmic improvement.
-
-    \item \textbf{Inherent Randomness:} Machine learning algorithms,
-          particularly Feedforward Neural Networks (FFNNs), exhibit
-          significant variation due to stochastic model initialization
-          and training~\cite{raste2022quantifying}. These effects are
-          further amplified by hardware-level non-determinism; for
-          instance, NVIDIA's cuDNN routines utilize atomic operations
-          that introduce ``truly random floating point rounding errors''
-          during execution~\cite{nvidia2024cudnn}. These non-determinism
-          concerns are most acute for GPU-accelerated deep learning; the
-          classical ensemble models used in this thesis (sklearn, XGBoost,
-          fixed \texttt{random\_state=42}) are deterministic by construction
-          and are unaffected by hardware-level rounding variation.
+          dependency management rather than model logic~\cite{rzig2024empirical}.
+    \item \textbf{Inherent Randomness:} Stochastic initialisation and
+          hardware-level non-determinism (e.g.\ NVIDIA cuDNN atomic
+          operations~\cite{nvidia2024cudnn}) affect deep learning models.
+          The classical ensemble models used in this thesis (sklearn,
+          XGBoost, fixed \texttt{random\_state=42}) are deterministic by
+          construction and unaffected by these concerns.
 \end{itemize}
-
-These challenges are particularly acute during iterative experimentation,
-where researchers may run hundreds of configurations before identifying
-promising approaches. Without intelligent management of computational
-artifacts, substantial resources are wasted on redundant calculations.
-This observation motivates the central contribution of this thesis: a
-fingerprint-based caching framework that persists and reuses computational
-artifacts (extracted features and trained models) across iterative modeling
-phases while maintaining reproducibility through cryptographic configuration
-fingerprinting. Specifically, Kreuzberger et al.\ define reproducibility as the ``ability to obtain the exact same results'' (Principle~P3) and highlight metadata tracking for maintaining model lineage (Principle~P7)~\cite{kreuzberger2023mlops}. The fingerprint-based framework implements these principles by hashing a canonical JSON representation of the complete experiment state---including data configuration, implementation version, model parameters, and held-out subject identifier---into a SHA-256 fingerprint that simultaneously automates lineage tracking and provides a deterministic cache key.
 
 % ============================================================================
 \section{Computational Efficiency in Research}
@@ -317,14 +308,11 @@ While caching can help, traditional research in cache management---such as the M
 
 Caching shifts the bottleneck from computation time to storage space --- a
 trade-off whose viability depends on the serialised model size, the expected
-number of re-runs, and available storage capacity. Whether that trade-off is
-worthwhile therefore depends on what you need: for compact models re-run
+number of re-runs, and available storage capacity. For compact models re-run
 frequently, caching is clearly beneficial; for very large models run only
 once, the storage overhead may outweigh the savings. This thesis addresses
 this trade-off explicitly through a model viability analysis in
 Chapter~\ref{chap:methodology}.
-
-This thesis addresses these inefficiencies through a deterministic, fingerprint-based caching framework. By encoding complete experiment configurations (including cross-validation fold identity) into cryptographic SHA-256 cache keys, the framework enables automatic result reuse that is mathematically tied to the scientific parameters, ensuring both efficiency and reproducibility.
 
 % ============================================================================
 \section{Technology: Configuration Fingerprinting and Caching}
@@ -337,10 +325,22 @@ fingerprint-based LOSO caching approach developed in this thesis.
 
 As established in Section~\ref{sec:loso_background}, LOSO cross-validation
 is necessary for EEG-based ML to avoid inflated generalisation estimates.
-Its computational cost --- 128 training runs per configuration --- also makes
-it the primary driver of the caching framework developed in this thesis:
-the 2{,}304 required training operations provide a high-volume workload where
-deterministic fingerprinting demonstrates its maximum efficiency gains.
+Its computational cost --- 128 training runs per configuration --- makes it
+the primary driver of the caching framework: 2{,}304 required training
+operations provide a high-volume workload where deterministic fingerprinting
+delivers maximum efficiency gains.
+
+\begin{center}
+\colorbox{yellow!20}{\begin{minipage}{0.9\textwidth}
+\textbf{Note:} A prior version of this section cited Kearns \& Ron (1999)
+to justify LOSO. That paper establishes PAC-learning generalisation bounds
+for leave-one-out estimators --- a theoretical computer science result,
+not an EEG workflow recommendation. The justification above replaces it
+with the direct reference to Section~\ref{sec:loso_background} where LOSO
+is properly motivated via EEG inter-subject variability (Kunjan et al.).
+Verify that this framing is sufficient for the examiner.
+\end{minipage}}
+\end{center}
 
 \subsection{Configuration Fingerprinting}
 

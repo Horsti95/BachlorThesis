@@ -204,27 +204,7 @@ Labeling Process & 4-Expert Consensus (128 nights) \\
 
 \subsection{Dataset Selection Justification}
 
-BOAS was selected for this benchmark for four complementary reasons.
-
-\textbf{Scale for LOSO.} With 128 subjects, BOAS yields 128 LOSO folds---sufficient
-to measure cache hit rates, speedup distributions, and scaling behaviour with
-statistical reliability. Smaller datasets would compress the scaling experiments
-and reduce confidence in the median speedup estimates.
-
-\textbf{Label quality.} BOAS provides a consensus label derived from three independent
-scorers and a fourth senior arbitrator~\cite{esparza2026automatic}, reducing the
-impact of inter-rater variability on model training. The dataset creators report
-87.08\% human-AI agreement on PSG data, providing a natural performance ceiling
-for comparison.
-
-\textbf{Continuity.} The BOAS dataset was used in the prior course project from which
-this thesis evolved. Retaining the same dataset preserves the experimental conditions
-under which the caching bottleneck was first identified, enabling direct comparison
-between the uncached and cached workflows that motivated this research.
-
-\textbf{Public availability.} BOAS is publicly accessible~\cite{boas_dataset}, allowing
-external researchers to reproduce the benchmarks on identical data without requiring
-institutional access or dataset licensing agreements.
+BOAS was selected for four reasons: \textbf{scale}---128 subjects yield 128 LOSO folds, sufficient for reliable speedup distributions and scaling experiments; \textbf{label quality}---each epoch carries a consensus label from three independent scorers arbitrated by a senior expert~\cite{esparza2026automatic}, with 87.08\% human-AI agreement serving as a natural performance ceiling; \textbf{continuity}---the dataset was used in the prior course project from which this thesis evolved, preserving the conditions under which the caching bottleneck was first identified; and \textbf{public availability}~\cite{boas_dataset}---external researchers can reproduce all benchmarks without institutional access.
 
 \subsection{Class Distribution and LOSO Justification}
 
@@ -233,20 +213,13 @@ Wake~16.0\%, N1~3.7\%, N2~60.3\%, N3~4.4\%, REM~15.7\%
 (Figure~\ref{fig:sleep_distribution}). N2 dominates while N1 is nearly
 16$\times$ less frequent, motivating macro-averaged F1 as the primary metric.
 
-The aggregate distribution masks substantial inter-subject variability.
-Figure~\ref{fig:subject_variation} shows four subjects selected as extreme
-cases from the full 128-subject pool: sub-114 spends 80\% of recorded time
-in N2 with no N3 epochs at all; sub-34 is awake for over half of the
-recording (51.5\% Wake); sub-2 has an unusually high N3 fraction (22.6\%);
-and sub-119 has the highest REM fraction in the dataset (25.2\%).
-A model trained on sub-114 would never observe N3 training examples
-and would generalise poorly to sub-2; conversely, a model trained
-predominantly on Wake-heavy subjects would be poorly calibrated for
-subjects with near-zero Wake epochs.
-This variability is precisely why Leave-One-Subject-Out cross-validation
-is required: each subject must serve as the held-out test set at least
-once, so that evaluation is never contaminated by the subject-specific
-distribution the model was trained on.
+The aggregate distribution masks substantial inter-subject variability
+(Figure~\ref{fig:subject_variation}): sub-114 spends 80\% of recorded time
+in N2 with no N3 epochs at all; sub-34 is awake for over half the
+recording (51.5\%); sub-2 has an unusually high N3 fraction (22.6\%);
+sub-119 has the highest REM fraction (25.2\%).
+These distributional extremes motivate LOSO evaluation (Section~\ref{sec:loso_background}):
+no single subject's distribution is representative of the pool.
 
 \begin{figure}[htbp]
 \centering
@@ -270,11 +243,8 @@ continuity), structural consistency (correct channel count and sampling rate),
 EDF-annotation alignment (onset bounds, sample bounds), and signal quality
 (no NaN/$\pm\infty$ values, no flat channels, amplitude $<10^6~\mu$V).
 
-All 128 BOAS subjects passed all checks. The dataset exhibits minimal
-artifact contamination ($<$0.1\% epoch exclusion rate). The dataset
-creators report a human-AI agreement of 87.08\% for PSG
-data~\cite{esparza2026automatic}, which serves as a performance benchmark
-in this thesis.
+All 128 BOAS subjects passed all checks; the dataset exhibits minimal
+artefact contamination ($<$0.1\% epoch exclusion rate).
 
 
 
@@ -296,19 +266,15 @@ The following signal conditioning is applied sequentially to each EEG channel:
 
 All preprocessing parameters are included in the cache fingerprint, ensuring automatic invalidation when parameters change.
 
-\subsection{Epoch Creation}
+\subsection{Epoch Creation and Quality Control}
 
-Continuous signals are segmented into 30-second epochs aligned with hypnogram annotations. Each epoch contains 3,840 samples (30 seconds $\times$ 128 Hz) across 6 channels, resulting in an array of shape $(n_\text{epochs}, 3840, 6)$ per subject.
-
-\subsection{Quality Control}
-
-The pipeline includes an optional per-epoch rejection step (threshold
-$\pm$1{,}000~$\mu$V; flags NaN/infinite values and flat channels), but this
-is disabled in the main benchmark pipeline (\texttt{validate\_quality=False}).
-Recording-level quality screening is performed by the 12-point subject
-validation described in Section~\ref{sec:data_validation}; the BOAS dataset
-shows minimal artefact contamination ($<$0.1\% of epochs), making per-epoch
-rejection unnecessary for this study.
+Continuous signals are segmented into 30-second epochs aligned with hypnogram
+annotations. Each epoch contains 3,840 samples (30 s $\times$ 128 Hz) across
+6 channels. An optional per-epoch amplitude rejection step
+(threshold $\pm$1{,}000~$\mu$V) is available but disabled in the main
+benchmark (\texttt{validate\_quality=False}); recording-level screening
+via the 12-point validation (Section~\ref{sec:data_validation}) is
+sufficient given the BOAS dataset's $<$0.1\% artefact rate.
 
 \section{Feature Extraction: The 149-Feature Set}
 \label{sec:features}
@@ -407,21 +373,13 @@ requires strict isolation (Section~\ref{sec:limitations}).
 
 \subsection{Feature Extraction Optimization}
 
-To enable efficient processing of the BOAS dataset (128 subjects,
-$\sim$950--1{,}000 epochs per subject), the extraction pipeline uses
-process-based parallelization via joblib to bypass Python's GIL for
-CPU-bound NumPy/SciPy operations. Complexity features are accelerated using
-the antropy library where applicable---specifically DFA (\texttt{ant.detrended\_fluctuation})
-and Hjorth parameters (\texttt{ant.hjorth\_params}); the Hurst exponent retains a
-standard R/S-analysis implementation to avoid duplicating the DFA computation.
-Each subject's full feature set is computed once and stored as a compressed NumPy
-archive; downstream experiments filter to the required channel count and top-K
-selection at runtime without re-extracting from raw signals.
-
-On the benchmark desktop, cold extraction of all 128 subjects takes
-approximately 53~minutes (parallelised extraction + cache write); a warm
-run reading from the Layer~1 cache completes in under one minute
-($227\times$ speedup).
+The extraction pipeline parallelizes across subjects via joblib to bypass
+Python's GIL for CPU-bound NumPy/SciPy operations. Each subject's full
+149-feature set is computed once and stored as a compressed NumPy archive;
+downstream experiments apply correlation filtering and top-K selection at
+runtime without re-extracting. Cold extraction of all 128 subjects takes
+approximately 53~minutes; warm loading from Layer~1 cache completes in under
+one minute ($227\times$ speedup).
 
 
 

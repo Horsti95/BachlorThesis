@@ -247,34 +247,15 @@ production requirements.
 \label{sec:related_industrial}
 % ============================================================================
 
-The transition from research prototype to production deployment is a
-well-documented challenge in machine learning, independent of the application
-domain. Kreuzberger et al.\ observe that many data science projects remain
-``manual to a great extent,'' functioning as experimental proofs of concept
-that fail to operationalise efficiently~\cite{kreuzberger2023mlops}. The
-barriers are consistently identified as reproducibility failures and
-undisciplined experiment management rather than algorithmic limitations.
-
-\textbf{Research-to-Production Gap:}
-Moving any ML model from prototype to a system that can be reliably
-re-evaluated, versioned, and maintained requires systematic experiment
-management: the ability to reproduce any prior result on demand, resume
-interrupted experiments, and compare model versions without retraining from
-scratch. These requirements apply whether the target application is clinical
-sleep analysis, speech recognition, or medical imaging---any domain where
-iterative model development occurs. Fingerprint-based caching directly
-provides this infrastructure: each cached artefact is permanently linked to
-the exact configuration that produced it, enabling on-demand result
-reproduction without retraining.
-
-\textbf{Configuration Debt and Technical Reproducibility:}
-The systems consequences of undisciplined experiment management are
-well-documented. Sculley et al.\ (2015) identify \textit{hidden technical
-debt} in production ML systems, specifically \textit{configuration debt},
-where undocumented parameter interactions and stale pipeline configurations
-accumulate silently and degrade reproducibility over
-time~\cite{sculley2015hidden}. Fingerprint-based caching structurally
-prevents this class of debt: because every cached artefact is keyed by a
-cryptographic hash of its complete configuration, it is impossible to serve
-a stale result from a superseded parameter set. Every stored model carries
-an unambiguous audit trail back to the exact configuration that produced it.
+Kreuzberger et al.\ observe that many data science projects remain
+``manual to a great extent,'' failing to operationalise efficiently due to
+reproducibility failures and undisciplined experiment
+management~\cite{kreuzberger2023mlops}. The systems consequences are
+well-documented: Sculley et al.\ (2015) identify \textit{configuration debt}
+in production ML systems, where undocumented parameter interactions and stale
+pipeline configurations accumulate silently and degrade reproducibility over
+time~\cite{sculley2015hidden}. Fingerprint-based caching structurally prevents
+this class of debt: because every cached artefact is keyed by a cryptographic
+hash of its complete configuration, it is impossible to serve a stale result
+from a superseded parameter set. Every stored model carries an unambiguous
+audit trail back to the exact configuration that produced it.
