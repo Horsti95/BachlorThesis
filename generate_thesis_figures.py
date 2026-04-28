@@ -367,6 +367,7 @@ def tab4_viability(show: bool):
 
     df_disp.insert(0, "Rank", range(1, len(df_disp) + 1))
     df_disp["Model"]        = df_disp["Model"].map(_model_names).fillna(df_disp["Model"])
+    df_disp["Category"]     = df_disp["Category"].str.replace("_", " ")
     df_disp["Cold/fold (s)"]= df_disp["Cold/fold (s)"].apply(lambda x: f"{x:.2f}")
     df_disp["Warm/fold (s)"]= df_disp["Warm/fold (s)"].apply(lambda x: f"{x:.3f}")
     df_disp["Speedup"]      = df_disp["Speedup"].apply(lambda x: f"${x:,.0f}\\times$")
@@ -562,12 +563,17 @@ def tab5_fingerprint(show: bool):
         {"model": "random_forest", "corr": "None", "top_k": "149", "seed": 42, "subject": "sub-001"},
     ]
 
+    _tab5_names = {
+        "xgboost": "XGBoost", "random_forest": "Random Forest",
+        "gradient_boosting": "Gradient Boosting", "svm_linear": "SVM Linear",
+    }
+
     rows = []
     for ex in examples:
         raw = f"v1.0|{ex['seed']}|{ex['model']}|corr={ex['corr']}|k={ex['top_k']}|{ex['subject']}"
         h = sha256(raw.encode()).hexdigest()[:32]
         rows.append({
-            "Model": ex["model"],
+            "Model": _tab5_names.get(ex["model"], ex["model"]),
             "Corr": ex["corr"],
             "Top-K": ex["top_k"],
             "Subject": ex["subject"],
