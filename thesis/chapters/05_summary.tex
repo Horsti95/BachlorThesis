@@ -35,10 +35,10 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
 
 \begin{enumerate}
 \item \textbf{Substantial speedups for cache-viable models.}
-      XGBoost achieved 122.9--498$\times$ speedup (median 178$\times$) with
+      XGBoost achieved 37.5--202$\times$ speedup (median 54$\times$) with
       compact cache sizes of approximately 185~MB. The best configuration
-      (all 149 features, no correlation filtering) reduced a 3{,}683-second
-      cold run to 7.4~seconds. Random Forest achieved 11.8--109.8$\times$
+      (all 149 features, no correlation filtering) reduced a 3{,}816-second
+      cold run to 18.9~seconds. Random Forest achieved 11--23.5$\times$
       speedup but required approximately 18.5~GB of cache storage, making
       it borderline viable.
 
@@ -83,7 +83,7 @@ answer is affirmative, the nuance matters as much as the confirmation.
 \begin{itemize}
 \item \textbf{RQ1 (Efficiency):} Confirmed, but efficiency is model-dependent.
       The framework delivers order-of-magnitude speedups for compact models
-      (XGBoost median 178$\times$, peak 498$\times$) and the persistent
+      (XGBoost median 54$\times$, peak 202$\times$) and the persistent
       Layer~1 feature store eliminates redundant extraction entirely. However,
       the speedup ratio is not a fixed property of the framework --- it
       reflects the ratio of training time to serialization size, and depends
@@ -126,8 +126,8 @@ answer is affirmative, the nuance matters as much as the confirmation.
       both the absolute efficiency metric $\eta$ (s/MB) and the relative
       metric $\rho$ ($\times$/MB), with a near-decade gap separating the
       two clusters on both scales. Random Forest occupies a borderline zone:
-      at 17.9$\times$ median speedup and 18.5~GB per run, one re-run saves
-      up to $\sim$1.4~hours per configuration (median config) at substantial storage cost ---
+      at 11.6$\times$ median speedup and 18.5~GB per run, one re-run saves
+      up to $\sim$2~hours per configuration at substantial storage cost ---
       worthwhile for some workflows, not others.
 \end{itemize}
 
