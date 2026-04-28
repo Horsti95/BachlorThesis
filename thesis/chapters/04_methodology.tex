@@ -1131,9 +1131,10 @@ the viability spectrum.
 \begin{center}
 \colorbox{yellow!20}{\begin{minipage}{0.9\textwidth}
 \textbf{Draft Note -- update from PC1 re-run:}
-Figure~\ref{fig:viability_scatter} was generated from RTX~5090 viability
-benchmark data. Regenerate from PC1 benchmark desktop re-run before final
-submission. Verdicts expected to be identical; speedup magnitudes will differ.
+Figures~\ref{fig:viability_scatter} and~\ref{fig:dual_metrics} were generated
+from RTX~5090 viability benchmark data. Regenerate from PC1 benchmark desktop
+re-run before final submission. Verdicts expected to be identical; speedup
+magnitudes will differ.
 \end{minipage}}
 \end{center}
 
@@ -1145,6 +1146,25 @@ across 15 model types, ranked by absolute efficiency $\eta$ (seconds of training
 saved per MB stored; higher is better). Blue bars: cache-viable ($\eta > 2$~s/MB);
 red bars: not viable ($\eta < 0.5$~s/MB).}
 \label{fig:viability_scatter}
+\end{figure}
+
+The two metrics $\eta$ and $\rho$ can diverge in informative ways: a fast-training
+model (e.g.\ 1~s cold, 0.0001~s warm) saves barely a second of absolute time
+(low $\eta$) but runs 10{,}000$\times$ faster on warm runs (high $\rho$).
+Figure~\ref{fig:dual_metrics} places both metrics side-by-side so that such
+cases are visible.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4c_dual_metrics.pdf}
+\caption[Dual-metric viability: absolute $\eta$ vs.\ relative $\rho$ per MB]{Dual-metric
+cache viability. \textbf{Left:} absolute efficiency $\eta$ [s/MB] --- seconds of
+training saved per MB stored (answers: is caching worth the disk space?).
+\textbf{Right:} relative efficiency $\rho$ [$\times$/MB] --- speedup factor per MB
+stored (answers: how much faster are warm runs relative to cold?). Models sorted
+by $\eta$ in both panels; rank shifts in the right panel reveal where the two metrics
+diverge.}
+\label{fig:dual_metrics}
 \end{figure}
 
 \subsubsection{Cache Scaling with Dataset Size}
