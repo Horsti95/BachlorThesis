@@ -7,7 +7,7 @@ This thesis originated from a practical challenge encountered during a subject-i
 
 The standard evaluation protocol for this domain, Leave-One-Subject-Out (LOSO) cross-validation, requires training a separate model for each subject to ensure subject-independence. With 128 subjects in the dataset, every adjustment, whether modifying a correlation threshold, varying the feature count, or switching between XGBoost and Random Forest—triggered a full retraining of 128 individual models. Because the initial pipeline lacked a mechanism for modular execution or state persistence, exploring even a modest grid of nine configurations required days of wall-clock time for computations that, logically, should have been near-instantaneous.
 
-The central question shifted from "how can the classifier be improved?" to "why are models being retrained when their underlying configurations remain unchanged?" In a LOSO sweep, the vast majority of models remain valid if only a subset of parameters is modified. This realized computational waste was identified not as a classification failure, but as a systematic failure in caching and state management. Consequently, the focus of this research shifted from the classification task itself to the development of a caching optimization framework, using sleep staging as the primary validation vehicle for addressing redundant computation in iterative ML experimentation.
+The central question shifted from "how can the classifier be improved?" to "why are models being retrained when their underlying configurations remain unchanged?" In a LOSO sweep, the vast majority of models remain valid if only a subset of parameters is modified. A naive caching solution, however, introduces a subtler risk: a cache that does not encode \textit{which subject is held out} could silently serve a model trained on the wrong population, producing scientifically invalid predictions with no visible error. This realized computational waste---and the correctness hazard of naive caching---was identified not as a classification failure, but as a systematic failure in caching and state management. Consequently, the focus of this research shifted from the classification task itself to the development of a caching optimization framework, using sleep staging as the primary validation vehicle for addressing redundant computation in iterative ML experimentation.
 
 ML projects frequently fail not due to algorithmic limitations but due to infrastructure deficiencies. Rzig et al.\ report that 61.8\% of CI/CD pipeline modifications in ML projects address build policies and dependency management rather than model logic~\cite{rzig2024empirical}. This aligns with the concept of \textit{hidden technical debt} in ML systems, where the actual model code constitutes only a small fraction of the overall system~\cite{googlemlops2023}. The framework developed in this thesis aims to reduce this technical debt through automated, deterministic caching.
 
@@ -81,6 +81,29 @@ case study using 128 subjects from the BOAS (Bitbrain Open Access Sleep)
 dataset, measuring cache hit rates, computational time savings, storage
 requirements, and reproducibility across experimental iterations.
 
+
+\section{Contributions}
+
+This thesis makes the following contributions:
+
+\begin{enumerate}
+\item \textbf{A validated fold-aware fingerprinting mechanism.} SHA-256 hashes
+      of canonical JSON configurations --- with the held-out subject identifier
+      included --- provide deterministic cache keys that structurally prevent
+      cross-fold contamination. The approach reduced a 3{,}816-second cold run
+      to 18.9 seconds for the best XGBoost configuration (202$\times$ speedup).
+
+\item \textbf{Empirical viability benchmarks for 15 model types.} A
+      systematic analysis using two complementary metrics ($\eta$: seconds
+      saved per MB; $\rho$: speedup per MB) identified 11 cache-viable and
+      4 not-viable model families, with a near-decade gap separating the two
+      clusters. Verdicts were consistent across two hardware configurations.
+
+\item \textbf{A reproducibility guarantee across 2{,}304 LOSO folds.}
+      Cached models produced bitwise-identical predictions to cold retraining
+      across all 18 configurations and 128 folds, verified via
+      \texttt{numpy.array\_equal()}.
+\end{enumerate}
 
 \section{Research Questions}
 

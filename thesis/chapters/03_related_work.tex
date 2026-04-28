@@ -161,22 +161,12 @@ Neptune/W\&B  & None (tracking)   & N/A                        & None           
 \end{tabular}
 \end{table}
 
-The core gap is the lack of validated, documented patterns for
-implementing fold-aware caching in cross-validation workflows. While tools
-like DVC and ZenML provide general pipeline caching infrastructure, adapting
-them for LOSO requires custom logic that:
-\begin{enumerate}
-\item Encodes the held-out subject identifier in cache keys to prevent
-      cross-fold contamination
-\item Manages hierarchical dependencies between preprocessing, feature
-      extraction, and model training stages
-\item Validates cache hits against both parameter configurations and
-      fold assignments
-\end{enumerate}
-
-These requirements are not addressed in standard documentation, and incorrect
-implementation risks subtle bugs where models trained on Subject~A are
-erroneously reused for evaluating Subject~B.
+The core gap is the lack of validated, documented patterns for fold-aware
+caching in LOSO cross-validation. None of the tools reviewed encodes held-out
+subject identity in cache keys by default, and incorrect implementation risks
+a silent correctness bug: a model trained on the wrong subject population is
+returned as a valid cache hit, producing scientifically invalid predictions
+with no visible error.
 
 This thesis provides a reference implementation demonstrating these patterns
 in a real LOSO scenario (128-fold cross-validation on the BOAS dataset), with

@@ -162,7 +162,7 @@ Chapter~4.
 
 \subsection{Boosting: XGBoost}
 
-XGBoost (Extreme Gradient Boosting)~\cite{hastie2009elements} extends
+XGBoost (Extreme Gradient Boosting)~\cite{chen2016xgboost} extends
 gradient boosting with
 regularisation terms, sparsity-aware splitting, and cache-efficient tree
 construction. Unlike Random Forest, boosting models use shallow trees
@@ -218,28 +218,12 @@ actually changed.
 \label{sec:mlresearch}
 % ============================================================================
 
-The landscape of Machine Learning (ML) research and development is
-characterized by rapid iteration and experimentation. According to the
-AI Index Report 2023, AI-related publications have more than doubled since
-2015, reflecting the field's exponential growth~\cite{AIIndex2023}. Data
-scientists and ML engineers continuously explore different model architectures,
-algorithms, hyperparameters, and data preprocessing techniques to achieve
-optimal performance. This iterative process, while essential for innovation,
-introduces significant challenges concerning efficiency and reproducibility.
-A single experiment may require hours or days of computation, and researchers
-often repeat similar computations across multiple runs. The cumulative effect
-translates into substantial costs in GPU hours, cloud computing expenses,
-and researcher productivity~\cite{schubotz2022caching}.
-
-To manage this complexity, standardized process models have emerged.
-CRISP-DM (Cross-Industry Standard Process for Data Mining), developed in
-1996, remains widely adopted~\cite{crispdm2000}. However, its limitations
-for modern ML---particularly lack of emphasis on model monitoring and
-maintenance---led to CRISP-ML(Q), which extends CRISP-DM with quality assurance
-methodology tailored for ML applications~\cite{studer2021crispmlq}. This
-framework aligns with modern MLOps principles, which emphasize automation,
-continuous integration/deployment (CI/CD), and reproducibility throughout
-the ML lifecycle~\cite{kreuzberger2023mlops}.
+ML experimentation is inherently iterative: researchers explore model
+architectures, hyperparameters, and preprocessing configurations across many
+runs, frequently repeating computations when only a subset of parameters
+changes. A single experiment may require hours or days of computation, and
+the cumulative cost of redundant retraining translates into substantial GPU
+hours and researcher time~\cite{schubotz2022caching}.
 
 Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
 support experiment tracking by recording parameters, metrics, implementation
@@ -351,7 +335,12 @@ Efficient ML experimentation depends on configuration management and intelligent
 result reuse. This section reviews technologies directly relevant to the
 fingerprint-based LOSO caching approach developed in this thesis.
 
-The adoption of Leave-One-Subject-Out (LOSO) cross-validation is driven by the requirement for algorithmic stability in high-dimensional EEG datasets. As established by Kearns and Ron (1999), leave-one-out estimators provide essential ``sanity-check'' bounds for generalisation error, ensuring that the model does not merely overfit to subject-specific artefacts~\cite{kearns1999}. However, the computational overhead of LOSO remains a significant barrier to iterative research. Jayaram (2018) emphasises that for EEG-based systems to move beyond the laboratory, processing pipelines must be validated across diverse datasets without requiring constant, redundant retraining~\cite{jayaram2018}. In this thesis, LOSO is utilised not only as a validation metric but as a primary driver for the caching framework: the repetitive nature of the 2{,}304 required training runs provides a high-volume workload where deterministic fingerprinting can demonstrate maximum efficiency gains.
+As established in Section~\ref{sec:loso_background}, LOSO cross-validation
+is necessary for EEG-based ML to avoid inflated generalisation estimates.
+Its computational cost --- 128 training runs per configuration --- also makes
+it the primary driver of the caching framework developed in this thesis:
+the 2{,}304 required training operations provide a high-volume workload where
+deterministic fingerprinting demonstrates its maximum efficiency gains.
 
 \subsection{Configuration Fingerprinting}
 
