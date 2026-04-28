@@ -741,7 +741,7 @@ The primary thesis contribution was evaluated through caching metrics:
       speedup margins erode on smaller datasets, not that caching is
       net-negative in absolute terms.
       These boundaries are applied consistently in Table~\ref{tab:cache_viability}
-      and Figures~\ref{fig:cache_efficiency} and~\ref{fig:viability_scatter}.
+      and Figures~\ref{fig:cache_efficiency} and~\ref{fig:dual_metrics}.
 
 \item \textbf{Relative Cache Efficiency:} A complementary metric
       $\rho = (T_{\text{cold}}/T_{\text{warm}}) / \text{size (MB)}$ [$\times$/MB]
@@ -1125,28 +1125,18 @@ types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common
 characteristic: large serialized model sizes (130--1{,}544~MB per fold) and slow
 deserialization times, which eliminate the loading speed advantage over retraining. The top-performing
 viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
-speedup at only 0.4~MB per fold. Figure~\ref{fig:viability_scatter} visualises
-the viability spectrum.
+speedup at only 0.4~MB per fold. Figure~\ref{fig:dual_metrics} visualises
+the viability spectrum via both metrics.
 
 \begin{center}
 \colorbox{yellow!20}{\begin{minipage}{0.9\textwidth}
 \textbf{Draft Note -- update from PC1 re-run:}
-Figures~\ref{fig:viability_scatter} and~\ref{fig:dual_metrics} were generated
+Figure~\ref{fig:dual_metrics} was generated
 from RTX~5090 viability benchmark data. Regenerate from PC1 benchmark desktop
 re-run before final submission. Verdicts expected to be identical; speedup
 magnitudes will differ.
 \end{minipage}}
 \end{center}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig4b_viability_scatter.pdf}
-\caption[Cache viability scatter: 15 model types ranked by $\eta$]{Cache viability
-across 15 model types, ranked by absolute efficiency $\eta$ (seconds of training
-saved per MB stored; higher is better). Blue bars: cache-viable ($\eta > 2$~s/MB);
-red bars: not viable ($\eta < 0.5$~s/MB).}
-\label{fig:viability_scatter}
-\end{figure}
 
 The two metrics $\eta$ and $\rho$ can diverge in informative ways: a fast-training
 model (e.g.\ 1~s cold, 0.0001~s warm) saves barely a second of absolute time
