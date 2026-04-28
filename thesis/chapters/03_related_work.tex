@@ -1,19 +1,16 @@
 \chapter{Related Works}
 
-This chapter surveys related work along two tracks that together motivate
-and contextualise this thesis. The first track
-(Sections~\ref{sec:related_academic}--\ref{sec:related_gap}) reviews
-existing approaches to ML experiment caching---academic memoisation
-research, commercial MLOps tools, and their shared limitation: none provides
-validated, fold-aware caching for Leave-One-Subject-Out (LOSO)
-cross-validation. The second track
-(Sections~\ref{sec:related_sleep}--\ref{sec:related_industrial}) positions
-the application domain: it surveys sleep stage classification methods to
-establish where this thesis sits in that literature, and examines industrial
-deployment challenges to show why reproducibility and configuration
-management remain unsolved in practice. Together, the two tracks establish
-both the methodological gap this thesis fills and the domain in which it is
-validated.
+This chapter surveys related work on ML experiment caching and the
+reproducibility challenges that motivate this thesis.
+Sections~\ref{sec:related_academic}--\ref{sec:related_gap} review
+academic memoisation research, commercial MLOps tools, and their shared
+limitation: none provides validated, fold-aware caching for
+Leave-One-Subject-Out (LOSO) cross-validation.
+Section~\ref{sec:related_industrial} examines the research-to-production gap
+to show why reproducibility and configuration management remain unsolved in
+practice. Sleep stage classification methods are surveyed in
+Chapter~2 (Section~\ref{sec:sleep_classification}), where they fit
+naturally alongside the EEG domain background.
 
 % ============================================================================
 \section{Academic Research on ML Caching}
@@ -176,71 +173,7 @@ but a validated approach for extending existing fingerprinting
 techniques to cross-validation contexts.
 
 Having characterised the methodological gap in ML experiment caching, the
-following section surveys the sleep stage classification domain in which
-this thesis validates the framework.
-
-% ============================================================================
-\section{Sleep Stage Classification Methods}
-\label{sec:related_sleep}
-% ============================================================================
-
-Sleep stage classification is a well-studied problem in biomedical signal
-processing, with methods broadly grouped into feature-based and deep learning
-approaches.
-
-\subsection{Feature-Based Approaches}
-
-Feature-based sleep staging extracts domain-informed descriptors from EEG
-signals---time-domain statistics, frequency-domain band powers, and signal
-complexity measures---and feeds them to classical ML
-classifiers. Satapathy et al.\ (2024) demonstrate that multi-modality feature
-sets with ensemble classifiers achieve competitive performance, particularly
-in cross-subject settings where training data per subject is
-limited~\cite{satapathy2024multimodal}.
-
-This thesis follows the feature-based paradigm: 149 handcrafted features per
-30-second epoch across 6 EEG channels, classified using XGBoost and Random
-Forest. For reference, Bakian Dogaheh and Moradi (2023) report 81.3\%
-accuracy and Kappa 0.74 using XGBoost on 5-class AASM staging from a
-comparable EEG feature set~\cite{bakian2023xgboost}, providing a benchmark
-against which the 85.5\% LOSO accuracy achieved in this thesis can be
-situated. Feature-based models have the additional advantage of compact
-serialized representations well-suited to fingerprint-based caching.
-
-\subsection{Deep Learning Approaches}
-
-Deep learning methods learn representations directly from raw EEG signals.
-Perslev et al.\ (2021) present U-Sleep, achieving robust cross-hardware
-staging~\cite{perslev2021usleep}. Siddiqui et al.\ (2025) confirm that deep
-models require substantially more computational resources than traditional
-ensembles while ensemble classifiers remain highly competitive on
-standard benchmark datasets~\cite{siddiqui2025}. Deep learning workflows
-address the reuse problem through \textit{checkpointing}---saving intermediate
-training state to resume interrupted optimisation---rather than fold-level
-memoisation. Checkpointing targets a different inefficiency and does not
-prevent redundant retraining when only configuration parameters change.
-This thesis addresses the complementary gap: fold-level memoisation for
-feature-based models, where serialised representations range from
-approximately 1--2~MB per fold (XGBoost) to 120--180~MB per fold
-(Random Forest), and per-fold storage is tractable on a single workstation.
-
-\subsection{LOSO Evaluation in EEG Research}
-
-LOSO cross-validation is preferred in EEG research because EEG signals
-contain strong subject-specific signatures that cause standard $k$-fold
-evaluation to overestimate generalisation performance on unseen
-subjects~\cite{kunjan2021loso}. LOSO ensures the model is evaluated on
-subjects it has never seen, providing a conservative estimate of
-generalisation ability. The computational cost scales directly with subject
-pool size: 128 subjects $\times$ 18 configurations yields 2{,}304 training
-operations, making caching essential for practical parameter search.
-
-Having established both the caching gap
-(Sections~\ref{sec:related_academic}--\ref{sec:related_gap}) and the
-sleep staging domain context (Section~\ref{sec:related_sleep}), the
-following section examines how both converge in industrial deployment,
-where reproducibility and configuration management become critical
-production requirements.
+following section examines how this gap manifests in industrial deployment.
 
 % ============================================================================
 \section{Research-to-Production Gap in ML}

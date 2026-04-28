@@ -13,8 +13,6 @@ ML projects frequently fail not due to algorithmic limitations but due to infras
 
 As Kreuzberger et al.\ observe, many data science projects remain ``manual to a great extent,'' functioning as experimental proofs of concept that fail to operationalise efficiently~\cite{kreuzberger2023mlops}. The 21-hour re-training runs encountered in this project are a textbook instance of this failure mode. By automating the caching decision through a deterministic framework, this thesis moves the pipeline from a manual prototype to an operationalised workflow. Reproducibility is treated as a first-class requirement: identical data partitions and tracked configurations must produce identical fingerprint decisions and equivalent predictive outputs.
 
-Beyond computational efficiency, caching at the LOSO fold level preserves the complete trained model state for each held-out subject individually. Unlike aggregated cross-validation metrics---which collapse 128 fold-specific models into a single summary number---persisting the individual models enables post-hoc scientific analysis: inspecting per-fold feature importances, identifying subject-specific failure modes, or examining structural differences between models trained on different subject populations. This persistence allows domain experts and machine learning practitioners to perform interpretability analyses---such as inspecting decision tree splits or feature importances for a specific subject---without requiring expensive retraining. This ancillary benefit is not a central motivation of this thesis, but it follows directly from caching at the model level rather than the results level.
-
 \section{Research Problem}
 
 Despite rapid advancements in Machine Learning (ML), iterative experimentation workflows face significant computational inefficiencies, particularly in cross-validation scenarios. Leave-One-Subject-Out (LOSO) cross-validation, the standard for evaluating model generalization across individuals, requires training $N$ models for $N$ subjects. In this research, a single 9-configuration XGBoost sweep across 128 subjects required approximately 13,600 seconds ($\approx$3.8 hours) from a cold start. The overhead was significantly higher for Random Forest, where the same sweep exceeded 77,000 seconds ($\approx$21 hours). Consequently, a full 18-configuration experiment can span from several hours to multiple days per complete cold run. When researchers iterate on hyperparameters or feature selection strategies, this process is typically repeated in its entirety, leading to massive redundant computation even when the majority of trained models remain valid under the new configuration.
@@ -80,29 +78,6 @@ dataset, measuring cache hit rates, computational time savings, storage
 requirements, and reproducibility across experimental iterations.
 
 
-\section{Contributions}
-
-This thesis makes the following contributions:
-
-\begin{enumerate}
-\item \textbf{A validated fold-aware fingerprinting mechanism.} SHA-256 hashes
-      of canonical JSON configurations --- with the held-out subject identifier
-      included --- provide deterministic cache keys that structurally prevent
-      cross-fold contamination. The approach reduced a 3{,}816-second cold run
-      to 18.9 seconds for the best XGBoost configuration (202$\times$ speedup).
-
-\item \textbf{Empirical viability benchmarks for 15 model types.} A
-      systematic analysis using two complementary metrics ($\eta$: seconds
-      saved per MB; $\rho$: speedup per MB) identified 11 cache-viable and
-      4 not-viable model families, with a near-decade gap separating the two
-      clusters. Verdicts were consistent across two hardware configurations.
-
-\item \textbf{A reproducibility guarantee across 2{,}304 LOSO folds.}
-      Cached models produced bitwise-identical predictions to cold retraining
-      across all 18 configurations and 128 folds, verified via
-      \texttt{numpy.array\_equal()}.
-\end{enumerate}
-
 \section{Research Questions}
 
 \textbf{Main Research Question:}
@@ -125,36 +100,34 @@ computational savings of the caching approach, and under what conditions
 does caching remain viable?
 \end{itemize}
 
+\section{Contributions}
 
-
-\section{Research Design and Methodology}
-
-This thesis follows a quantitative experimental methodology to evaluate a fingerprint-based caching framework in an EEG sleep staging pipeline. The approach combines implementation, controlled benchmarking, and validation-oriented follow-up experiments.
-
-\subsection{Methodological Phases}
+This thesis makes the following contributions, each directly answering one
+or more of the research questions above:
 
 \begin{enumerate}
-    \item \textbf{Framework Implementation:}
-    A deterministic fingerprinting mechanism based on SHA-256 hashing of canonical experiment configuration is implemented together with a two-level cache architecture:
-    (i) feature-level caching and (ii) LOSO model-level caching.
-    The held-out subject identifier is included in the model cache key to prevent cross-fold reuse.
+\item \textbf{A validated fold-aware fingerprinting mechanism.} SHA-256 hashes
+      of canonical JSON configurations --- with the held-out subject identifier
+      included --- provide deterministic cache keys that structurally prevent
+      cross-fold contamination. The approach reduced a 3{,}816-second cold run
+      to 18.9 seconds for the best XGBoost configuration (202$\times$ speedup)
+      (RQ1, RQ2).
 
-    \item \textbf{Core Benchmark Evaluation:}
-    A full factorial benchmark is executed for two model families (XGBoost, Random Forest) across
-    three correlation-threshold settings and three feature-count settings (18 configurations total),
-    each under 128-fold Leave-One-Subject-Out (LOSO) evaluation.
-    For each configuration, cold-start and warm-cache runs are compared using:
-    total runtime, cache-loading time, speedup ratio, storage cost, and classification performance.
+\item \textbf{Empirical viability benchmarks for 15 model types.} A
+      systematic analysis using two complementary metrics ($\eta$: seconds
+      saved per MB; $\rho$: speedup per MB) identified 11 cache-viable and
+      4 not-viable model families, with a near-decade gap separating the two
+      clusters. Verdicts were consistent across two hardware configurations
+      (RQ3, RQ4).
 
-    \item \textbf{Extended Validation:}
-    Additional experiments assess generalizability and robustness:
-    multi-model cache viability analysis, scaling experiments with increasing subject counts, and feature-selection efficiency analysis (ANOVA versus Mutual Information).
-    Cached model outputs are validated by verifying bitwise-identical predictions against freshly trained baselines; a cache hit is accepted only when every tracked configuration parameter --- including the held-out subject identifier --- matches the stored fingerprint exactly.
-
+\item \textbf{A reproducibility guarantee across 2{,}304 LOSO folds.}
+      Cached models produced bitwise-identical predictions to cold retraining
+      across all 18 configurations and 128 folds, verified via
+      \texttt{numpy.array\_equal()} (RQ2).
 \end{enumerate}
 
 \section{Structure of the Thesis}
-This thesis is structured as follows:
+This thesis follows a quantitative experimental methodology combining framework implementation, controlled cold/warm-start benchmarking across 18 configurations and 128 LOSO folds, and validation experiments covering cache correctness, model viability across 15 model types, and scalability. The chapters are structured as follows:
 
 \begin{itemize}
 \item \textbf{Chapter 1: Introduction} presents the motivation rooted in
@@ -168,9 +141,7 @@ contrasting serialisation characteristics, then covers ML research methodology,
 computational efficiency challenges, and the configuration fingerprinting
 and caching technologies the framework builds upon.
 
-\item \textbf{Chapter 3: Related Works} reviews existing MLOps tools
-(MLflow, DVC, ZenML), sleep stage classification methods grouped by technique,
-and identifies the gap in LOSO-aware caching that this work addresses.
+\item \textbf{Chapter 3: Related Works} reviews existing academic and commercial MLOps caching approaches (MLflow, DVC, ZenML) and identifies the gap in validated, fold-aware LOSO caching that this work fills.
 
 \item \textbf{Chapter 4: Methodology and Results} details the fingerprint-based
 caching framework, the BOAS dataset, preprocessing pipeline, extraction of

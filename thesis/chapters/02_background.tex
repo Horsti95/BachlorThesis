@@ -1,6 +1,6 @@
 \chapter{Background}
 
-This chapter provides the theoretical foundation and contextual background necessary to understand and evaluate the fingerprint-based LOSO caching framework. To establish a clear narrative, the chapter follows a bottom-up progression from the data domain to the computational solution: Sections~\ref{sec:sleep_medicine} and \ref{sec:eeg_processing} introduce the sleep medicine domain and EEG signal processing concepts that define the validation scenario and dataset. Next, Section~\ref{sec:ensemble_methods} describes the Machine Learning ensemble classifiers utilized to analyze this data, highlighting their contrasting serialization characteristics. Building on this modeling foundation, Sections~\ref{sec:mlresearch} and \ref{sec:comp_efficiency} detail the broader ML research methodology and the severe computational bottlenecks encountered during large-scale iterative training. Finally, Section~\ref{sec:fingerprinting} introduces the configuration fingerprinting and caching technologies that this framework builds upon to resolve these inefficiencies.
+This chapter provides the theoretical foundation and contextual background necessary to understand and evaluate the fingerprint-based LOSO caching framework. The chapter follows a bottom-up progression from the data domain to the computational solution. Sections~\ref{sec:sleep_medicine} and \ref{sec:eeg_processing} introduce the sleep medicine domain and EEG signal processing concepts that define the validation scenario. Section~\ref{sec:sleep_classification} surveys sleep stage classification methods and positions this thesis within that literature. Section~\ref{sec:ensemble_methods} describes the two ensemble classifiers used, highlighting their contrasting serialisation characteristics. Section~\ref{sec:loso_background} formalises Leave-One-Subject-Out cross-validation and its computational implications. Section~\ref{sec:mlresearch_efficiency} covers ML research methodology and computational efficiency challenges. Finally, Section~\ref{sec:fingerprinting} introduces the configuration fingerprinting and caching technologies the framework builds upon.
 
 % ============================================================================
 \section{Sleep Medicine Fundamentals}
@@ -127,6 +127,51 @@ The specific filter parameters and rejection thresholds applied in this
 thesis are described in Section~\ref{sec:preprocessing}.
 
 % ============================================================================
+\section{Sleep Stage Classification Methods}
+\label{sec:sleep_classification}
+% ============================================================================
+
+Sleep stage classification is a well-studied problem in biomedical signal
+processing, with methods broadly grouped into feature-based and deep learning
+approaches.
+
+\subsection{Feature-Based Approaches}
+
+Feature-based sleep staging extracts domain-informed descriptors from EEG
+signals---time-domain statistics, frequency-domain band powers, and signal
+complexity measures---and feeds them to classical ML
+classifiers. Satapathy et al.\ (2024) demonstrate that multi-modality feature
+sets with ensemble classifiers achieve competitive performance, particularly
+in cross-subject settings where training data per subject is
+limited~\cite{satapathy2024multimodal}.
+
+This thesis follows the feature-based paradigm: 149 handcrafted features per
+30-second epoch across 6 EEG channels, classified using XGBoost and Random
+Forest. For reference, Bakian Dogaheh and Moradi (2023) report 81.3\%
+accuracy and Kappa 0.74 using XGBoost on 5-class AASM staging from a
+comparable EEG feature set~\cite{bakian2023xgboost}, providing a benchmark
+against which the 85.5\% LOSO accuracy achieved in this thesis can be
+situated. Feature-based models have the additional advantage of compact
+serialized representations well-suited to fingerprint-based caching.
+
+\subsection{Deep Learning Approaches}
+
+Deep learning methods learn representations directly from raw EEG signals.
+Perslev et al.\ (2021) present U-Sleep, achieving robust cross-hardware
+staging~\cite{perslev2021usleep}. Siddiqui et al.\ (2025) confirm that deep
+models require substantially more computational resources than traditional
+ensembles while ensemble classifiers remain highly competitive on
+standard benchmark datasets~\cite{siddiqui2025}. Deep learning workflows
+address the reuse problem through \textit{checkpointing}---saving intermediate
+training state to resume interrupted optimisation---rather than fold-level
+memoisation. Checkpointing targets a different inefficiency and does not
+prevent redundant retraining when only configuration parameters change.
+This thesis addresses the complementary gap: fold-level memoisation for
+feature-based models, where serialised representations range from
+approximately 1--2~MB per fold (XGBoost) to 120--180~MB per fold
+(Random Forest), and per-fold storage is tractable on a single workstation.
+
+% ============================================================================
 \section{Machine Learning Ensemble Methods}
 \label{sec:ensemble_methods}
 % ============================================================================
@@ -181,8 +226,10 @@ Additionally, both models handle the 149-dimensional feature space
 effectively and provide interpretable feature importance scores for
 post-hoc analysis.
 
-\subsection{Leave-One-Subject-Out Cross-Validation}
+% ============================================================================
+\section{Cross-Validation in Subject-Independent ML}
 \label{sec:loso_background}
+% ============================================================================
 
 EEG signals exhibit high inter-subject variability: brain activity patterns
 differ substantially between individuals due to anatomical differences,
@@ -214,9 +261,10 @@ redundant retraining operations regardless of how little the configuration
 actually changed.
 
 % ============================================================================
-\section{Machine Learning Research Methodology}
+\section{Machine Learning Research Methodology and Computational Efficiency}
+\label{sec:mlresearch_efficiency}
 \label{sec:mlresearch}
-% ============================================================================
+\label{sec:comp_efficiency}
 
 ML experimentation is inherently iterative: researchers explore model
 architectures, hyperparameters, and preprocessing configurations across many
@@ -267,22 +315,10 @@ execution environment. Challenges arise from:
           construction and unaffected by these concerns.
 \end{itemize}
 
-% ============================================================================
-\section{Computational Efficiency in Research}
-\label{sec:comp_efficiency}
-% ============================================================================
-
-Building on the iterative experimentation challenges described in
-Section~\ref{sec:mlresearch}, this section examines the computational efficiency bottlenecks
-that motivate intelligent caching frameworks.
-
 The increasing complexity and scale of Machine Learning models have
 substantially raised computational demands. Training models, tuning
 hyperparameters, and running repeated experiments consume vast compute,
-memory, and time resources, creating bottlenecks in research productivity
-and driving up costs.
-
-Several factors drive this resource consumption:
+memory, and time resources. Several factors drive this resource consumption:
 
 \begin{itemize}
 \item \textbf{Large Datasets:} Massive datasets require intensive I/O and

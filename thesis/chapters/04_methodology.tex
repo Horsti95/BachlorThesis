@@ -540,7 +540,65 @@ directory is deleted entirely, triggering full recomputation on the next run.
 Both strategies are available; the benchmark uses version bumping for
 controlled invalidation tests and purging for full cold-start baselines.
 
+\subsection{Verification and Invalidation Testing}
+\label{sec:verification}
 
+Prior to the full 18-configuration benchmark, the caching system was verified
+on a 3-subject, 12-configuration reduced grid (24 cache operations total).
+Three tests were run:
+
+\textbf{Cold/warm correctness:} An empty cache produced 24 misses;
+an identical re-run retrieved all 24 cached models (100\% hit rate).
+Cached models produced bitwise-identical predictions to freshly trained
+models (\texttt{numpy.array\_equal()}), and accuracy / F1 / Cohen's $\kappa$
+matched to floating-point precision ($<10^{-10}$). All 12 configurations
+generated distinct SHA-256 fingerprints (zero collisions).
+
+\textbf{Incremental sweep expansion:} Table~\ref{tab:incremental_sweep}
+shows that expanding the grid in three steps reuses all previously cached
+configurations automatically, without manual cache management.
+
+\begin{table}[htbp]
+\centering
+\caption[Incremental sweep test: partial cache reuse]{Incremental sweep test: cache hit/miss pattern as the experiment
+grid grows.}
+\label{tab:incremental_sweep}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Step} & \textbf{Grid} & \textbf{Operations} & \textbf{Hits} & \textbf{Misses} \\
+\midrule
+1 & XGB $\times$ [0.90] $\times$ [30, 50] & 6 & 0 & 6 \\
+2 & XGB $\times$ [0.90] $\times$ [30, 50, None] & 9 & 6 & 3 \\
+3 & [XGB, RF] $\times$ [0.90] $\times$ [30, 50, None] & 18 & 9 & 9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Invalidation correctness:} Table~\ref{tab:invalidation} confirms
+that each of three deliberate parameter changes produces a new fingerprint
+and forces a cache miss.
+\label{sec:invalidation}
+
+\begin{table}[htbp]
+\centering
+\caption[Cache invalidation tests]{Cache invalidation: each parameter change produces a distinct
+SHA-256 fingerprint and forces retraining.}
+\label{tab:invalidation}
+\begin{tabular}{llll}
+\toprule
+\textbf{Change} & \textbf{Parameter} & \textbf{Fingerprint} & \textbf{Result} \\
+\midrule
+Hyperparameter & \texttt{max\_depth}: 6 $\to$ 8 & Different & Cache miss \checkmark \\
+Feature selection & top-K: 30 $\to$ 50 & Different & Cache miss \checkmark \\
+Held-out subject & sub-1 $\to$ sub-2 & Different & Separate entry \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All three tests passed. The third test confirms no cross-fold contamination:
+models for sub-1 and sub-2 are stored under distinct keys. These results
+justified proceeding to the full 2{,}304-operation experiment
+(Section~\ref{sec:results_caching}).
 
 \section{Experimental Setup}
 \label{sec:experiment_setup}
@@ -736,111 +794,6 @@ and resumability (an interrupted pipeline restarted from cache yields the
 same final results as an uninterrupted run). All three properties were
 confirmed across all 18 configurations in the full-scale experiment.
 
-\section{Cache Implementation Validation}
-\label{sec:verification}
-
-Prior to conducting the full 18-configuration experiment, the caching system
-underwent preliminary verification on a reduced grid to confirm correctness
-before committing to the full-scale runs. The full-scale results
-(Section~\ref{sec:results_caching}) supersede the preliminary numbers reported here.
-
-\subsection{Test Design}
-
-The verification protocol used 3 subjects and a reduced grid (12 configurations,
-24 cache operations total) to confirm correctness before full-scale runs.
-The protocol consists of three tests:
-
-\textbf{Cold/warm correctness:} Empty cache (24 misses) followed by identical
-re-run (24 hits); cached and fresh model predictions compared bitwise.
-
-\textbf{Incremental sweep expansion (partial reuse):} Simulates iterative
-parameter search by growing the experiment grid in three steps.
-Table~\ref{tab:incremental_sweep} shows the expected cache behaviour.
-
-\begin{table}[htbp]
-\centering
-\caption[Incremental sweep test: partial cache reuse]{Incremental sweep test: cache hit/miss pattern as the experiment
-grid grows. Configurations already cached in a prior step are reused;
-only new configurations retrain.}
-\label{tab:incremental_sweep}
-\begin{tabular}{llccc}
-\toprule
-\textbf{Step} & \textbf{Grid} & \textbf{Operations} & \textbf{Hits} & \textbf{Misses} \\
-\midrule
-1 & XGB $\times$ [0.90] $\times$ [30, 50] & 6 & 0 & 6 \\
-2 & XGB $\times$ [0.90] $\times$ [30, 50, None] & 9 & 6 & 3 \\
-3 & [XGB, RF] $\times$ [0.90] $\times$ [30, 50, None] & 18 & 9 & 9 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Step~2 adds one top-K value: the two existing configs hit the cache (6 hits),
-only the new top-K=None config retrains (3 misses = 1 config $\times$ 3 subjects).
-Step~3 adds Random Forest: all 9 XGBoost models hit (already cached), all 9
-RF models miss. This demonstrates that the fingerprint correctly distinguishes
-configurations within an evolving sweep --- an expanding grid reuses prior
-work without any manual cache management.
-
-\textbf{Invalidation correctness:} Verified in Section~\ref{sec:invalidation}.
-
-\subsection{Verification Results}
-
-On the 3-subject verification grid (24 cache operations), the cold start
-produced 24 misses (0\% hit rate) and the subsequent warm re-run retrieved
-all 24 cached models (100\% hit rate). Speedup measurements are reported
-for the full-scale evaluation in Section~\ref{sec:results_caching}.
-
-\subsection{Correctness Validation}
-
-Beyond hit/miss behaviour, the verification suite programmatically validated
-cache correctness across all 24 operations (3 subjects $\times$ 8 configurations,
-cold and warm runs compared automatically):
-
-\begin{itemize}
-\item \textbf{Prediction Identity:} Cached models produced bitwise-identical
-      predictions to freshly trained models, verified programmatically via
-      \verb|numpy.array_equal(cold_preds, warm_preds)| for each of the 24
-      configuration--subject pairs.
-\item \textbf{Metric Reproducibility:} Accuracy, F1, and Cohen's $\kappa$ scores
-      matched to floating-point precision ($<10^{-10}$ difference), computed
-      independently for both runs and compared automatically.
-\item \textbf{Zero Corruption:} All 24 pickle save/load cycles completed without
-      errors; file integrity was confirmed by successful deserialization and
-      inference on the held-out test set.
-\item \textbf{Fingerprint Uniqueness:} All 12 configurations generated distinct
-      SHA-256 fingerprints (zero hash collisions), verified by asserting
-      uniqueness of the fingerprint set.
-\end{itemize}
-
-\subsection{Invalidation Testing}
-\label{sec:invalidation}
-
-Table~\ref{tab:invalidation} summarises three deliberate-modification tests,
-each verifying that a single parameter change produces a new fingerprint and
-a cache miss.
-
-\begin{table}[htbp]
-\centering
-\caption[Cache invalidation tests: fingerprint sensitivity]{Cache invalidation tests: each parameter change produces a distinct
-SHA-256 fingerprint and forces retraining.}
-\label{tab:invalidation}
-\begin{tabular}{llll}
-\toprule
-\textbf{Change} & \textbf{Parameter} & \textbf{Fingerprint} & \textbf{Result} \\
-\midrule
-Hyperparameter & \texttt{max\_depth}: 6 $\to$ 8 & Different & Cache miss \checkmark \\
-Feature selection & top-K: 30 $\to$ 50 & Different & Cache miss \checkmark \\
-Held-out subject & sub-1 $\to$ sub-2 & Different & Separate entry \checkmark \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-All three tests passed programmatically (SHA-256 hashes compared before and
-after each modification). The third test confirms no cross-fold contamination:
-models for sub-1 and sub-2 are stored under distinct keys and cannot be
-retrieved for the wrong subject. These results justified proceeding to the
-full 2{,}304-operation experiment
-(Section~\ref{sec:results_caching}).
 
 % ============================================================================
 % RESULTS — within Chapter 4 per professor's structure
@@ -1373,6 +1326,11 @@ figure height. Regenerate after re-run.
       VIABLE/NOT\_VIABLE verdict is unchanged because it depends on model
       serialization size, not absolute timings.
 \end{itemize}
+
+These scope boundaries do not undermine the primary thesis claim but define
+the conditions under which the numerical results hold.
+Chapter~\ref{chap:summary} revisits the most consequential of these
+limitations in the context of future work.
 
 % Additional figures available but not referenced:
 % figures/fig_bonus_cache_efficiency.pdf — alternative cache efficiency view
