@@ -350,17 +350,6 @@ Mutual Information  & 3.74  & 80.58\% \\
 \end{table}
 
 This is not a trade-off: ANOVA is simultaneously faster \textit{and} more accurate on this dataset.
-The 174$\times$ timing advantage compounds critically at LOSO scale.
-At 3.74 seconds per fold on a high-end RTX~5090 workstation,
-MI feature selection alone would consume 478 seconds
-(128 folds $\times$ 3.74~s) per configuration, and $\sim$8{,}600 seconds
-($\approx$2.4 hours) across the full 18-configuration grid---before a single model is trained.
-On standard clinical hardware (laptop-class CPU, no GPU), this cost would be
-substantially higher, making MI-based workflows impractical for iterative LOSO
-experimentation. The pilot was conducted on 10 subjects with Random Forest
-(5-fold CV) and should be interpreted as a directional benchmark rather than
-a full-scale evaluation; a systematic per-algorithm comparison across all 128
-subjects is a direction for future work.
 
 \textbf{Methodological note on feature-selection scope.}
 Feature selection is performed \textbf{globally} (\texttt{scope=global}): the
@@ -967,15 +956,7 @@ cross-validation across 128 subjects. XGBoost occupies the top 7 positions in th
 ranking, with Random Forest configurations placing 8th--18th. The N1 sleep stage
 consistently shows lower per-class F1 due to its transitional nature, similarity
 to adjacent stages Wake and N2, and severe class imbalance (3.7\% of all epochs;
-Section~\ref{sec:data}). Figure~\ref{fig:per_class_f1} shows the per-class F1 breakdown.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig6_per_class_f1.pdf}
-\caption[Per-class F1 scores: best XGBoost configuration]{Per-class F1 scores for best XGBoost configuration (128-fold LOSO).
-N1 shows lowest F1 due to transitional stage characteristics.}
-\label{fig:per_class_f1}
-\end{figure}
+Section~\ref{sec:data}); this pattern is visible in the confusion matrix (Figure~\ref{fig:confusion_matrix}).
 
 \subsection{Reproducibility Results}
 \label{sec:results_reproducibility}
