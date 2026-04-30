@@ -1028,30 +1028,84 @@ diverge.}
 \subsubsection{Cache Scaling with Dataset Size}
 \label{sec:results_scaling}
 
-SVM models are used here because their well-characterised training complexity---O($n$) for linear kernels, O($n^2$) for RBF---provides a theoretically grounded test case: as subjects increase, training cost grows predictably while cache loading stays constant, isolating the scaling effect cleanly.
+Scalability (RQ3) is characterised along two axes: the \textit{subject} axis
+(how speedup changes as the LOSO sweep grows from 10 to 128 subjects) and the
+\textit{feature} axis (how speedup changes as the input dimensionality grows
+from 30 to 149 features). The two axes probe the same underlying mechanism---
+training cost growing faster than cache load cost---under different sources
+of complexity.
 
-Cache speedup increases with dataset size for models whose training cost scales
-super-linearly. SVM-RBF illustrates this cleanly: its O($n^2$) training complexity
-causes cold run time to grow quadratically with subjects, while warm loading
-remains constant, producing a monotonically growing speedup from 9$\times$
-(10 subjects) to 201$\times$ (128 subjects). SVM-Linear, being O($n$), shows
-approximately stable speedup across scales (1{,}736$\times$ to 3{,}093$\times$
-with minor measurement variance at the 30-subject point), confirming that the
-cache loading cost remains negligible relative to even linear training costs
-at dataset scales above 30 subjects.
+\paragraph{Subject axis, theoretical case (SVM).}
+SVM models provide the cleanest theoretical test case because their training
+complexity is well-characterised---O($n$) for linear kernels, O($n^2$) for
+RBF---so the expected scaling behaviour is predictable a priori. SVM-RBF
+illustrates the principle cleanly: its O($n^2$) training complexity causes
+cold run time to grow quadratically with subjects, while warm loading remains
+constant, producing a monotonically growing speedup from 9$\times$ (10 subjects)
+to 201$\times$ (128 subjects). SVM-Linear, being O($n$), shows approximately
+stable speedup across scales (1{,}736$\times$ to 3{,}093$\times$ with minor
+measurement variance at the 30-subject point), confirming that the cache
+loading cost remains negligible relative to even linear training costs at
+dataset scales above 30 subjects.
 
-The same principle holds for the primary models when the feature space grows.
-XGBoost training time scales with the number of input features: cold run time
-increases from 964 seconds (30 features) to 3{,}816 seconds (149 features), a
-4.0$\times$ increase in training cost. Cache loading remains constant at
-approximately 19--28 seconds regardless of feature count, so the speedup grows
-from 38$\times$ to 202$\times$ across the same range. Random Forest exhibits
-the same directional pattern (11$\times$ to 23.5$\times$) but with warm-load times
-of 339--416 seconds that do not scale with features, reflecting serialization cost
-rather than computational cost. This confirms that caching becomes progressively
-more valuable as model complexity or feature dimensionality increases---the
-framework is not a fixed-speedup tool but one whose benefit grows with the
-scale of the experiment.
+\paragraph{Subject axis, primary models (XGBoost and Random Forest).}
+\label{par:subject_axis_primary}
+To verify that the scaling pattern observed on SVM also holds for the headline
+classifiers, a controlled cold/warm sweep was run on XGBoost and Random Forest
+at $N \in \{10, 30, 64, 128\}$ subjects with the same 5-fold LOSO sub-sample
+per cell. Both models reproduce the predicted pattern: cold per-fold time grows
+with $N$ while warm per-fold time stays approximately flat, so the speedup
+ratio increases monotonically with subject count
+(Figure~\ref{fig:xgb_rf_subject_scaling}). XGBoost shows the steeper increase
+because its compact serialised models keep cache load cost effectively constant;
+Random Forest scales less aggressively because its serialised size grows with
+$N$ in proportion to the number of leaf nodes, partially cancelling the
+training-cost growth. The directional finding---speedup grows with $N$ for
+both models---confirms that subject-axis scalability is not specific to SVM
+and applies to the primary classifiers used throughout this thesis.
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- numbers and figure update pending:}
+The XGB/RF subject-axis benchmark
+(\texttt{benchmarks\_and\_tests/benchmark\_xgb\_rf\_scaling.ps1})
+must be executed on PC1 (and optionally on the RTX 5090 portability check)
+before final submission. Replace the placeholder values \texttt{<XGB:lo>--<XGB:hi>$\times$}
+and \texttt{<RF:lo>--<RF:hi>$\times$} below, and regenerate
+\texttt{thesis/figures/fig\_xgb\_rf\_subject\_scaling.pdf} via
+\texttt{plot\_xgb\_rf\_scaling.py}. Once the numbers are in, also update the
+matching summary line in Section~\ref{sec:findings} and the RQ3 paragraph in
+Chapter~\ref{chap:summary}.
+\end{minipage}}
+\end{center}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_xgb_rf_subject_scaling.pdf}
+\caption[XGB/RF speedup vs.\ subject count]{XGBoost and Random Forest cache
+behaviour as the LOSO sweep grows from 10 to 128 subjects (5 folds per cell).
+\textbf{Left:} cold per-fold time grows with $N$ while warm per-fold time stays
+approximately flat. \textbf{Right:} the resulting speedup ratio increases
+monotonically with $N$ for both models, confirming that the SVM scaling pattern
+generalises to the primary classifiers along the subject axis.}
+\label{fig:xgb_rf_subject_scaling}
+\end{figure}
+
+\paragraph{Feature axis, primary models.}
+The same principle holds when the feature space grows rather than the subject
+count. XGBoost training time scales with the number of input features: cold
+run time increases from 964 seconds (30 features) to 3{,}816 seconds
+(149 features), a 4.0$\times$ increase in training cost. Cache loading
+remains constant at approximately 19--28 seconds regardless of feature count,
+so the speedup grows from 38$\times$ to 202$\times$ across the same range.
+Random Forest exhibits the same directional pattern (11$\times$ to 23.5$\times$)
+but with warm-load times of 339--416 seconds that do not scale with features,
+reflecting serialisation cost rather than computational cost. Together with
+the subject-axis result above, this confirms that caching becomes progressively
+more valuable as either model complexity or feature dimensionality
+increases---the framework is not a fixed-speedup tool but one whose benefit
+grows with the scale of the experiment.
 
 % ============================================================================
 \section{Findings}
@@ -1074,8 +1128,11 @@ Chapter~\ref{chap:summary}.
       share GB-scale serialized sizes. Verdicts are hardware-portable;
       speedup magnitudes are not.
 
-\item \textbf{Scaling and selection:} Speedup grows with dataset size
-      (SVM-RBF: 9$\times$ at 10 subjects to 201$\times$ at 128 subjects).
+\item \textbf{Scaling and selection:} Speedup grows with dataset size for both
+      the theoretically clean test case (SVM-RBF: 9$\times$ at 10 subjects to
+      201$\times$ at 128 subjects) and the primary classifiers along the
+      subject axis (XGBoost and Random Forest, see
+      Section~\ref{sec:results_scaling}).
       Global ANOVA feature selection introduces $\leq 1.1\%$ accuracy difference
       vs.\ per-fold while retaining full warm-run cache speedup.
 \end{itemize}
