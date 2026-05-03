@@ -75,6 +75,12 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
       via \texttt{numpy.array\_equal()}).
 \end{enumerate}
 
+A supplementary comparison found ANOVA feature selection strictly superior
+to Mutual Information for this feature set: 174$\times$ faster to fit and
+3.68 percentage points more accurate (84.26\% vs.\ 80.58\%). While not a
+primary caching result, this finding informed the choice of selection method
+used across all configurations.
+
 \subsection{Research Questions Revisited}
 
 The four research questions posed in Chapter~1 are answered below. Where the
@@ -101,29 +107,20 @@ answer is affirmative, the nuance matters as much as the confirmation.
       eliminating a class of subtle scientific validity bugs without any
       performance cost.
 
-\item \textbf{RQ3 (Scalability):} Confirmed directionally along two axes.
-      \textit{Subject axis:} cache benefit increases with dataset size for
-      models whose training complexity scales super-linearly (SVM-RBF:
-      9$\times$ at 10 subjects to 201$\times$ at 128 subjects). The same
-      monotonic-growth pattern was reproduced on the primary classifiers
-      (XGBoost and Random Forest) at $N \in \{10, 30, 64, 128\}$ subjects,
-      confirming that the scaling property is not specific to SVM but
-      generalises to the headline models of this thesis. For linearly-scaling
-      models the speedup is approximately stable but already high (SVM-Linear:
-      $\sim$2{,}000$\times$ across all scales). \textit{Feature axis:} on
-      XGBoost and Random Forest with the LOSO grid held at 128 subjects,
-      growing the input dimensionality from 30 to 149 features increased
-      speedup from 38$\times$ to 202$\times$ (XGB) and 11$\times$ to
-      23.5$\times$ (RF). The implication along both axes is that caching
-      becomes \textit{more} valuable as studies grow, not less. A second
-      counterintuitive result from cross-machine comparison: caching also
-      becomes more valuable on \textit{slower} hardware. Cache load time is
-      I/O-bound and approximately constant across machines, while cold
-      training time is CPU-bound and scales with hardware speed. A researcher
-      on a standard laptop who trains $3\times$ slower than a high-end
-      workstation observes speedup ratios $\sim$$3\times$ larger --- the
-      framework delivers its greatest gains precisely where compute resources
-      are most constrained.
+\item \textbf{RQ3 (Scalability):} Confirmed directionally. Cache benefit
+      increases with dataset size for models whose training complexity scales
+      super-linearly (SVM-RBF: 9$\times$ at 10 subjects to 201$\times$ at 128
+      subjects). For linearly-scaling models the speedup is approximately
+      stable but already high (SVM-Linear: $\sim$2{,}000$\times$ across all
+      scales). The implication is that caching becomes \textit{more} valuable
+      as studies grow, not less. A second counterintuitive result from
+      cross-machine comparison: caching also becomes more valuable on
+      \textit{slower} hardware. Cache load time is I/O-bound and approximately
+      constant across machines, while cold training time is CPU-bound and
+      scales with hardware speed. A researcher on a standard laptop who trains
+      $3\times$ slower than a high-end workstation observes speedup ratios
+      $\sim$$3\times$ larger --- the framework delivers its greatest gains
+      precisely where compute resources are most constrained.
 
 \item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists, but
       the VIABLE/NOT\_VIABLE boundary is not universal --- it depends on the
@@ -248,6 +245,22 @@ plugins for DVC, ZenML, or MLflow, encoding held-out subject IDs in step
 cache keys and making fold-aware caching accessible to researchers who already
 use these platforms. The $\eta$-based viability verdicts established here
 would directly inform the default caching policy of such plugins.
+
+\subsection{FNN and Deep Model Evaluation}
+
+A feedforward neural network was implemented and verified on a 5-subject pilot ($\approx$78\% accuracy, 4.2$\times$ speedup) but excluded from the full benchmark due to environment constraints. Evaluating deep model caching under LOSO would extend the viability analysis to gradient-based optimisers and test whether the fingerprint mechanism generalises to non-deterministic training dynamics.
+
+\subsection{Two-Tier RAM+Disk Caching}
+
+An in-memory LRU cache above the disk store could reduce latency for workflows where the same models are accessed repeatedly within a session. For the batch-oriented workflow in this thesis, disk I/O was not the dominant bottleneck; however, latency-sensitive production deployments with repeated access patterns could benefit meaningfully.
+
+\subsection{Cross-Experiment Cache Reuse}
+
+When two experiments share the same feature extraction pipeline but differ only in model configuration, the Layer~1 feature store could be shared across experiment directories. This would require a shared registry mapping fingerprints to storage locations, with access control preventing unintended cross-experiment contamination.
+
+\subsection{Scalability}
+
+Extending the framework to hundreds of hyperparameter combinations would require selective eviction policies and hierarchical invalidation, where upstream changes (e.g.\ preprocessing updates) cascade automatically to downstream caches. The current implementation handles 18 configurations $\times$ 128 folds; production-scale use would require these mechanisms.
 
 \subsection*{A Research Trajectory}
 
