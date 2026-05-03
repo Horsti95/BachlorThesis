@@ -247,10 +247,10 @@ def fig3_efficiency(show: bool):
     ax.set_yscale("log")
     ax.set_xlabel("Cache size per fold (MB)", fontsize=11)
     ax.set_ylabel("Time saved per fold (seconds)", fontsize=11)
-    ax.set_title("Cache Efficiency: Compute Savings vs. Storage Cost\n"
-                 "Above the line = viable (saves more time per MB stored)",
+    ax.set_title("Cache viability: compute time saved per MB stored\n"
+                 "Above the dashed boundary, training time recovered exceeds disk-I/O cost",
                  fontsize=12)
-    ax.legend(fontsize=8, loc="upper left")
+    ax.legend(fontsize=8, loc="lower right")
     ax.grid(True, alpha=0.2, which="both")
 
     fig.tight_layout()
