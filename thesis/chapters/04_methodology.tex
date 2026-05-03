@@ -686,90 +686,6 @@ Five scenarios were executed to evaluate caching performance:
 \item \textbf{Add New Subjects:} Existing subjects hit, new subjects miss
 \end{enumerate}
 
-\section{Cache Verification Testing}
-\label{sec:verification}
-
-Prior to conducting the full 18-configuration experiment, the caching system
-underwent preliminary verification on a reduced grid to confirm correctness
-before committing to the full-scale runs. The full-scale results
-(Chapter~\ref{chap:results}) supersede the preliminary numbers reported here.
-
-\subsection{Test Design}
-
-The verification protocol tested cache behavior using a reduced experimental
-grid (3 subjects $\times$ 8 configurations = 24 cache operations):
-
-\begin{itemize}
-\item \textbf{Subjects:} sub-1, sub-2, sub-3 (representative sample)
-\item \textbf{Models:} XGBoost, Random Forest
-\item \textbf{Feature Counts:} 30, 50, 149 (all)
-\item \textbf{Correlation Thresholds:} 0.75, None
-\item \textbf{Total Combinations:} $2 \times 3 \times 2 = 12$ configurations
-      ($\times$ 2 runs = 24 cache operations)
-\end{itemize}
-
-\textbf{Test Structure:}
-\begin{enumerate}
-\item \textbf{Cold Run:} Execute all 24 configurations with empty cache (expects 24 misses)
-\item \textbf{Warm Run:} Re-execute identical configurations (expects 24 hits)
-\item \textbf{Verification:} Compare predictions and metrics between runs
-\end{enumerate}
-
-\subsection{Verification Results}
-
-The cold run produced 24 cache misses (0\% hit rate), as expected for an empty cache. The subsequent warm re-run correctly retrieved all 24 cached models (100\% hit rate, 0 misses). Speedup measurements are reported separately in the full-scale evaluation (Section~\ref{sec:results_caching}).
-
-\subsection{Correctness Validation}
-
-Beyond hit/miss behaviour, the verification suite programmatically validated
-cache correctness across all 24 operations (3 subjects $\times$ 8 configurations,
-cold and warm runs compared automatically):
-
-\begin{itemize}
-\item \textbf{Prediction Identity:} Cached models produced bitwise-identical
-      predictions to freshly trained models, verified programmatically via
-      \verb|numpy.array_equal(cold_preds, warm_preds)| for each of the 24
-      configuration--subject pairs.
-\item \textbf{Metric Reproducibility:} Accuracy, F1, and Cohen's $\kappa$ scores
-      matched to floating-point precision ($<10^{-10}$ difference), computed
-      independently for both runs and compared automatically.
-\item \textbf{Zero Corruption:} All 24 pickle save/load cycles completed without
-      errors; file integrity was confirmed by successful deserialization and
-      inference on the held-out test set.
-\item \textbf{Fingerprint Uniqueness:} All 12 configurations generated distinct
-      SHA-256 fingerprints (zero hash collisions), verified by asserting
-      uniqueness of the fingerprint set.
-\end{itemize}
-
-\subsection{Invalidation Testing}
-
-Cache invalidation was verified by deliberately modifying individual
-configuration parameters and asserting that the framework correctly triggered
-a cache miss (i.e., retrained from scratch) in each case:
-
-\begin{itemize}
-\item \textbf{Changed Hyperparameter:} Modifying \verb|max_depth| from 6 to 8
-      produced a different fingerprint and triggered a cache miss, confirming
-      that hyperparameter changes invalidate the cache.
-\item \textbf{Changed Feature Selection:} Changing top-K from 30 to 50 produced
-      a different fingerprint and triggered a cache miss, confirming that
-      feature configuration changes invalidate the cache.
-\item \textbf{Changed Held-Out Subject:} Running sub-1 vs.\ sub-2 with identical
-      model parameters produced different fingerprints and separate cache entries,
-      confirming that no cross-fold contamination occurs.
-\end{itemize}
-
-In each test, the fingerprint difference was verified programmatically by
-comparing the SHA-256 hashes before and after the parameter modification.
-These results confirmed that the caching logic correctly distinguishes
-configurations at the individual-parameter level and justified proceeding
-to the full 2{,}304-operation experiment. The full-scale caching results
-are presented in Section~\ref{sec:results_caching}.
-
-Note: feature selection uses \texttt{scope=global} in all 18 configurations;
-the associated methodological disclosure and empirical impact are detailed in
-Section~\ref{sec:features} (Feature Selection Strategy).
-
 \section{Evaluation Metrics}
 \label{sec:evaluation_plan}
 
@@ -856,6 +772,89 @@ and resumability (an interrupted pipeline restarted from cache yields the
 same final results as an uninterrupted run). All three properties were
 confirmed across all 18 configurations in the full-scale experiment.
 
+\section{Cache Verification Testing}
+\label{sec:verification}
+
+Prior to conducting the full 18-configuration experiment, the caching system
+underwent preliminary verification on a reduced grid to confirm correctness
+before committing to the full-scale runs. The full-scale results
+(Chapter~\ref{chap:results}) supersede the preliminary numbers reported here.
+
+\subsection{Test Design}
+
+The verification protocol tested cache behavior using a reduced experimental
+grid (3 subjects $\times$ 8 configurations = 24 cache operations):
+
+\begin{itemize}
+\item \textbf{Subjects:} sub-1, sub-2, sub-3 (representative sample)
+\item \textbf{Models:} XGBoost, Random Forest
+\item \textbf{Feature Counts:} 30, 50, 149 (all)
+\item \textbf{Correlation Thresholds:} 0.75, None
+\item \textbf{Total Combinations:} $2 \times 3 \times 2 = 12$ configurations
+      ($\times$ 2 runs = 24 cache operations)
+\end{itemize}
+
+\textbf{Test Structure:}
+\begin{enumerate}
+\item \textbf{Cold Run:} Execute all 24 configurations with empty cache (expects 24 misses)
+\item \textbf{Warm Run:} Re-execute identical configurations (expects 24 hits)
+\item \textbf{Verification:} Compare predictions and metrics between runs
+\end{enumerate}
+
+\subsection{Verification Results}
+
+The cold run produced 24 cache misses (0\% hit rate), as expected for an empty cache. The subsequent warm re-run correctly retrieved all 24 cached models (100\% hit rate, 0 misses). Speedup measurements are reported separately in the full-scale evaluation (Section~\ref{sec:results_caching}).
+
+\subsection{Correctness Validation}
+
+Beyond hit/miss behaviour, the verification suite programmatically validated
+cache correctness across all 24 operations (3 subjects $\times$ 8 configurations,
+cold and warm runs compared automatically):
+
+\begin{itemize}
+\item \textbf{Prediction Identity:} Cached models produced bitwise-identical
+      predictions to freshly trained models, verified programmatically via
+      \verb|numpy.array_equal(cold_preds, warm_preds)| for each of the 24
+      configuration--subject pairs.
+\item \textbf{Metric Reproducibility:} Accuracy, F1, and Cohen's $\kappa$ scores
+      matched to floating-point precision ($<10^{-10}$ difference), computed
+      independently for both runs and compared automatically.
+\item \textbf{Zero Corruption:} All 24 pickle save/load cycles completed without
+      errors; file integrity was confirmed by successful deserialization and
+      inference on the held-out test set.
+\item \textbf{Fingerprint Uniqueness:} All 12 configurations generated distinct
+      SHA-256 fingerprints (zero hash collisions), verified by asserting
+      uniqueness of the fingerprint set.
+\end{itemize}
+
+\subsection{Invalidation Testing}
+
+Cache invalidation was verified by deliberately modifying individual
+configuration parameters and asserting that the framework correctly triggered
+a cache miss (i.e., retrained from scratch) in each case:
+
+\begin{itemize}
+\item \textbf{Changed Hyperparameter:} Modifying \verb|max_depth| from 6 to 8
+      produced a different fingerprint and triggered a cache miss, confirming
+      that hyperparameter changes invalidate the cache.
+\item \textbf{Changed Feature Selection:} Changing top-K from 30 to 50 produced
+      a different fingerprint and triggered a cache miss, confirming that
+      feature configuration changes invalidate the cache.
+\item \textbf{Changed Held-Out Subject:} Running sub-1 vs.\ sub-2 with identical
+      model parameters produced different fingerprints and separate cache entries,
+      confirming that no cross-fold contamination occurs.
+\end{itemize}
+
+In each test, the fingerprint difference was verified programmatically by
+comparing the SHA-256 hashes before and after the parameter modification.
+These results confirmed that the caching logic correctly distinguishes
+configurations at the individual-parameter level and justified proceeding
+to the full 2{,}304-operation experiment. The full-scale caching results
+are presented in Section~\ref{sec:results_caching}.
+
+Note: feature selection uses \texttt{scope=global} in all 18 configurations;
+the associated methodological disclosure and empirical impact are detailed in
+Section~\ref{sec:features} (Feature Selection Strategy).
 
 % ============================================================================
 % RESULTS — within Chapter 4 per professor's structure
