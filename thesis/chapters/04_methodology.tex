@@ -14,69 +14,13 @@ cross-validation is standard practice --- rather than as the primary
 contribution. The contribution is the fingerprint-based caching framework
 itself; sleep staging provides a realistic, high-volume workload
 (128 subjects, 18 configurations, 2{,}304 training operations) on which to
-demonstrate and measure it. Section~\ref{sec:caching_architecture} introduces
-the two-layer caching architecture, Section~\ref{sec:data} describes the dataset,
+demonstrate and measure it. Section~\ref{sec:data} describes the dataset,
 Sections~\ref{sec:preprocessing}--\ref{sec:features} detail the signal
 processing and feature extraction pipeline, Section~\ref{sec:caching}
-explains the caching implementation including fingerprint generation,
-Section~\ref{sec:experiment_setup} outlines the experimental design, and
-Section~\ref{sec:evaluation_plan} defines the evaluation metrics.
-
-\section{Two-Layer Caching Architecture}
-\label{sec:caching_architecture}
-
-The framework distinguishes between two kinds of cached artefact, handled by
-different mechanisms. \textit{Configuration-independent} artefacts depend only
-on the dataset (e.g., extracted feature matrices) and remain valid across all
-experimental variations. \textit{Configuration-dependent} artefacts (trained
-models) require fingerprint-based invalidation when experimental parameters
-change. The two storage layers below match this distinction: Layer~1 is
-fingerprint-free persistent storage, Layer~2 is a fingerprint-keyed model
-cache. The fingerprint mechanism that drives Layer~2 is described in
-Section~\ref{sec:fingerprint_generation}.
-
-In concrete terms: Layer~1 stores extracted features ($\sim$1.1~MB per subject,
-NPZ format) as persistent storage --- no fingerprint needed, always valid.
-Layer~2 stores trained LOSO models (1--150~MB per fold depending on model type)
-as a fingerprint cache --- keyed by configuration hash, automatically
-invalidated when parameters change.
-
-\subsection{Layer 1: Feature Extraction as Persistent Storage}
-
-The feature extraction layer computes \textbf{all 149 features} for each subject
-across 6 EEG channels (F3, F4, C3, C4, O1, O2) and stores them in compressed
-NPZ format. This is classified as persistent storage because:
-
-\begin{itemize}
-    \item Features depend only on the raw EEG data and fixed preprocessing parameters
-    \item Changing model hyperparameters or feature selection thresholds does not invalidate the stored features
-    \item The full feature set is extracted once; downstream selection operates on this cached superset
-\end{itemize}
-
-In this implementation, the pipeline checks for \texttt{\{subject\_id\}.npz}
-before extracting; if found, it is loaded directly and extraction is skipped.
-This layer is fully implemented and provides measured speedups of approximately
-227$\times$ for feature loading compared to re-extraction.
-
-\subsection{Layer 2: LOSO Model Caching}
-\label{sec:loso_caching}
-
-The LOSO model cache stores one trained model per fingerprint--subject pair.
-The complete system---fingerprint generation, cache storage, retrieval logic,
-and automatic invalidation---is described in
-Section~\ref{sec:caching}, validated through verification testing
-(Section~\ref{sec:verification}), and quantified by the full-scale
-18-configuration experiment (Section~\ref{sec:results_caching}).
-
-\paragraph{Why LOSO-level caching, not just model caching?}
-A critical design decision is caching at the LOSO fold level rather than
-caching a single global model. This distinction is essential:
-
-\begin{enumerate}
-    \item \textbf{Data leakage prevention.} Each LOSO fold has a unique fingerprint that includes the \texttt{held\_out\_subject} field. A model trained with Subject~A held out cannot be retrieved when Subject~B is the test subject; the fingerprints differ, forcing a cache miss and retraining.
-    \item \textbf{Scientific validity.} In LOSO cross-validation, each fold produces a different model because the training data differs. There is no single ``global model''---there are $N$ distinct models, one per subject held out; reusing any one for a different held-out subject would apply a model trained on different data.
-    \item \textbf{Incremental experimentation.} When adding new subjects or modifying experimental parameters, only affected folds require retraining. Cached models for unchanged configurations remain valid and are reused automatically.
-\end{enumerate}
+introduces the two-layer caching architecture and the fingerprint
+mechanism that drives it, Section~\ref{sec:experiment_setup} outlines the
+experimental design, and Section~\ref{sec:evaluation_plan} defines the
+evaluation metrics.
 
 \section{Data: BOAS Dataset}
 
@@ -209,7 +153,7 @@ Table~\ref{tab:feature_breakdown_149}.
 
 \subsection{Feature Engineering Strategy and Caching Prioritization}
 
-While Satapathy et al.\ (2024) demonstrate competitive performance using 63 multi-modal features~\cite{satapathy2024multimodal}, this thesis extracts an expanded set of 149 EEG-specific features. The larger set serves the caching evaluation: it increases extraction cost (providing a stronger stress test for Layer~1) and enables systematic comparison of feature-count cut-offs as a configuration parameter. Because all 149 features are stored in the persistent Layer~1 cache, downstream experiments select any sub-set (top-30, top-50, or all 149) with near-zero latency, without re-extracting from raw signals.
+While Satapathy et al.\ (2024) demonstrate competitive performance using 63 multi-modal features~\cite{satapathy2024multimodal}, this thesis extracts an expanded set of 149 EEG-specific features. The larger set serves the caching evaluation: it increases extraction cost (providing a stronger stress test for the persistent feature cache introduced in Section~\ref{sec:caching}) and enables systematic comparison of feature-count cut-offs as a configuration parameter. Because all 149 features are stored in the persistent feature cache, downstream experiments select any sub-set (top-30, top-50, or all 149) with near-zero latency, without re-extracting from raw signals.
 
 \subsection{Feature Selection Strategy}
 \label{sec:feature_selection_strategy}
@@ -278,8 +222,8 @@ Python's GIL for CPU-bound NumPy/SciPy operations. Each subject's full
 149-feature set is computed once and stored as a compressed NumPy archive;
 downstream experiments apply correlation filtering and top-K selection at
 runtime without re-extracting. Cold extraction of all 128 subjects takes
-approximately 53~minutes; warm loading from Layer~1 cache completes in under
-one minute ($227\times$ speedup).
+approximately 53~minutes; warm loading from the persistent feature cache
+completes in under one minute ($227\times$ speedup).
 
 
 
@@ -301,6 +245,62 @@ fingerprint generation. Green arrows indicate warm-run bypass paths;
 the full warm run completes in $\sim$7~s versus $\sim$25~min cold.}
 \label{fig:pipeline_architecture}
 \end{figure}
+
+\subsection{Two-Layer Architecture}
+\label{sec:caching_architecture}
+
+The framework distinguishes between two kinds of cached artefact, handled by
+different mechanisms. \textit{Configuration-independent} artefacts depend only
+on the dataset (e.g., extracted feature matrices) and remain valid across all
+experimental variations. \textit{Configuration-dependent} artefacts (trained
+models) require fingerprint-based invalidation when experimental parameters
+change. The two storage layers below match this distinction: Layer~1 is
+fingerprint-free persistent storage, Layer~2 is a fingerprint-keyed model
+cache. The fingerprint mechanism that drives Layer~2 is described in
+Section~\ref{sec:fingerprint_generation}.
+
+In concrete terms: Layer~1 stores extracted features ($\sim$1.1~MB per subject,
+NPZ format) as persistent storage --- no fingerprint needed, always valid.
+Layer~2 stores trained LOSO models (1--150~MB per fold depending on model type)
+as a fingerprint cache --- keyed by configuration hash, automatically
+invalidated when parameters change.
+
+\subsubsection{Layer 1: Feature Extraction as Persistent Storage}
+
+The feature extraction layer computes \textbf{all 149 features} for each subject
+across 6 EEG channels (F3, F4, C3, C4, O1, O2) and stores them in compressed
+NPZ format. This is classified as persistent storage because:
+
+\begin{itemize}
+    \item Features depend only on the raw EEG data and fixed preprocessing parameters
+    \item Changing model hyperparameters or feature selection thresholds does not invalidate the stored features
+    \item The full feature set is extracted once; downstream selection operates on this cached superset
+\end{itemize}
+
+In this implementation, the pipeline checks for \texttt{\{subject\_id\}.npz}
+before extracting; if found, it is loaded directly and extraction is skipped.
+This layer is fully implemented and provides measured speedups of approximately
+227$\times$ for feature loading compared to re-extraction.
+
+\subsubsection{Layer 2: LOSO Model Caching}
+\label{sec:loso_caching}
+
+The LOSO model cache stores one trained model per fingerprint--subject pair.
+The fingerprint generation, cache storage, retrieval logic, and automatic
+invalidation are described in the remaining subsections; their behaviour is
+validated through verification testing (Section~\ref{sec:verification}) and
+quantified by the full-scale 18-configuration experiment
+(Section~\ref{sec:results_caching}).
+
+\paragraph{Why LOSO-level caching, not just model caching?}
+A critical design decision is caching at the LOSO fold level rather than
+caching a single global model. This distinction is essential:
+
+\begin{enumerate}
+    \item \textbf{Data leakage prevention.} Each LOSO fold has a unique fingerprint that includes the \texttt{held\_out\_subject} field. A model trained with Subject~A held out cannot be retrieved when Subject~B is the test subject; the fingerprints differ, forcing a cache miss and retraining.
+    \item \textbf{Scientific validity.} In LOSO cross-validation, each fold produces a different model because the training data differs. There is no single ``global model''---there are $N$ distinct models, one per subject held out; reusing any one for a different held-out subject would apply a model trained on different data.
+    \item \textbf{Incremental experimentation.} When adding new subjects or modifying experimental parameters, only affected folds require retraining. Cached models for unchanged configurations remain valid and are reused automatically.
+\end{enumerate}
 
 \subsection{Code Provenance}
 \label{sec:code_provenance}
