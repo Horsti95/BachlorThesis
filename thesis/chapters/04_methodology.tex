@@ -260,36 +260,11 @@ sufficient given the BOAS dataset's $<$0.1\% artefact rate.
 \section{Feature Extraction: The 149-Feature Set}
 \label{sec:features}
 
-149 EEG features are extracted per 30-second epoch, spanning four domains
-(Table~\ref{tab:feature_breakdown_149}).
-
-\begin{table}[ht]
-\centering
-\caption[149-feature breakdown by domain]{149 EEG features extracted per
-30-second epoch, grouped by domain. Band boundaries match
-Table~\ref{tab:eeg_bands}.}
-\label{tab:feature_breakdown_149}
-\begin{tabular}{p{3.2cm}rp{7.5cm}}
-\toprule
-\textbf{Domain} & \textbf{Count} & \textbf{Features} \\
-\midrule
-Time-Domain      & 60 & Mean, std, variance, min, max, peak-to-peak, RMS,
-                        skewness, kurtosis, zero-crossing rate
-                        (10 $\times$ 6 channels) \\[4pt]
-Frequency-Domain & 54 & Band powers: $\delta$ 0.5--4, $\theta$ 4--8,
-                        $\alpha$ 8--13, $\sigma$ 12--16, $\beta$ 16--30,
-                        $\gamma$ 30--40~Hz; spectral entropy, peak frequency,
-                        median frequency (9 $\times$ 6 channels) \\[4pt]
-Signal Complexity & 24 & Hjorth mobility, Hjorth complexity, Hurst exponent,
-                         Detrended Fluctuation Analysis
-                         (4 $\times$ 6 channels) \\[4pt]
-Inter-Channel    & 11 & Coherence (6 pairs), Phase Locking Value (3 pairs),
-                        global entropy, global complexity \\
-\midrule
-\textbf{Total}   & \textbf{149} & \\
-\bottomrule
-\end{tabular}
-\end{table}
+149 EEG features are extracted per 30-second epoch, spanning four domains:
+60 time-domain, 54 frequency-domain, 24 signal-complexity, and 11
+inter-channel features. The full per-domain breakdown is given in
+Appendix~\ref{sec:appendix_features},
+Table~\ref{tab:feature_breakdown_149}.
 
 \subsection{Feature Engineering Strategy and Caching Prioritization}
 
@@ -1318,6 +1293,19 @@ is therefore the pragmatic choice for caching-oriented workflows.
 \item \textbf{No multi-user evaluation:} The framework was designed for
       single-researcher workflows. Cache sharing across multiple concurrent
       users would require locking mechanisms not implemented here.
+
+\item \textbf{Naive storage backend:} The Layer~2 cache is a flat directory
+      of files named \texttt{\{fingerprint\}\_\{subject\}.joblib}, looked up
+      with a single \texttt{Path.exists()} call (\texttt{loso\_cache.py:218,
+      261}). The fingerprint \textit{is} the index --- there is no database,
+      no content-addressable store, no eviction policy, and no concurrent-write
+      arbitration; a sidecar JSON registry tracks metadata but is not on the
+      lookup path. This is sufficient for a single-machine, single-user thesis
+      project, but limits scalability: a team setting or a long-running
+      pipeline would benefit from replacing the flat directory with an object
+      store (S3, MinIO), a content-addressable filesystem, or a metadata
+      database with TTL/LRU eviction. The fingerprinting layer is independent
+      of the storage backend and would carry over unchanged.
 
 \item \textbf{Layer~1 fingerprint validation is lenient:} The feature cache
       (Layer~1) stores a preprocessing config fingerprint with each cached

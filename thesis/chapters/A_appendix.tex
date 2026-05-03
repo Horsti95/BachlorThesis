@@ -1,0 +1,38 @@
+\chapter{Appendix}
+\label{chap:appendix}
+
+\section{Full 149-Feature Breakdown}
+\label{sec:appendix_features}
+
+The complete inventory of EEG features extracted per 30-second epoch is given
+in Table~\ref{tab:feature_breakdown_149}. Counts assume the six-channel
+montage described in Section~\ref{sec:data}; per-channel feature counts are
+multiplied by six to obtain the totals shown.
+
+\begin{table}[ht]
+\centering
+\caption[149-feature breakdown by domain]{149 EEG features extracted per
+30-second epoch, grouped by domain. Band boundaries match
+Table~\ref{tab:eeg_bands}.}
+\label{tab:feature_breakdown_149}
+\begin{tabular}{p{3.2cm}rp{7.5cm}}
+\toprule
+\textbf{Domain} & \textbf{Count} & \textbf{Features} \\
+\midrule
+Time-Domain      & 60 & Mean, std, variance, min, max, peak-to-peak, RMS,
+                        skewness, kurtosis, zero-crossing rate
+                        (10 $\times$ 6 channels) \\[4pt]
+Frequency-Domain & 54 & Band powers: $\delta$ 0.5--4, $\theta$ 4--8,
+                        $\alpha$ 8--13, $\sigma$ 12--16, $\beta$ 16--30,
+                        $\gamma$ 30--40~Hz; spectral entropy, peak frequency,
+                        median frequency (9 $\times$ 6 channels) \\[4pt]
+Signal Complexity & 24 & Hjorth mobility, Hjorth complexity, Hurst exponent,
+                         Detrended Fluctuation Analysis
+                         (4 $\times$ 6 channels) \\[4pt]
+Inter-Channel    & 11 & Coherence (6 pairs), Phase Locking Value (3 pairs),
+                        global entropy, global complexity \\
+\midrule
+\textbf{Total}   & \textbf{149} & \\
+\bottomrule
+\end{tabular}
+\end{table}
