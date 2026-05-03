@@ -38,6 +38,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from config import ExperimentConfig
 from models import create_model, evaluate_model, BaseModel
@@ -120,9 +121,7 @@ class FoldResult:
     # Timing
     train_time_seconds: float = 0.0
     predict_time_seconds: float = 0.0
-    fold_wall_time_seconds: float = 0.0  # Total wall-clock time (cache load + predict + overhead)
-    cache_hit: bool = False  # Whether this fold was served from cache
-
+    
     # Data info
     n_train: int = 0
     n_test: int = 0
@@ -165,15 +164,10 @@ class ExperimentResult:
     # Timing
     total_train_time: float = 0.0
     total_predict_time: float = 0.0
-    total_wall_time: float = 0.0  # Total wall-clock time across all folds
-
-    # Cache stats
-    model_cache_hits: int = 0
-    model_cache_misses: int = 0
-
+    
     # Per-fold results
     fold_results: List[FoldResult] = field(default_factory=list)
-
+    
     # Clinical targets
     meets_accuracy_target: bool = False  # >= 0.85
     meets_kappa_target: bool = False     # >= 0.75
@@ -193,9 +187,6 @@ class ExperimentResult:
             'f1_per_class_mean': self.f1_per_class_mean,
             'total_train_time': self.total_train_time,
             'total_predict_time': self.total_predict_time,
-            'total_wall_time': self.total_wall_time,
-            'model_cache_hits': self.model_cache_hits,
-            'model_cache_misses': self.model_cache_misses,
             'meets_accuracy_target': self.meets_accuracy_target,
             'meets_kappa_target': self.meets_kappa_target,
             'meets_f1_target': self.meets_f1_target,
@@ -206,6 +197,59 @@ class ExperimentResult:
 # =============================================================================
 # Training Functions
 # =============================================================================
+
+def _run_fold_parallel(
+    fold_idx: int,
+    fold: CVFold,
+    features_df: pd.DataFrame,
+    labels: np.ndarray,
+    config: TrainingConfig,
+    selected_features: Optional[List[str]] = None
+) -> FoldResult:
+    """
+    Helper function for parallel fold training.
+    
+    This function is standalone to allow pickling for ProcessPoolExecutor.
+    
+    Args:
+        fold_idx: Fold index
+        fold: CV fold object
+        features_df: All features
+        labels: All labels
+        config: Training configuration
+        selected_features: Pre-selected features for GLOBAL scope (skip fit)
+                          If None, performs per-fold feature selection
+    """
+    # Get train/test split
+    X_train, y_train, X_test, y_test = get_train_test_data(
+        features_df, labels, fold
+    )
+    
+    # Apply feature selection
+    if selected_features is not None:
+        # GLOBAL scope: Use pre-selected features (no fitting)
+        X_train_selected = X_train[selected_features]
+        X_test_selected = X_test[selected_features]
+    else:
+        # PER_FOLD scope: Fit feature selection on this fold's training data
+        fs_pipeline = FeatureSelectionPipeline(config.feature_selection)
+        X_train_selected = fs_pipeline.fit_transform(X_train, y_train)
+        X_test_selected = fs_pipeline.transform(X_test)
+    
+    # Create model
+    model = create_model(
+        config.model_type,
+        config.model_params,
+        config.random_state
+    )
+    
+    # Train and evaluate
+    return train_single_fold(
+        X_train_selected, y_train,
+        X_test_selected, y_test,
+        model, fold
+    )
+
 
 def train_single_fold(
     X_train: pd.DataFrame,
@@ -313,9 +357,6 @@ def aggregate_fold_results(
         f1_per_class_mean=f1_per_class_mean,
         total_train_time=sum(r.train_time_seconds for r in fold_results),
         total_predict_time=sum(r.predict_time_seconds for r in fold_results),
-        total_wall_time=sum(r.fold_wall_time_seconds for r in fold_results),
-        model_cache_hits=sum(1 for r in fold_results if r.cache_hit),
-        model_cache_misses=sum(1 for r in fold_results if not r.cache_hit),
         fold_results=fold_results,
         meets_accuracy_target=np.mean(accuracies) >= 0.85,
         meets_kappa_target=np.mean(kappas) >= 0.75,
@@ -355,14 +396,11 @@ class TrainingPipeline:
         formatter: Optional[TrainingOutputFormatter] = None,
         n_jobs: int = 1,
         enable_model_cache: bool = True,
-        model_cache_dir: Optional[str] = None,
-        cache_min_free_space_gb: float = 5.0,
-        cache_max_size_gb: Optional[float] = None,
-        max_folds: Optional[int] = None
+        model_cache_dir: Optional[str] = None
     ):
         """
         Initialize training pipeline.
-
+        
         Args:
             features_df: Pre-extracted features (from cache)
             labels: Sleep stage labels
@@ -370,11 +408,9 @@ class TrainingPipeline:
             output_dir: Directory for results
             experiment_name: Experiment identifier
             formatter: Optional output formatter for human-readable output
+            n_jobs: Number of parallel jobs for fold training
             enable_model_cache: Enable LOSO model caching (Layer 2)
             model_cache_dir: Directory for model cache (default: results/loso_model_cache)
-            cache_min_free_space_gb: Min free disk space (GB) to allow caching (default: 5)
-            cache_max_size_gb: Max cache size (GB). Oldest models evicted when exceeded. None = unlimited.
-            max_folds: Limit number of LOSO folds (None = all). Useful for quick verification.
         """
         self.features_df = features_df
         self.labels = labels
@@ -382,8 +418,8 @@ class TrainingPipeline:
         self.output_dir = Path(output_dir)
         self.experiment_name = experiment_name
         self.formatter = formatter or get_formatter()
-        self.max_folds = max_folds
-
+        self.n_jobs = n_jobs
+        
         # Create output directories
         self.results_dir = self.output_dir / "training_results"
         self.results_dir.mkdir(parents=True, exist_ok=True)
@@ -402,25 +438,23 @@ class TrainingPipeline:
             self.model_cache = LOSOModelCache(
                 cache_dir=cache_dir,
                 enable_registry=True,
-                estimated_training_time=120.0,  # 2 minutes default estimate
-                min_free_space_gb=cache_min_free_space_gb,
-                max_cache_size_gb=cache_max_size_gb
+                estimated_training_time=120.0  # 2 minutes default estimate
             )
-            logger.debug(f"  Model cache: ENABLED at {cache_dir}")
+            logger.info(f"  Model cache: ENABLED at {cache_dir}")
         else:
             self.model_cache = None
-            logger.debug(f"  Model cache: DISABLED")
-
+            logger.info(f"  Model cache: DISABLED")
+        
         # Subject info for formatter
         self._subject_epochs: Dict[str, int] = {}
         for subj in np.unique(subject_ids):
             self._subject_epochs[str(subj)] = int(np.sum(subject_ids == subj))
-
-        logger.debug(f"Initialized TrainingPipeline")
-        logger.debug(f"  Features: {features_df.shape}")
-        logger.debug(f"  Subjects: {len(np.unique(subject_ids))}")
-        logger.debug(f"  LOSO folds: {self.n_folds}")
-        logger.debug(f"  Output: {self.results_dir}")
+        
+        logger.info(f"Initialized TrainingPipeline")
+        logger.info(f"  Features: {features_df.shape}")
+        logger.info(f"  Subjects: {len(np.unique(subject_ids))}")
+        logger.info(f"  LOSO folds: {self.n_folds}")
+        logger.info(f"  Output: {self.results_dir}")
     
     def run_single_config(
         self,
@@ -447,7 +481,7 @@ class TrainingPipeline:
         Returns:
             ExperimentResult with aggregated metrics
         """
-        logger.debug(f"Running config: {config.get_config_id()}")
+        logger.info(f"Running config: {config.get_config_id()}")
         
         # Print config header using formatter
         config_dict = {
@@ -465,12 +499,8 @@ class TrainingPipeline:
         
         fold_results = []
         folds = list(self.cv.split(self.features_df, self.labels, self.subject_ids))
-        if self.max_folds and self.max_folds < len(folds):
-            folds = folds[:self.max_folds]
         n_folds = len(folds)
         config_start_time = time.time()
-        model_cache_hits = 0
-        model_cache_misses = 0
         
         # Use formatter's verbosity to decide on progress display
         use_tqdm = show_progress and self.formatter.verbosity == Verbosity.QUIET
@@ -483,199 +513,243 @@ class TrainingPipeline:
         # =====================================================================
         selected_features = None
         use_global_fs = (
-            config.feature_selection.scope == 'global' and
-            (config.feature_selection.top_k_features is not None or
+            config.feature_selection.scope == 'global' and 
+            (config.feature_selection.top_k_features is not None or 
              config.feature_selection.correlation_threshold is not None)
         )
         if use_global_fs:
-            logger.debug("GLOBAL feature selection: fitting on all data (once)")
+            logger.info("GLOBAL feature selection: fitting on all data (once)")
             self.formatter.print_substep(
                 f"Global feature selection ({config.feature_selection.selection_method.upper()}): "
                 f"fitting on {len(self.features_df)} samples..."
             )
-
+            
             fs_start = time.time()
             global_fs_pipeline = FeatureSelectionPipeline(config.feature_selection)
             global_fs_pipeline.fit(self.features_df, self.labels)
             selected_features = global_fs_pipeline.get_selected_features()
             fs_time = time.time() - fs_start
-
-            logger.debug(f"  Selected {len(selected_features)} features in {fs_time:.2f}s")
+            
+            logger.info(f"  Selected {len(selected_features)} features in {fs_time:.2f}s")
             self.formatter.print_substep(
                 f"  Selected {len(selected_features)} features in {fs_time:.2f}s (will reuse for all folds)"
             )
-        elif config.feature_selection.scope == 'global':
-            # corrNone + kAll: no selection needed, use all features
-            selected_features = list(self.features_df.columns)
-            self.formatter.print_substep(
-                f"No feature selection configured — using all {len(selected_features)} features"
-            )
-
-        # Sequential execution — deterministic, supports model caching
-        fold_iter = tqdm(
-            enumerate(folds, 1),
-            desc=f"  {config.get_config_id()}",
-            unit="fold",
-            total=n_folds,
-            disable=not use_tqdm
-        )
-
-        for fold_idx, fold in fold_iter:
-            fold_start = time.time()
-
-            # Get train/test split
-            X_train, y_train, X_test, y_test = get_train_test_data(
-                self.features_df, self.labels, fold
-            )
-
-            n_train_subjects = len(folds) - 1  # All except test subject
-            n_train_epochs = len(X_train)
-            n_test_epochs = len(X_test)
-
-            # Print fold start
-            self.formatter.print_fold_start(
-                fold_idx, n_folds, fold.test_subject,
-                n_train_subjects, n_train_epochs, n_test_epochs
-            )
-
-            # Apply feature selection
-            if selected_features is not None:
-                # GLOBAL scope: Use pre-selected features (no per-fold fitting)
-                X_train_selected = X_train[selected_features]
-                X_test_selected = X_test[selected_features]
-                n_input = X_train.shape[1]
-                n_after_corr = n_input  # Not tracked for global
-                n_final = len(selected_features)
-                corr_removed = 0  # Not tracked for global
-            else:
-                # PER_FOLD scope: Fit feature selection on this fold's training data
-                fs_pipeline = FeatureSelectionPipeline(config.feature_selection)
-                X_train_selected = fs_pipeline.fit_transform(X_train, y_train)
-                X_test_selected = fs_pipeline.transform(X_test)
-
-                # Feature selection info for verbose output
-                n_input = X_train.shape[1]
-                n_after_corr = fs_pipeline.n_features_after_corr_
-                n_final = X_train_selected.shape[1]
-                corr_removed = n_input - n_after_corr
-
-            self.formatter.print_feature_selection(
-                n_input, n_after_corr, n_final, corr_removed
-            )
-
-            # =========================================================
-            # LOSO MODEL CACHING (Layer 2)
-            # =========================================================
-            # Generate fingerprint for this fold
-            # IMPORTANT: Include n_final (actual feature count after selection)
-            # to prevent cache mismatches when correlation filter produces
-            # different feature counts across folds (e.g., kAll + corr0.9)
-            # Always include the actual selected feature names in the fingerprint for cache key
-            # This ensures train/test use the same features and prevents shape mismatch
-            fingerprint = LOSOFingerprint.generate(
-                random_seed=config.random_state,
-                code_version=FINGERPRINT_VERSION,
-                model_name=config.model_type,
-                model_params=config.model_params,
-                feature_config={
-                    'base': n_input,
-                    'corr': config.feature_selection.correlation_threshold,
-                    'top_k': config.feature_selection.top_k_features,
-                    'n_selected': n_final,
-                    'selected_features': selected_features if selected_features is not None else list(X_train_selected.columns)
-                },
-                held_out_subject=str(fold.test_subject)
-            )
-
-            # Check cache for trained model
-            cache_hit = False
-            if self.enable_model_cache and self.model_cache is not None:
-                # For FNN, pass model class and params for deserialization
-                if config.model_type == "fnn":
-                    from models import FNNModel
-                    cached_model = self.model_cache.get(
-                        fingerprint, str(fold.test_subject),
-                        model_type="fnn",
-                        model_class=FNNModel,
-                        model_params=config.model_params
+        
+        if self.n_jobs > 1:
+            # Parallel execution
+            self.formatter.print_substep(f"Training {n_folds} folds in parallel using {self.n_jobs} cores...")
+            
+            with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
+                # Submit all folds (with pre-selected features if global scope)
+                future_to_fold = {
+                    executor.submit(
+                        _run_fold_parallel, 
+                        idx, fold, self.features_df, self.labels, config, selected_features
+                    ): idx 
+                    for idx, fold in enumerate(folds, 1)
+                }
+                
+                # Process as they complete
+                fold_iter = as_completed(future_to_fold)
+                if use_tqdm:
+                    fold_iter = tqdm(
+                        fold_iter,
+                        desc=f"  {config.get_config_id()}",
+                        unit="fold",
+                        total=n_folds
                     )
+                
+                for future in fold_iter:
+                    try:
+                        fold_result = future.result()
+                        fold_results.append(fold_result)
+                        
+                        # Update formatter's internal state for summary
+                        # We use print_fold_result to store the data, but it will also print
+                        # if not in QUIET mode. In parallel, this might be out of order.
+                        self.formatter.print_fold_result(
+                            fold_result.fold_id, fold_result.test_subject,
+                            fold_result.accuracy, fold_result.kappa, fold_result.f1_macro,
+                            fold_result.train_time_seconds + fold_result.predict_time_seconds,
+                            fold_result.n_features
+                        )
+                        
+                        # Update progress bar
+                        if use_tqdm:
+                            fold_iter.set_postfix({
+                                'acc': f"{fold_result.accuracy:.3f}",
+                                'kappa': f"{fold_result.kappa:.3f}"
+                            })
+                    except Exception as e:
+                        logger.error(f"Fold failed: {e}")
+                        self.formatter.print_error(f"Fold failed: {e}")
+            
+            # Sort results by fold_id to maintain order
+            fold_results.sort(key=lambda x: x.fold_id)
+            self.formatter._fold_results.sort(key=lambda x: x['fold'])
+            
+        else:
+            # Sequential execution (original logic)
+            # Progress bar (only in quiet mode)
+            fold_iter = tqdm(
+                enumerate(folds, 1),
+                desc=f"  {config.get_config_id()}",
+                unit="fold",
+                total=n_folds,
+                disable=not use_tqdm
+            )
+            
+            for fold_idx, fold in fold_iter:
+                fold_start = time.time()
+                
+                # Get train/test split
+                X_train, y_train, X_test, y_test = get_train_test_data(
+                    self.features_df, self.labels, fold
+                )
+                
+                n_train_subjects = len(folds) - 1  # All except test subject
+                n_train_epochs = len(X_train)
+                n_test_epochs = len(X_test)
+                
+                # Print fold start
+                self.formatter.print_fold_start(
+                    fold_idx, n_folds, fold.test_subject,
+                    n_train_subjects, n_train_epochs, n_test_epochs
+                )
+                
+                # Apply feature selection
+                if selected_features is not None:
+                    # GLOBAL scope: Use pre-selected features (no per-fold fitting)
+                    X_train_selected = X_train[selected_features]
+                    X_test_selected = X_test[selected_features]
+                    n_input = X_train.shape[1]
+                    n_after_corr = n_input  # Not tracked for global
+                    n_final = len(selected_features)
+                    corr_removed = 0  # Not tracked for global
                 else:
-                    cached_model = self.model_cache.get(
-                        fingerprint, str(fold.test_subject),
-                        model_type=config.model_type
-                    )
-                if cached_model is not None:
-                    # CACHE HIT - use cached model
-                    model = cached_model
-                    cache_hit = True
-                    model_cache_hits += 1
-                    self.formatter.print_training_progress(
-                        config.model_type, n_train_epochs, n_final,
-                        cache_status="HIT"
-                    )
+                    # PER_FOLD scope: Fit feature selection on this fold's training data
+                    fs_pipeline = FeatureSelectionPipeline(config.feature_selection)
+                    X_train_selected = fs_pipeline.fit_transform(X_train, y_train)
+                    X_test_selected = fs_pipeline.transform(X_test)
+                    
+                    # Feature selection info for verbose output
+                    n_input = X_train.shape[1]
+                    n_after_corr = fs_pipeline.n_features_after_corr_
+                    n_final = X_train_selected.shape[1]
+                    corr_removed = n_input - n_after_corr
+                
+                self.formatter.print_feature_selection(
+                    n_input, n_after_corr, n_final, corr_removed
+                )
+                
+                # =========================================================
+                # LOSO MODEL CACHING (Layer 2)
+                # =========================================================
+                # Generate fingerprint for this fold
+                # IMPORTANT: Include n_final (actual feature count after selection)
+                # to prevent cache mismatches when correlation filter produces
+                # different feature counts across folds (e.g., kAll + corr0.9)
+                # Always include the actual selected feature names in the fingerprint for cache key
+                # This ensures train/test use the same features and prevents shape mismatch
+                fingerprint = LOSOFingerprint.generate(
+                    random_seed=config.random_state,
+                    code_version=FINGERPRINT_VERSION,
+                    model_name=config.model_type,
+                    model_params=config.model_params,
+                    feature_config={
+                        'base': n_input,
+                        'corr': config.feature_selection.correlation_threshold,
+                        'top_k': config.feature_selection.top_k_features,
+                        'n_selected': n_final,
+                        'selected_features': selected_features if selected_features is not None else list(X_train_selected.columns)
+                    },
+                    held_out_subject=str(fold.test_subject)
+                )
+                
+                # Check cache for trained model
+                cache_hit = False
+                if self.enable_model_cache and self.model_cache is not None:
+                    # For FNN, pass model class and params for deserialization
+                    if config.model_type == "fnn":
+                        from models import FNNModel
+                        cached_model = self.model_cache.get(
+                            fingerprint, str(fold.test_subject),
+                            model_type="fnn",
+                            model_class=FNNModel,
+                            model_params=config.model_params
+                        )
+                    else:
+                        cached_model = self.model_cache.get(
+                            fingerprint, str(fold.test_subject),
+                            model_type=config.model_type
+                        )
+                    if cached_model is not None:
+                        # CACHE HIT - use cached model
+                        model = cached_model
+                        cache_hit = True
+                        self.formatter.print_training_progress(
+                            config.model_type, n_train_epochs, n_final,
+                            cache_status="HIT"
+                        )
+                    else:
+                        # CACHE MISS - will train
+                        model = create_model(
+                            config.model_type,
+                            config.model_params,
+                            config.random_state
+                        )
+                        self.formatter.print_training_progress(
+                            config.model_type, n_train_epochs, n_final,
+                            cache_status="MISS"
+                        )
                 else:
-                    # CACHE MISS - will train
+                    # Cache disabled - always train
                     model = create_model(
                         config.model_type,
                         config.model_params,
                         config.random_state
                     )
-                    model_cache_misses += 1
                     self.formatter.print_training_progress(
-                        config.model_type, n_train_epochs, n_final,
-                        cache_status="MISS"
+                        config.model_type, n_train_epochs, n_final
                     )
-            else:
-                # Cache disabled - always train
-                model = create_model(
-                    config.model_type,
-                    config.model_params,
-                    config.random_state
+                
+                # Train and evaluate
+                train_start = time.time()
+                fold_result = train_single_fold(
+                    X_train_selected, y_train,
+                    X_test_selected, y_test,
+                    model, fold,
+                    skip_training=cache_hit  # Skip training if cache hit
                 )
-                model_cache_misses += 1
-                self.formatter.print_training_progress(
-                    config.model_type, n_train_epochs, n_final
+                train_elapsed = time.time() - train_start
+                
+                # Cache the model if it was trained (cache miss)
+                if self.enable_model_cache and self.model_cache is not None and not cache_hit:
+                    self.model_cache.put(
+                        fingerprint, 
+                        str(fold.test_subject),
+                        model,
+                        model_type=config.model_type,
+                        training_time=train_elapsed
+                    )
+                
+                fold_results.append(fold_result)
+                
+                fold_elapsed = time.time() - fold_start
+                
+                # Print fold result
+                self.formatter.print_fold_result(
+                    fold_idx, fold.test_subject,
+                    fold_result.accuracy, fold_result.kappa, fold_result.f1_macro,
+                    fold_elapsed, n_final
                 )
-
-            # Train and evaluate
-            train_start = time.time()
-            fold_result = train_single_fold(
-                X_train_selected, y_train,
-                X_test_selected, y_test,
-                model, fold,
-                skip_training=cache_hit  # Skip training if cache hit
-            )
-            train_elapsed = time.time() - train_start
-
-            # Cache the model if it was trained (cache miss)
-            if self.enable_model_cache and self.model_cache is not None and not cache_hit:
-                self.model_cache.put(
-                    fingerprint,
-                    str(fold.test_subject),
-                    model,
-                    model_type=config.model_type,
-                    training_time=train_elapsed
-                )
-
-            fold_elapsed = time.time() - fold_start
-            fold_result.fold_wall_time_seconds = fold_elapsed
-            fold_result.cache_hit = cache_hit
-
-            fold_results.append(fold_result)
-
-            # Print fold result
-            self.formatter.print_fold_result(
-                fold_idx, fold.test_subject,
-                fold_result.accuracy, fold_result.kappa, fold_result.f1_macro,
-                fold_elapsed, n_final
-            )
-
-            # Update progress bar with current metrics (quiet mode)
-            if use_tqdm:
-                fold_iter.set_postfix({
-                    'acc': f"{fold_result.accuracy:.3f}",
-                    'kappa': f"{fold_result.kappa:.3f}"
-                })
+                
+                # Update progress bar with current metrics (quiet mode)
+                if use_tqdm:
+                    fold_iter.set_postfix({
+                        'acc': f"{fold_result.accuracy:.3f}",
+                        'kappa': f"{fold_result.kappa:.3f}"
+                    })
         
         # Aggregate results
         result = aggregate_fold_results(fold_results, config)
@@ -689,10 +763,10 @@ class TrainingPipeline:
             result.kappa_mean, result.kappa_std,
             result.f1_macro_mean, result.f1_macro_std,
             config_total_time,
-            model_cache_hits, n_folds
+            n_folds, n_folds  # All from cache
         )
         
-        logger.debug(
+        logger.info(
             f"  Result: acc={result.accuracy_mean:.3f}±{result.accuracy_std:.3f}, "
             f"kappa={result.kappa_mean:.3f}, f1={result.f1_macro_mean:.3f}"
         )
@@ -714,8 +788,23 @@ class TrainingPipeline:
         Returns:
             List of ExperimentResult objects
         """
-        logger.debug(f"Running training grid: {len(configs)} configurations")
-        logger.debug(f"Total training runs: {len(configs) * self.n_folds}")
+        logger.info(f"Running training grid: {len(configs)} configurations")
+        logger.info(f"Total training runs: {len(configs) * self.n_folds}")
+        
+        # Print experiment header using formatter
+        self.formatter.print_experiment_header(
+            self.experiment_name,
+            len(np.unique(self.subject_ids)),
+            len(configs),
+            self.n_folds
+        )
+        
+        # Print LOSO setup
+        self.formatter.print_loso_setup(
+            len(np.unique(self.subject_ids)),
+            self._subject_epochs,
+            len(self.labels)
+        )
         
         results = []
         grid_start_time = time.time()
@@ -745,11 +834,12 @@ class TrainingPipeline:
         
         self.results = results
         
-        # Print final results table only when comparing multiple configs
-        if results and len(results) > 1:
+        # Print final results table
+        if results:
             results_dicts = [r.to_dict() for r in results]
             self.formatter.print_final_results_table(results_dicts)
-
+            
+            # Print best result
             best = max(results, key=lambda r: r.accuracy_mean)
             self.formatter.print_best_result(
                 best.config_id,
@@ -827,7 +917,7 @@ class TrainingPipeline:
     def _print_cache_stats(self, stats: Dict[str, Any]):
         """Print model cache statistics for thesis metrics."""
         print("\n" + "=" * 60)
-        print("LOSO MODEL CACHE STATISTICS (Layer 2)")
+        print("📊 LOSO MODEL CACHE STATISTICS (Layer 2)")
         print("=" * 60)
         
         metrics = stats.get('metrics', {})
@@ -945,7 +1035,7 @@ def create_training_grid(
                 )
                 configs.append(config)
     
-    logger.debug(f"Created training grid: {len(configs)} configurations (method={selection_method}, scope={scope})")
+    logger.info(f"Created training grid: {len(configs)} configurations (method={selection_method}, scope={scope})")
     return configs
 
 
@@ -1046,7 +1136,10 @@ def create_optimized_thesis_grid(random_state: int = 42) -> List[TrainingConfig]
     
     This grid uses:
     - selection_method='anova' (FAST)
-    - scope='global' (FAST, minor leakage acceptable for thesis)
+    - scope='global' (selector refit once on full dataset — introduces
+      supervised label leakage from held-out subjects. Deliberate choice
+      for the caching study, disclosed in Methodology §Feature Selection
+      Strategy. Set scope='per_fold' for strict, leakage-free LOSO CV.)
     
     Expected time savings:
     - Before: ~63 hours for 18 configs (MI + per-fold)
@@ -1133,4 +1226,4 @@ if __name__ == "__main__":
     pipeline.print_results_table()
     
     print("\n" + "=" * 60)
-    print("Training Pipeline: All tests passed")
+    print("Training Pipeline: ✓ All tests passed")

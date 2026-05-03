@@ -147,7 +147,7 @@ def load_cached_features(
     labels = np.concatenate(all_labels)
     subject_ids = np.array(all_subject_ids)
     
-    logger.debug(f"Loaded {loaded}/{len(subjects)} subjects from cache in {load_time:.2f}s")
+    logger.info(f"Loaded {loaded}/{len(subjects)} subjects from cache in {load_time:.2f}s")
     if failed:
         logger.warning(f"Failed to load: {failed[:5]}...")
     
@@ -283,6 +283,14 @@ def parse_arguments():
         help='Use pure Mutual Information (slower, default is hybrid f_classif->MI)'
     )
     
+    # Parallelism
+    parser.add_argument(
+        '--n-jobs', '-j',
+        type=int,
+        default=1,
+        help='Number of parallel jobs for fold training (e.g., 6)'
+    )
+    
     # Output options
     parser.add_argument(
         '--no-viz',
@@ -316,35 +324,7 @@ def parse_arguments():
         action='store_true',
         help='Skip confirmation prompt'
     )
-
-    # Cache space management
-    parser.add_argument(
-        '--cache-min-free-gb',
-        type=float,
-        default=5.0,
-        help='Minimum free disk space (GB) to allow model caching. Caching is skipped below this.'
-    )
-    parser.add_argument(
-        '--cache-max-size-gb',
-        type=float,
-        default=None,
-        help='Maximum model cache size (GB). Oldest models evicted when exceeded. Default: unlimited.'
-    )
-
-    parser.add_argument(
-        '--n-jobs',
-        type=int,
-        default=1,
-        help='Number of parallel jobs for model training (default: 1)'
-    )
-
-    parser.add_argument(
-        '--max-folds',
-        type=int,
-        default=None,
-        help='Limit LOSO folds (e.g., 3 = only first 3 subjects held out). Default: all.'
-    )
-
+    
     return parser.parse_args()
 
 
@@ -361,10 +341,7 @@ def run_training_experiment(
     experiment_name: str,
     generate_viz: bool = True,
     use_hybrid: bool = True,
-    n_jobs: int = 1,
-    cache_min_free_gb: float = 5.0,
-    cache_max_size_gb: Optional[float] = None,
-    max_folds: Optional[int] = None
+    n_jobs: int = 1
 ) -> Dict:
     """
     Run the complete training experiment.
@@ -378,6 +355,8 @@ def run_training_experiment(
         experiment_name: Experiment identifier
         generate_viz: Whether to generate visualizations
         use_hybrid: Use hybrid feature selection
+        n_jobs: Number of parallel jobs
+        
     Returns:
         Dictionary with experiment results
     """
@@ -387,17 +366,25 @@ def run_training_experiment(
     exp_dir = output_dir / experiment_name
     exp_dir.mkdir(parents=True, exist_ok=True)
     
+    print("\n" + "=" * 70)
+    print("TRAINING EXPERIMENT")
+    print("=" * 70)
+    print(f"Experiment: {experiment_name}")
+    print(f"Subjects: {len(subjects)}")
+    print(f"Models: {models}")
+    print(f"Correlation thresholds: {correlation_thresholds}")
+    print(f"Top-K features: {top_k_features}")
+    print(f"Output: {exp_dir}")
+    print("=" * 70)
+    
     # Step 1: Load cached features
     print("\n[1/4] Loading cached features...")
     features_df, labels, subject_ids = load_cached_features(subjects)
-
-    n_epochs = len(features_df)
-    n_features = features_df.shape[1]
-    n_subj = len(np.unique(subject_ids))
-    class_dist = dict(zip(*np.unique(labels, return_counts=True)))
-    print(f"  [v] {n_epochs:,} epochs, {n_features} features, {n_subj} subjects")
-    print(f"  [v] Classes: {class_dist}")
-
+    
+    print(f"  [v] Loaded {len(features_df)} epochs, {features_df.shape[1]} features")
+    print(f"  [v] Subjects: {len(np.unique(subject_ids))}")
+    print(f"  [v] Class distribution: {dict(zip(*np.unique(labels, return_counts=True)))}")
+    
     # Step 2: Create training grid
     print("\n[2/4] Creating configuration grid...")
     
@@ -418,8 +405,16 @@ def run_training_experiment(
     n_configs = len(configs)
     n_folds = len(np.unique(subject_ids))
     total_runs = n_configs * n_folds
-    print(f"  [v] {n_configs} configs x {n_folds} folds = {total_runs:,} runs")
-
+    
+    print(f"  [v] Configurations: {n_configs}")
+    print(f"  [v] LOSO folds: {n_folds}")
+    print(f"  [v] Total training runs: {total_runs}")
+    
+    # Estimate time
+    time_per_fold = 5  # seconds estimate
+    estimated_time = total_runs * time_per_fold
+    print(f"  [~] Estimated time: {estimated_time // 60} min {estimated_time % 60} sec")
+    
     # Step 3: Run training
     print("\n[3/4] Running training pipeline...")
     
@@ -433,9 +428,15 @@ def run_training_experiment(
         output_dir=exp_dir,
         experiment_name=experiment_name,
         formatter=formatter,
-        cache_min_free_space_gb=cache_min_free_gb,
-        cache_max_size_gb=cache_max_size_gb,
-        max_folds=max_folds
+        n_jobs=n_jobs
+    )
+    
+    # Print cache status using formatter
+    formatter.print_cache_status(
+        n_subjects=len(np.unique(subject_ids)),
+        n_cached=len(np.unique(subject_ids)),  # All cached
+        cache_path=str(GLOBAL_CACHE_DIR),
+        load_time=0.2  # Approximate
     )
     
     results = pipeline.run_grid(configs, save_intermediate=True)
@@ -546,18 +547,9 @@ def run_training_experiment(
 
 
 def main():
-    """Parse CLI args, verify cache, build training grid, run experiment, and generate outputs."""
-    # Ensure UTF-8 output on Windows (avoids UnicodeEncodeError when piping)
-    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-
+    """Main entry point."""
     args = parse_arguments()
-
-    # Suppress harmless sklearn parallel warning (fires thousands of times with RF)
-    import warnings
-    warnings.filterwarnings("ignore", message=".*sklearn.utils.parallel.delayed.*")
-
+    
     # Setup logging
     setup_logging(args.log_level)
     
@@ -587,114 +579,97 @@ def main():
         subjects = [str(i) for i in range(1, 4)]
         mode = "quick"
     
-    # =========================================================================
-    # VERIFY PREREQUISITES
-    # =========================================================================
+    # Verify cache
+    print("\nVerifying feature cache...")
     cache_status = verify_cache(GLOBAL_CACHE_DIR, len(subjects))
-
+    
     if not cache_status['valid']:
-        print(f"\n[X] Feature cache not found: {cache_status.get('error')}")
-        print("    Run feature extraction first: python run_experiment.py --full")
+        print(f"[X] Cache not found: {cache_status.get('error')}")
+        print("\nPlease run feature extraction first:")
+        print("  python run_experiment.py --full")
         sys.exit(1)
-
+    
+    print(f"[v] Cache found: {cache_status['cached_subjects']} subjects")
+    
     if cache_status['cached_subjects'] < len(subjects):
-        print(f"\n[!] Warning: Only {cache_status['cached_subjects']} cached, requested {len(subjects)}")
+        print(f"[!] Warning: Only {cache_status['cached_subjects']} cached, requested {len(subjects)}")
         subjects = [str(i) for i in range(1, cache_status['cached_subjects'] + 1)]
-
+    
     # Process model selection
     models = args.models
     if 'all' in models:
-        models = ['xgboost', 'random_forest', 'fnn']
-
-    # Determine grid configuration
+        models = ['xgboost', 'random_forest', 'fnn']  # All 3 thesis models
+    
+    # Determine grid configuration based on --grid option
     if args.grid == 'thesis':
-        correlation_thresholds = [0.75, 0.90, None]
-        top_k_features = [30, 50, None]
+        # Full thesis grid: 3 models × 4 corr × 4 topK = 48 configs
+        correlation_thresholds = [0.75, 0.85, 0.90, None]
+        top_k_features = [30, 50, 105, None]
         grid_name = "thesis"
     elif args.grid == 'pilot':
-        correlation_thresholds = [0.75, 0.90, None]
-        top_k_features = [30, 50, None]
+        # Pilot uses full thesis grid but fewer subjects
+        correlation_thresholds = [0.75, 0.85, 0.90, None]
+        top_k_features = [30, 50, 105, None]
         grid_name = "thesis"
     elif args.grid == 'quick':
+        # Quick test: minimal grid (3 models × 1 config = 3)
         correlation_thresholds = [0.90]
         top_k_features = [50]
         grid_name = "quick"
     else:
+        # Custom: use command-line arguments
         correlation_thresholds = [None if c == 0 else c for c in args.correlation]
         top_k_features = args.top_k
         grid_name = "custom"
-
+    
     # Experiment name
     timestamp = get_timestamp()
     exp_name = args.experiment_name or f"training_{timestamp}_{mode}"
-
-    # Calculate totals
+    
+    # Calculate total configurations
     n_configs = len(models) * len(correlation_thresholds) * len(top_k_features)
-    n_folds = len(subjects)
+    n_folds = len(subjects)  # LOSO
     total_runs = n_configs * n_folds
-
-    # Cache metrics
-    cache_metrics = calculate_cache_metrics(GLOBAL_CACHE_DIR, n_subjects_in_run=len(subjects))
-
-    # Time estimate
-    time_per_fold_cold = 8  # seconds
-    estimated_cold_min = (total_runs * time_per_fold_cold) / 60
-
-    # =========================================================================
-    # PRE-RUN SUMMARY
-    # =========================================================================
-    w = 70
-    print()
-    print("=" * w)
-    print("  THESIS EXPERIMENT: Fingerprint-Based Caching for ML")
-    print("=" * w)
-
-    print()
-    print("  OBJECTIVE")
-    print(f"    Evaluate caching speedup across {n_configs} feature selection configs")
-    print(f"    using LOSO cross-validation on sleep stage classification.")
-
-    print()
-    print("  DATA")
-    print(f"    Dataset:      BOAS ({len(subjects)} subjects)")
-    print(f"    Features:     149 (6-channel EEG: time/freq/complexity)")
-    print(f"    Classes:      5 (Wake, N1, N2, N3, REM)")
-    print(f"    Feature cache: {cache_status['cached_subjects']}/{len(subjects)} subjects ({cache_metrics['storage_mb']:.1f} MB)")
-
-    # Model cache info
-    model_cache_dir = Path("results/loso_model_cache")
-    if model_cache_dir.exists():
-        n_cached_models = len(list(model_cache_dir.glob('*.joblib')))
-        print(f"    Model cache:   {n_cached_models} cached models")
+    
+    # Time estimate - hybrid is much faster
+    if args.pure_mi:
+        time_per_run = 50  # Pure MI is slow
+        selection_method = "Pure MI (slow)"
     else:
-        print(f"    Model cache:   empty (cold start)")
-
-    print()
-    print(f"  EXPERIMENT GRID ({grid_name}: {n_configs} configurations)")
-    print(f"    Models:       {', '.join(m.replace('_', ' ').title() for m in models)}")
-
-    corr_strs = [str(c) if c else 'None' for c in correlation_thresholds]
-    topk_strs = [str(k) if k else 'All' for k in top_k_features]
-    print(f"    Correlation:  [{', '.join(corr_strs)}]")
-    print(f"    Top-K:        [{', '.join(topk_strs)}]")
-    print(f"    Selection:    ANOVA (global scope)")
-
-    print()
-    print("  EXECUTION")
-    print(f"    CV Method:    Leave-One-Subject-Out ({n_folds} folds/config)")
-    print(f"    Total runs:   {total_runs:,}")
-    print(f"    Est. time:    ~{estimated_cold_min:.0f} min (cold) | ~2 min (cached)")
-    print(f"    Output:       {args.output_dir}/{exp_name}")
-
-    print()
-    print("=" * w)
-
+        time_per_run = 8   # Hybrid is fast
+        selection_method = "Hybrid f_classif→MI (fast)"
+    estimated_minutes = (total_runs * time_per_run) / 60
+    
+    # Configuration summary
+    print("\n" + "-" * 50)
+    print("CONFIGURATION SUMMARY")
+    print("-" * 50)
+    print(f"Mode: {mode}")
+    print(f"Grid: {grid_name} ({n_configs} configurations)")
+    print(f"Subjects: {len(subjects)}")
+    print(f"Models: {models}")
+    print(f"Correlation thresholds: {correlation_thresholds}")
+    print(f"Top-K features: {top_k_features}")
+    print(f"Feature selection: {selection_method}")
+    print(f"Parallel jobs: {args.n_jobs}")
+    print(f"Total runs: {total_runs}")
+    print(f"Estimated time: {estimated_minutes:.1f} minutes")
+    print(f"Output: {args.output_dir}/{exp_name}")
+    print("-" * 50)
+    
     # Confirmation
     if not args.yes:
-        response = input("\nProceed? [y/N]: ")
+        response = input("\nProceed with training? [y/N]: ")
         if response.lower() != 'y':
-            print("Cancelled.")
+            print("Training cancelled.")
             sys.exit(0)
+    
+    # Track cache metrics (THESIS FOCUS)
+    print("\n[0/5] Calculating cache metrics...")
+    cache_metrics = calculate_cache_metrics(GLOBAL_CACHE_DIR, n_subjects_in_run=len(subjects))
+    print(f"  [v] Cache hit rate: {cache_metrics['hit_rate']*100:.1f}%")
+    print(f"  [v] Speedup factor: {cache_metrics['speedup_factor']:.0f}x")
+    print(f"  [v] Cache storage: {cache_metrics['storage_mb']:.1f} MB")
     
     # Run training
     try:
@@ -709,10 +684,7 @@ def main():
             experiment_name=exp_name,
             generate_viz=not args.no_viz,
             use_hybrid=not args.pure_mi,
-            n_jobs=args.n_jobs,
-            cache_min_free_gb=args.cache_min_free_gb,
-            cache_max_size_gb=args.cache_max_size_gb,
-            max_folds=args.max_folds
+            n_jobs=args.n_jobs
         )
         
         # Generate cache-focused outputs (THESIS FOCUS)
@@ -759,10 +731,10 @@ def main():
         print("CACHE PERFORMANCE SUMMARY (THESIS FOCUS)")
         print("=" * 70)
         print(f"Cache Hit Rate: {cache_metrics['hit_rate']*100:.1f}% ({cache_metrics['n_hits']}/{cache_metrics['n_total']} subjects)")
-        print(f"Cold Start Time (estimated): ~{cache_metrics['cold_time_seconds']/60:.1f} minutes  (based on ~25s/subject)")
-        print(f"Warm Start Time (measured):   {results['elapsed_seconds']/60:.1f} minutes")
-        print(f"Speedup Factor: {cache_metrics['cold_time_seconds']/results['elapsed_seconds']:.0f}×  (estimated)")
-        print(f"Time Saved: ~{(cache_metrics['cold_time_seconds']-results['elapsed_seconds'])/60:.1f} minutes  (estimated)")
+        print(f"Cold Start Time: {cache_metrics['cold_time_seconds']/60:.1f} minutes")
+        print(f"Warm Start Time: {results['elapsed_seconds']/60:.1f} minutes")
+        print(f"Speedup Factor: {cache_metrics['cold_time_seconds']/results['elapsed_seconds']:.0f}×")
+        print(f"Time Saved: {(cache_metrics['cold_time_seconds']-results['elapsed_seconds'])/60:.1f} minutes")
         print("=" * 70)
         
         logger.info("Training experiment completed successfully")

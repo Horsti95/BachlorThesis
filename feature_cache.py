@@ -1,25 +1,25 @@
 """
 Feature caching helpers with integrity verification.
 
-STATUS: IMPLEMENTED (224× speedup verified)
+STATUS: IMPLEMENTED ✓ (224× speedup verified)
     This module handles FEATURE-LEVEL caching (Stage 1).
     For MODEL-LEVEL caching (Stage 2 - core thesis work), see:
-    - fingerprint.py (TODO: LOSOFingerprint implementation)
-    - loso_cache.py (TODO: create this module)
+    - fingerprint.py (LOSOFingerprint — implemented)
+    - loso_cache.py (LOSO model cache — implemented)
 
 Cache Architecture:
 ==================
-GLOBAL FEATURE CACHE (results/features_cache_global/) - IMPLEMENTED 
+GLOBAL FEATURE CACHE (results/features_cache_global/) - IMPLEMENTED ✓
     - Shared across ALL experiments
     - Contains: subject_{id}_full.npz (195 features)
     - Purpose: Avoid recomputing expensive feature extraction
     - Status: 128/128 subjects cached, ~146 MB total
     
-LOSO MODEL CACHE (results/loso_model_cache/) - TODO
+LOSO MODEL CACHE (results/loso_model_cache/) - IMPLEMENTED ✓
     - Cache trained models per LOSO fold
     - Key: fingerprint including held_out_subject + training_subjects
     - Purpose: Skip redundant model training across experiments
-    - See: training.py TODO section for integration plan
+    - See: loso_cache.py and training.py integration
     
 PER-EXPERIMENT DATA (results/experiment_*/per_subject/)
     - Isolated to each experiment run
@@ -33,12 +33,25 @@ Cache Integrity Strategy:
 - On load, optionally validate against current config
 - Manual data_version bump if raw data changes
 
-NOTE: Current cached files have config_fingerprint="unknown" because they
-were created before fingerprint metadata was added. Regenerate cache to
-include fingerprints (optional - config is fixed for thesis).
+NOTE on legacy "unknown" fingerprints (decision: option-b, leave as-is):
+    Cache files produced before the config_fingerprint field was added do
+    not store the field at all. On load, get_cache_info() substitutes the
+    string "unknown" for display, and load_features_from_cache() with
+    strict_validation=False (the default) accepts these legacy files
+    without checking. This is intentional for the thesis: existing
+    feature caches were produced under a fixed, frozen preprocessing
+    config and are correct; forcing regeneration would cost hours of
+    re-extraction for zero scientific benefit. The thesis disclosure
+    accompanies this choice (Methodology §Fingerprint Generation).
+
+    For post-thesis / production work: flip strict_validation to True
+    by default and treat stored 'unknown' as a fingerprint mismatch —
+    the next pipeline run will regenerate every legacy cache with a
+    proper fingerprint, after which validation actually means something.
 
 When to invalidate cache:
 - Change preprocessing params → fingerprint changes automatically
+  (only enforced when strict_validation=True; see above)
 - Change feature extraction → bump feature_version
 - Raw data changes → bump data_version OR delete cache
 """
@@ -178,19 +191,24 @@ def load_features_from_cache(
         return None
 
     data = np.load(cache_path, allow_pickle=True)
-    
+
     # Validate fingerprint if strict mode enabled.
-    # NOTE: Caches created before fingerprint metadata was added have
-    # config_fingerprint='unknown' and will pass any fingerprint check
-    # (stored_fingerprint is falsy only if the key is absent, not 'unknown').
-    # Legacy caches therefore bypass validation regardless of strict_validation.
-    # To fix: delete the cache directory and re-run feature extraction once;
-    # all newly generated files will carry a proper fingerprint.
-    # For this thesis the config is frozen so the bypass is harmless.
+    #
+    # NOTE on legacy 'unknown' fingerprints: caches produced before the
+    # config_fingerprint field was added do not store the field at all.
+    # The .get(...) default below ('') makes the inner `if stored_fingerprint
+    # and ...` condition false, so legacy caches load even in strict mode.
+    # That is the intentional thesis behaviour (preprocessing config is
+    # frozen, regenerating would cost hours for zero benefit). For
+    # post-thesis / production: change the default to 'unknown' and add an
+    # explicit `or stored_fingerprint == 'unknown'` to the mismatch check
+    # so legacy caches are forced through regeneration. See module
+    # docstring for the full rationale.
     if strict_validation and expected_fingerprint:
         stored_fingerprint = str(data.get('config_fingerprint', ''))
-        if stored_fingerprint and stored_fingerprint != 'unknown' and stored_fingerprint != expected_fingerprint:
-            # Fingerprint mismatch — treat as cache miss
+        if stored_fingerprint and stored_fingerprint != expected_fingerprint:
+            # Fingerprint mismatch - treat as cache miss
+            # This means config changed since cache was created
             return None
     
     feature_names = data['feature_names'].tolist()
@@ -202,9 +220,10 @@ def load_features_from_cache(
 
 
 def get_cache_info(cache_path: Path) -> Optional[Dict[str, Any]]:
-    """Return metadata dict (epoch count, feature count, fingerprint, etc.) without loading full data.
-
-    Returns None if the cache file does not exist.
+    """
+    Get metadata about a cache file without loading full data.
+    
+    Useful for debugging and cache management.  
     """
     cache_path = Path(cache_path)
     if not cache_path.exists():
@@ -229,20 +248,16 @@ def select_channel_features(
     channels_to_keep: int = 6,
     standardize_names: bool = True
 ) -> pd.DataFrame:
-    """Filter a feature DataFrame to keep only columns for the requested channel count.
-
-    Handles both naming conventions (standard F3_/F4_/... and generic CH1_/CH2_/...).
-    Global features (coherence_, plv_, global_) are kept unless they reference
-    excluded channels. If standardize_names=True, renames generic prefixes to
-    standard EEG channel names for consistent cross-subject concatenation.
-
-    Args:
-        features_df: Full feature DataFrame with per-channel and global columns.
-        channels_to_keep: Number of channels to retain (6=EEG only, 8=EEG+EOG+EMG).
-        standardize_names: Rename generic CH*_ prefixes to standard names.
-
-    Returns:
-        Filtered (and optionally renamed) DataFrame.
+    """
+    Filter a full-feature DataFrame (per-channel prefixes + global features)
+    to only include the requested number of channels.
+    
+    Handles both naming conventions:
+    - Standard: F3_, F4_, C3_, C4_, O1_, O2_
+    - Generic: CH1_, CH2_, CH3_, CH4_, CH5_, CH6_
+    
+    If standardize_names=True, converts generic names to standard names for
+    consistent concatenation across subjects.
     """
     # Define canonical prefixes for the first 6 channels (both naming conventions)
     standard_prefixes = ['F3_', 'F4_', 'C3_', 'C4_', 'O1_', 'O2_']

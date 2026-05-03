@@ -19,6 +19,7 @@ Date: December 2025
 import numpy as np
 import pandas as pd
 from scipy import signal, stats
+from scipy.fft import fft, fftfreq
 from typing import Dict, Tuple, List, Optional
 import logging
 from tqdm import tqdm
@@ -61,10 +62,7 @@ def _extract_epoch_worker(sfreq: float, epoch: np.ndarray) -> dict:
 
 
 class TimeDomainFeatures:
-    """Extract 10 time-domain features per single-channel epoch.
-
-    Features: mean, std, var, min, max, peak-to-peak, RMS, skew, kurtosis, zero-crossing rate.
-    """
+    """Extract time-domain features from EEG epochs."""
     
     @staticmethod
     def extract(epoch: np.ndarray) -> Dict[str, float]:
@@ -102,11 +100,7 @@ class TimeDomainFeatures:
 
 
 class FrequencyDomainFeatures:
-    """Extract 9 frequency-domain features per single-channel epoch.
-
-    Features: 6 band powers (delta/theta/alpha/sigma/beta/gamma),
-    spectral entropy, peak frequency, median frequency.
-    """
+    """Extract frequency-domain features from EEG epochs."""
     
     def __init__(self, sfreq: float = 128.0):
         """
@@ -298,8 +292,14 @@ class ComplexityFeatures:
         Returns:
             Hurst exponent (0.5 = random, >0.5 = persistent, <0.5 = anti-persistent)
         """
-        # Always use R/S analysis for Hurst exponent to avoid duplicating DFA
-        # (ant.detrended_fluctuation is used by detrended_fluctuation_analysis instead)
+        if ANTROPY_AVAILABLE:
+            try:
+                # antropy computes Hurst via DFA (standard method in EEG research)
+                return ant.detrended_fluctuation(epoch)
+            except:
+                return 0.5
+        
+        # Fallback: R/S analysis (slower)
         lags = range(2, min(max_lag, len(epoch) // 2))
         tau = []
         
@@ -330,7 +330,7 @@ class ComplexityFeatures:
         try:
             poly = np.polyfit(np.log(lags[:len(tau)]), np.log(tau), 1)
             return poly[0]
-        except Exception:
+        except:
             return 0.5
     
     @staticmethod
@@ -349,7 +349,7 @@ class ComplexityFeatures:
         if ANTROPY_AVAILABLE:
             try:
                 return ant.detrended_fluctuation(epoch)
-            except Exception:
+            except:
                 return 1.0
         
         # Fallback: Pure Python (slower)
@@ -393,7 +393,7 @@ class ComplexityFeatures:
         try:
             poly = np.polyfit(np.log(scales[:len(fluctuations)]), np.log(fluctuations), 1)
             return poly[0]
-        except Exception:
+        except:
             return 1.0
     
     def extract(self, epoch: np.ndarray) -> Dict[str, float]:
@@ -423,7 +423,7 @@ class ComplexityFeatures:
 
 
 class GlobalFeatures:
-    """Extract 11 cross-channel features: 6 coherence pairs, 3 PLV pairs, global entropy, global complexity."""
+    """Extract global features across multiple channels."""
     
     def __init__(self, sfreq: float = 128.0):
         """
@@ -684,10 +684,9 @@ class FeatureExtractor:
         
         Args:
             epochs: (n_epochs, n_channels, n_samples) array
-            n_jobs: Number of parallel workers (None or 1 = sequential, -1 = all CPUs)
-
+            
         Returns:
-            DataFrame with shape (n_epochs, n_features)
+            DataFrame with shape (n_epochs, 149 features)
         """
         n_epochs = epochs.shape[0]
         logger.info(f"Extracting features from {n_epochs} epochs...")

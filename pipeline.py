@@ -7,7 +7,7 @@ Orchestrates the complete ML pipeline from raw data to extracted features.
 Pipeline Stages:
 1. Load raw EEG data
 2. Preprocess (filter, downsample, epoch)
-3. Extract features
+3. Extract features (149 features)
 4. Save results
 
 NOTE: This version does NOT include caching or fingerprinting.
@@ -201,9 +201,9 @@ class DataPipeline:
         
         # Stage 2: Preprocess (only ONCE with 8 channels)
         print(f"[Step 2/3] Preprocessing (filtering, downsampling, epoching)...")
-        print(f"  -> Bandpass filter: {self.config.preprocessing.bandpass_low}-{self.config.preprocessing.bandpass_high} Hz")
-        print(f"  -> Notch filter: {self.config.preprocessing.notch_frequency} Hz")
-        print(f"  -> Downsampling: {self.config.preprocessing.original_sfreq} Hz -> {self.config.preprocessing.target_sfreq} Hz")
+        print(f"  → Bandpass filter: {self.config.preprocessing.bandpass_low}-{self.config.preprocessing.bandpass_high} Hz")
+        print(f"  → Notch filter: {self.config.preprocessing.notch_frequency} Hz")
+        print(f"  → Downsampling: {self.config.preprocessing.original_sfreq} Hz → {self.config.preprocessing.target_sfreq} Hz")
         
         epochs_full, labels = preprocess_subject(
             raw_full,
@@ -256,7 +256,7 @@ class DataPipeline:
         n_epochs = len(epochs)
         expected_features = self.config.features.expected_feature_count()
 
-        print(f"  -> Processing {n_epochs} epochs × {expected_features} features...")
+        print(f"  → Processing {n_epochs} epochs × {expected_features} features...")
 
         # GLOBAL cache path for full-feature set (195 features when 8 channels available)
         # Using global cache allows reuse across different experiments
@@ -300,7 +300,7 @@ class DataPipeline:
             save_intermediate: Save per-subject preprocessed data
             
         Returns:
-            Dictionary mapping subject_id -> {'features': DataFrame, 'labels': array, 'metadata': RecordingMetadata}
+            Dictionary mapping subject_id → {'features': DataFrame, 'labels': array, 'metadata': RecordingMetadata}
         """
         subjects = self.get_subject_list()
         n_subjects = len(subjects)
@@ -359,7 +359,7 @@ class DataPipeline:
                 
                 # CACHE MISS - Need full processing
                 self.cache_misses += 1
-                print(f"  -> Cache miss - running full processing pipeline...")
+                print(f"  → Cache miss - running full processing pipeline...")
                 
                 # Process subject with progress info
                 epochs, labels, metadata, epochs_full, labels_full = self.process_single_subject(
@@ -388,7 +388,7 @@ class DataPipeline:
                 
                 # Save intermediate results (optional)
                 if save_intermediate:
-                    print(f"  -> Saving intermediate results...")
+                    print(f"  → Saving intermediate results...")
                     self.save_subject_data(subject_id, epochs, labels, features_df)
                     print(f"  Saved to {self.output_dir / 'per_subject' / f'subject_{subject_id}'}")
                 
@@ -483,7 +483,7 @@ class DataPipeline:
             print(f"  Subject {subject_id}: {n_epochs} epochs")
         
         # Concatenate
-        print(f"\n  -> Concatenating all data...")
+        print(f"\n  → Concatenating all data...")
         features_df = pd.concat(all_features, ignore_index=True)
         labels_array = np.concatenate(all_labels)
         subject_ids_array = np.array(all_subject_ids)
@@ -524,24 +524,24 @@ class DataPipeline:
         
         # Save features
         features_path = self.output_dir / "features" / "all_features.csv"
-        print(f"  -> Saving features to CSV...")
+        print(f"  → Saving features to CSV...")
         save_dataframe(features_df, features_path)
         print(f"    {features_path}")
         
         # Save labels
         labels_path = self.output_dir / "features" / "all_labels.npy"
-        print(f"  -> Saving labels...")
+        print(f"  → Saving labels...")
         save_numpy_array(labels, labels_path)
         print(f"    {labels_path}")
         
         # Save subject IDs
         subject_ids_path = self.output_dir / "features" / "subject_ids.npy"
-        print(f"  -> Saving subject IDs...")
+        print(f"  → Saving subject IDs...")
         save_numpy_array(subject_ids, subject_ids_path)
         print(f"    {subject_ids_path}")
         
         # Save metadata
-        print(f"  -> Saving metadata...")
+        print(f"  → Saving metadata...")
         metadata = {
             'n_epochs': len(features_df),
             'n_features': features_df.shape[1],
@@ -560,13 +560,10 @@ class DataPipeline:
         print(f"\n  ALL FILES SAVED TO: {self.output_dir / 'features'}")
         print(f"{'='*60}\n")
     
-    def run(self, save_intermediate: bool = True) -> Dict:
+    def run(self) -> Dict:
         """
         Run complete pipeline.
-
-        Args:
-            save_intermediate: Whether to save intermediate files to disk
-
+        
         Returns:
             Dictionary with pipeline results and statistics
         """
@@ -574,7 +571,7 @@ class DataPipeline:
         
         print("\n" + "="*60)
         print("   ML EXPERIMENT PIPELINE - STAGE 1 & 2")
-        print("   Data Preparation: Load -> Preprocess -> Extract Features")
+        print("   Data Preparation: Load → Preprocess → Extract Features")
         print("="*60)
         print(f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Experiment: {self.config.experiment_name}")
@@ -582,7 +579,7 @@ class DataPipeline:
         print("="*60 + "\n")
         
         # Process all subjects
-        results = self.process_all_subjects(save_intermediate=save_intermediate)
+        results = self.process_all_subjects(save_intermediate=True)
         
         # Aggregate
         features_df, labels, subject_ids = self.aggregate_features(results)
@@ -606,8 +603,8 @@ class DataPipeline:
             'cache_hits': self.cache_hits,
             'cache_misses': self.cache_misses,
             'cache_hit_rate': (self.cache_hits / (self.cache_hits + self.cache_misses) * 100) if (self.cache_hits + self.cache_misses) > 0 else 0,
-            # Estimated cold time based on measured miss times (~25s per subject)
-            'estimated_cold_time': (self.cache_hits + self.cache_misses) * 25.0 if self.cache_hits > 0 else elapsed
+            # Estimated cold time (for comparison)
+            'estimated_cold_time': elapsed * 2 if self.cache_hits > 0 else elapsed
         }
         
         # Final summary

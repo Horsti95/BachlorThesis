@@ -24,6 +24,8 @@ import pandas as pd
 import mne
 from dataclasses import dataclass
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -44,11 +46,7 @@ class RecordingMetadata:
 
 
 class BOASSleepStageMapper:
-    """Maps BOAS integer sleep stage codes to/from human-readable labels.
-
-    Valid stages: 0=Wake, 1=N1, 2=N2, 3=N3, 4=REM.
-    Invalid stages (8=disconnection, -2=artifact) are mapped to -1.
-    """
+    """Maps BOAS sleep stage labels."""
     
     # BOAS standard mapping
     STAGE_TO_INT = {
@@ -132,7 +130,7 @@ class BOASDataLoader:
         logger.info(f"Using {'human' if use_human_labels else 'AI'} labels")
     
     def list_subjects(self) -> List[str]:
-        """Return sorted list of subject IDs found in base_path (sub-* directories)."""
+        """Get list of available subject IDs."""
         subject_dirs = sorted([d for d in self.base_path.iterdir() 
                               if d.is_dir() and d.name.startswith('sub-')])
         subject_ids = [d.name.replace('sub-', '') for d in subject_dirs]
@@ -398,7 +396,7 @@ class BOASDataLoader:
         return raw_picked
     
     def resample_if_needed(self, raw: mne.io.Raw) -> mne.io.Raw:
-        """Resample to target_sfreq if it differs from current rate. Returns raw unchanged if already at target."""
+        """Resample to target sampling rate if specified."""
         if self.target_sfreq is None:
             return raw
         
@@ -445,11 +443,9 @@ class BOASDataLoader:
         if verbose:
             self.print_subject_info(subject_id, raw, annotations, psg_path, annotation_path)
         
-        # Backward compatibility: only override if apply_preprocessing was explicitly set
-        # and individual flags were not explicitly provided by the caller
-        if apply_preprocessing and not apply_channel_selection:
+        # Backward compatibility
+        if apply_preprocessing:
             apply_channel_selection = True
-        if apply_preprocessing and not apply_resampling:
             apply_resampling = True
         
         # Apply channel selection if requested
@@ -588,7 +584,7 @@ class BOASDataLoader:
                     data_start = raw.get_data(start=0, stop=int(30 * metadata.sampling_rate))
                     data_end = raw.get_data(start=max(0, raw.n_times - int(30 * metadata.sampling_rate)))
                     sample_data = np.concatenate([data_start, data_end], axis=1)
-                except Exception:
+                except:
                     sample_data = raw.get_data(stop=min(raw.n_times, int(60 * metadata.sampling_rate)))
             else:
                 sample_data = raw.get_data()
