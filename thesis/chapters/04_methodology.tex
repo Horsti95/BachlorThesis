@@ -260,36 +260,11 @@ sufficient given the BOAS dataset's $<$0.1\% artefact rate.
 \section{Feature Extraction: The 149-Feature Set}
 \label{sec:features}
 
-149 EEG features are extracted per 30-second epoch, spanning four domains
-(Table~\ref{tab:feature_breakdown_149}).
-
-\begin{table}[ht]
-\centering
-\caption[149-feature breakdown by domain]{149 EEG features extracted per
-30-second epoch, grouped by domain. Band boundaries match
-Table~\ref{tab:eeg_bands}.}
-\label{tab:feature_breakdown_149}
-\begin{tabular}{p{3.2cm}rp{7.5cm}}
-\toprule
-\textbf{Domain} & \textbf{Count} & \textbf{Features} \\
-\midrule
-Time-Domain      & 60 & Mean, std, variance, min, max, peak-to-peak, RMS,
-                        skewness, kurtosis, zero-crossing rate
-                        (10 $\times$ 6 channels) \\[4pt]
-Frequency-Domain & 54 & Band powers: $\delta$ 0.5--4, $\theta$ 4--8,
-                        $\alpha$ 8--13, $\sigma$ 12--16, $\beta$ 16--30,
-                        $\gamma$ 30--40~Hz; spectral entropy, peak frequency,
-                        median frequency (9 $\times$ 6 channels) \\[4pt]
-Signal Complexity & 24 & Hjorth mobility, Hjorth complexity, Hurst exponent,
-                         Detrended Fluctuation Analysis
-                         (4 $\times$ 6 channels) \\[4pt]
-Inter-Channel    & 11 & Coherence (6 pairs), Phase Locking Value (3 pairs),
-                        global entropy, global complexity \\
-\midrule
-\textbf{Total}   & \textbf{149} & \\
-\bottomrule
-\end{tabular}
-\end{table}
+149 EEG features are extracted per 30-second epoch, spanning four domains:
+60 time-domain, 54 frequency-domain, 24 signal-complexity, and 11
+inter-channel features. The full per-domain breakdown is given in
+Appendix~\ref{sec:appendix_features},
+Table~\ref{tab:feature_breakdown_149}.
 
 \subsection{Feature Engineering Strategy and Caching Prioritization}
 
@@ -843,8 +818,8 @@ The primary thesis contribution was evaluated through caching metrics:
       I/O cost; the verdict reflects the \textit{practical} concern that
       speedup margins erode on smaller datasets, not that caching is
       net-negative in absolute terms.
-      These boundaries are applied consistently in Table~\ref{tab:cache_viability}
-      and Figure~\ref{fig:cache_efficiency}.
+      These boundaries are applied consistently in
+      Figure~\ref{fig:cache_efficiency}.
 
 \item \textbf{Relative Cache Efficiency:} A complementary metric
       $\rho = (T_{\text{cold}}/T_{\text{warm}}) / \text{size (MB)}$ [$\times$/MB]
@@ -1005,11 +980,19 @@ numbers differ across machines while the VIABLE/NOT\_VIABLE rankings do not.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
-\caption[Cache efficiency scatter: size vs.\ compute time saved]{Cache efficiency scatter: cache size per fold (x-axis, MB, log scale)
-vs.\ compute time saved per fold (y-axis, seconds, log scale).
-Dashed diagonal = viability boundary ($T_{\text{save}} = \text{size}/B_{\text{disk}}$);
-points above the boundary recover more time than they cost in storage I/O.
-XGBoost (top-left cluster) is clearly viable; RF (right half) is borderline.}
+\caption[Cache viability across 15 model types]{Cache viability across 15
+model types (128 subjects, RTX~5090). Each point is one model. The x-axis
+shows the per-fold serialised model size (MB, log); the y-axis shows the
+per-fold compute time saved by warm-loading instead of retraining
+($T_\text{save} = T_\text{cold} - T_\text{warm}$, seconds, log). The dashed
+diagonal is the viability boundary $T_\text{save} = \text{size}/B_\text{disk}$:
+points above it recover more training time than they spend on storage I/O.
+\textbf{Top-left}: small-cache, high-savings cluster (boosting models, SVM
+Linear) --- unambiguously viable, the regime XGBoost lives in. \textbf{Bottom
+band}: high speedup factor but trivial absolute savings (Naive Bayes, Ridge),
+viable but practically irrelevant. \textbf{Right side}: large-cache models
+(Random Forest, Extra Trees, kNN) --- the absolute time saved per fold cannot
+amortise the disk-I/O cost, placing them below the boundary.}
 \label{fig:cache_efficiency}
 \end{figure}
 
@@ -1027,63 +1010,47 @@ misclassification into adjacent stages Wake and N2.}
 \label{fig:confusion_matrix}
 \end{figure}
 
-Table~\ref{tab:performance_18configs} presents the full classification performance
-across all 18 experimental configurations, ranked by accuracy.
+Table~\ref{tab:performance_18configs} reports the two best-performing configurations
+per model from the 18-configuration sweep; the full ranking is preserved with the
+archived results.
 
 \input{tables/tab2_performance_18configs}
 
-The best-performing configuration (\mbox{XGBoost, no correlation filter, all 149 features})
-achieved \textbf{85.5\% accuracy} ($\kappa = 0.737$, F1-macro $= 0.636$) in LOSO
-cross-validation across 128 subjects. XGBoost occupies the top 7 positions in the
-ranking, with Random Forest configurations placing 8th--18th. The N1 sleep stage
-consistently shows lower per-class F1 due to its transitional nature, similarity
-to adjacent stages Wake and N2, and severe class imbalance (3.7\% of all epochs;
-Section~\ref{sec:data}); this pattern is visible in the confusion matrix (Figure~\ref{fig:confusion_matrix}).
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig6_per_class_f1.pdf}
-\caption{Per-class F1 scores for best XGBoost configuration (128-fold LOSO).
-N1 shows lowest F1 due to transitional stage characteristics.}
-\label{fig:per_class_f1}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig7_feature_importance.pdf}
-\caption{Top feature importances for the best-performing XGBoost configuration.}
-\label{fig:feature_importance}
-\end{figure}
+The best configuration (\mbox{XGBoost, no correlation filter, all 149 features})
+achieved \textbf{84.9\% accuracy} ($\kappa = 0.726$, F1-macro $= 0.629$) in LOSO
+cross-validation across 128 subjects. Across the full sweep, every XGBoost
+configuration except one outranked every Random Forest configuration, with the
+worst XGBoost setting (no-correlation, top-30 features) the only exception. The
+N1 sleep stage consistently shows lower per-class F1 due to its transitional
+nature, similarity to adjacent stages Wake and N2, and severe class imbalance
+(3.7\% of all epochs; Section~\ref{sec:data}); this pattern is visible in the
+confusion matrix (Figure~\ref{fig:confusion_matrix}).
 
 \subsection{Multi-Model Cache Viability}
 \label{sec:results_viability}
 
-Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
-tested on the full 128-subject dataset (5 LOSO folds).
+To test whether the viability picture generalises beyond XGBoost and Random
+Forest, the framework was applied to 15 sklearn-compatible model types
+(boosting, bagging, kernel, linear, distance, probabilistic) on the full
+128-subject dataset. Figure~\ref{fig:cache_efficiency} maps the result on
+two axes that jointly govern viability: cache size per fold (x) and absolute
+compute time saved per fold (y), both on a log scale, with the
+$T_\text{save} = \text{size}/B_\text{disk}$ diagonal marking the viability
+boundary.
 
-\input{tables/tab4_cache_viability}
-
-\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable
-types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common
-characteristic: large serialised model sizes (130--1{,}544~MB per fold) and
-slow deserialisation, which eliminate the loading-speed advantage over
-retraining. The top viable models are boosting-based, with Gradient Boosting
-reaching 18{,}030$\times$ speedup at only 0.4~MB per fold.
-
-The two diagnostic axes --- absolute time saved per fold and speedup factor
---- can disagree in informative ways. Naive Bayes runs $5\times$ faster from
-cache but the absolute saving is fractions of a second (cold time is already
-0.29~s), so caching is technically viable but practically irrelevant.
-Conversely, Random Forest saves tens of seconds in absolute terms yet the
-speedup factor is modest ($14\times$) and the storage cost is large
-(130~MB/fold), placing it on the wrong side of the disk-I/O viability
-boundary. Figure~\ref{fig:cache_efficiency} on
-page~\pageref{fig:cache_efficiency} maps both axes simultaneously --- cache
-size on the x-axis and absolute time saved on the y-axis --- with the
-$T_\text{save} = \text{size}/B_\text{disk}$ diagonal as the viability cut.
-Models above the diagonal recover more compute time than they spend on
-storage I/O regardless of the speedup factor, which is the metric that
-actually matters for re-run economics.
+The two diagnostic axes can disagree in informative ways. Naive Bayes runs
+$5\times$ faster from cache but the absolute saving is fractions of a second
+(cold time is already 0.29~s), so caching is technically viable but
+practically irrelevant. Conversely, Random Forest saves tens of seconds in
+absolute terms yet the speedup factor is modest ($14\times$) and the storage
+cost is large (130~MB/fold), placing it on the wrong side of the disk-I/O
+boundary. The viability cut depends on absolute seconds recovered relative
+to the storage I/O paid for them --- not on the headline speedup factor,
+which is what makes models like Naive Bayes look attractive on a one-axis
+ranking. Of the 15 models, 11 land above the diagonal; the four
+not-viable types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share
+a common characteristic: serialised sizes of 130--1{,}544~MB per fold whose
+load time approaches or exceeds their cold-train time.
 
 \subsection{Cache Scaling with Dataset Size}
 \label{sec:results_scaling}
@@ -1113,19 +1080,7 @@ Random Forest & 128 & 35.45 & 2.726 & 13.0$\times$ & 152.42~MB \\
 \end{table}
 
 Cache speedup \textit{increases} with dataset size for both models, but the
-underlying cost--benefit curves diverge sharply. Figure~\ref{fig:xgbrf_scaling}
-visualises both axes side by side.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\textwidth]{figures/fig_xgbrf_scaling.pdf}
-\caption[XGB and RF cache scaling: speedup and cache size]{XGBoost and Random
-Forest cache scaling from 10 to 128 subjects. Left: warm-run speedup grows
-monotonically for both models. Right: per-fold cache size (log scale) --- XGBoost
-grows sublinearly (1.03 to 1.50~MB, +46\%) while Random Forest grows
-roughly linearly with the dataset (11.64 to 152.42~MB, $13\times$).}
-\label{fig:xgbrf_scaling}
-\end{figure}
+underlying cost--benefit curves diverge sharply.
 
 \textbf{Sublinear cache growth is the core viability argument for XGBoost.}
 From 10 to 128 subjects, XGBoost cold time scales nearly linearly with data
@@ -1338,6 +1293,19 @@ is therefore the pragmatic choice for caching-oriented workflows.
 \item \textbf{No multi-user evaluation:} The framework was designed for
       single-researcher workflows. Cache sharing across multiple concurrent
       users would require locking mechanisms not implemented here.
+
+\item \textbf{Naive storage backend:} The Layer~2 cache is a flat directory
+      of files named \texttt{\{fingerprint\}\_\{subject\}.joblib}, looked up
+      with a single \texttt{Path.exists()} call (\texttt{loso\_cache.py:218,
+      261}). The fingerprint \textit{is} the index --- there is no database,
+      no content-addressable store, no eviction policy, and no concurrent-write
+      arbitration; a sidecar JSON registry tracks metadata but is not on the
+      lookup path. This is sufficient for a single-machine, single-user thesis
+      project, but limits scalability: a team setting or a long-running
+      pipeline would benefit from replacing the flat directory with an object
+      store (S3, MinIO), a content-addressable filesystem, or a metadata
+      database with TTL/LRU eviction. The fingerprinting layer is independent
+      of the storage backend and would carry over unchanged.
 
 \item \textbf{Layer~1 fingerprint validation is lenient:} The feature cache
       (Layer~1) stores a preprocessing config fingerprint with each cached
