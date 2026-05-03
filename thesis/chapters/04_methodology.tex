@@ -821,7 +821,7 @@ The primary thesis contribution was evaluated through caching metrics:
       The thresholds used in this thesis were calibrated empirically: after
       measuring all 15 model types, the viable cluster (boosting methods, SVMs,
       linear models) fell in the range $\eta \approx 4$--$2{,}500$~s/MB,
-      while the non-viable cluster (tree ensembles, KNN) fell in the range
+      while the non-viable cluster (tree ensembles, KNN $k=5$, KNN $k=10$) fell in the range
       $\eta \approx 0.19$--$0.4$~s/MB. The gap between clusters spans nearly a
       decade on a log scale, making the exact position of the boundary
       non-critical. The thresholds were set to bracket this gap:
@@ -1063,8 +1063,8 @@ tested on the full 128-subject dataset (5 LOSO folds).
 
 \input{tables/tab4_cache_viability}
 
-\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable models
-(Random Forest, KNN-5, KNN-10, Extra Trees) share a common characteristic: large
+\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable model
+types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common characteristic: large
 serialized model sizes (130--1544~MB per fold) and slow deserialization times,
 which eliminate the loading speed advantage over retraining. The top-performing
 viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
@@ -1237,7 +1237,7 @@ Chapter~\ref{chap:summary}.
       18 configurations and 128 LOSO folds; zero fingerprint collisions.
 
 \item \textbf{Viability spectrum:} 11 of 15 model types are cache-viable
-      ($\eta > 2$~s/MB). The 4 not-viable types (RF, Extra Trees, KNN)
+      ($\eta > 2$~s/MB). The 4 not-viable types (RF, Extra Trees, KNN $k=5$, KNN $k=10$)
       share GB-scale serialized sizes. Verdicts are hardware-portable;
       speedup magnitudes are not.
 
