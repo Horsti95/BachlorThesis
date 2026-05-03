@@ -75,12 +75,6 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
       via \texttt{numpy.array\_equal()}).
 \end{enumerate}
 
-A supplementary comparison found ANOVA feature selection strictly superior
-to Mutual Information for this feature set: 174$\times$ faster to fit and
-3.68 percentage points more accurate (84.26\% vs.\ 80.58\%). While not a
-primary caching result, this finding informed the choice of selection method
-used across all configurations.
-
 \subsection{Research Questions Revisited}
 
 The four research questions posed in Chapter~1 are answered below. Where the
@@ -245,22 +239,6 @@ plugins for DVC, ZenML, or MLflow, encoding held-out subject IDs in step
 cache keys and making fold-aware caching accessible to researchers who already
 use these platforms. The $\eta$-based viability verdicts established here
 would directly inform the default caching policy of such plugins.
-
-\subsection{FNN and Deep Model Evaluation}
-
-A feedforward neural network was implemented and verified on a 5-subject pilot ($\approx$78\% accuracy, 4.2$\times$ speedup) but excluded from the full benchmark due to environment constraints. Evaluating deep model caching under LOSO would extend the viability analysis to gradient-based optimisers and test whether the fingerprint mechanism generalises to non-deterministic training dynamics.
-
-\subsection{Two-Tier RAM+Disk Caching}
-
-An in-memory LRU cache above the disk store could reduce latency for workflows where the same models are accessed repeatedly within a session. For the batch-oriented workflow in this thesis, disk I/O was not the dominant bottleneck; however, latency-sensitive production deployments with repeated access patterns could benefit meaningfully.
-
-\subsection{Cross-Experiment Cache Reuse}
-
-When two experiments share the same feature extraction pipeline but differ only in model configuration, the Layer~1 feature store could be shared across experiment directories. This would require a shared registry mapping fingerprints to storage locations, with access control preventing unintended cross-experiment contamination.
-
-\subsection{Scalability}
-
-Extending the framework to hundreds of hyperparameter combinations would require selective eviction policies and hierarchical invalidation, where upstream changes (e.g.\ preprocessing updates) cascade automatically to downstream caches. The current implementation handles 18 configurations $\times$ 128 folds; production-scale use would require these mechanisms.
 
 \subsection*{A Research Trajectory}
 
