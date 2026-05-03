@@ -59,7 +59,7 @@ The framework is integrated into a multi-stage ML pipeline and specifically exte
 
 Validation is conducted via a sleep stage classification case study using the Bitbrain Open Access Sleep (BOAS) dataset (128 subjects, approximately 120,000 epochs). The feature extraction module computes 149 features per epoch across six EEG channels, which are cached persistently to isolate the performance evaluation to the computationally intensive model training phase. Feature selection (ANOVA F-statistic) is applied globally across all subjects prior to LOSO splits---a deliberate design choice that enables consistent cache fingerprinting at the cost of negligible label overlap ($<$1\%).
 
-The contributions of this thesis are: (1) a fingerprint-based LOSO model caching framework that ensures cache correctness and prevents cross-fold contamination; (2) quantified efficiency gains, demonstrating a median speedup of 178$\times$ for XGBoost and 17.7$\times$ for Random Forest across 128 LOSO folds; and (3) validated reproducibility, where all cached models yielded identical classification results to those obtained through cold retraining.
+The contributions of this thesis are: (1) a fingerprint-based LOSO model caching framework that ensures cache correctness and prevents cross-fold contamination; (2) quantified efficiency gains, demonstrating a median speedup of 54$\times$ for XGBoost and 11.6$\times$ for Random Forest across 128 LOSO folds; and (3) validated reproducibility, where all cached models yielded identical classification results to those obtained through cold retraining.
 \end{abstract}
 % 3. THE AI TABLE & THANKS to HImanshu (This is where the Acknowledgements go!)
 
