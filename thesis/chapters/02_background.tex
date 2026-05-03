@@ -1,219 +1,6 @@
 \chapter{Background}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-Lenghth goal 8 pages currently reached  including yellow to does
-\end{minipage}}
-\end{center}
-\section{Domain: Machine Learning Research Methodology}
-The landscape of Machine Learning (ML) research and development is
-characterized by rapid iteration and experimentation. According to the
-AI Index Report 2023, AI-related publications have more than doubled since
-2015, reflecting the field's exponential growth~\cite{AIIndex2023}. Data
-scientists and ML engineers continuously explore different model architectures,
-algorithms, hyperparameters, and data preprocessing techniques to achieve
-optimal performance. This iterative process, while essential for innovation,
-introduces significant challenges concerning efficiency and reproducibility.
-A single experiment may require hours or days of computation, and researchers
-often repeat similar computations across multiple runs. The cumulative effect
-translates into substantial costs in GPU hours, cloud computing expenses,
-and researcher productivity~\cite{schubotz2022caching}.
-
-To manage this complexity, standardized process models have emerged.
-CRISP-DM (Cross-Industry Standard Process for Data Mining), developed in
-1996, remains widely adopted~\cite{crispdm2000}. However, its limitations
-for modern ML---particularly lack of emphasis on model monitoring and
-maintenance---led to CRISP-ML(Q), which extends CRISP-DM with quality assurance
-methodology tailored for ML applications~\cite{studer2021crispmlq}. This
-framework aligns with modern MLOps principles, which emphasize automation,
-continuous integration/deployment (CI/CD), and reproducibility throughout
-the ML lifecycle~\cite{kreuzberger2023mlops}.
-
-Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
-support experiment tracking by recording parameters, metrics, code versions,
-and artifacts for each run, enabling comparison and reproducibility. Despite
-these advances, reproducibility remains a persistent challenge---particularly
-in subject-independent evaluation workflows such as LOSO cross-validation,
-where experiment tracking tools record parameters globally but do not natively
-encode fold identity into cache keys. Without explicit fold-aware engineering,
-a cached model trained with Subject~$S_i$ held out could silently be reused
-for Subject~$S_j$, violating the experimental
-protocol~\cite{semmelrock2025reproducibility}. As Kreuzberger et al.\ define
-it, reproducibility is the ``ability to obtain the exact same results'' given
-identical inputs, code, and execution environment (Principle~P3)~\cite{kreuzberger2023mlops},
-a goal that depends on three controllable factors~\cite{schubotz2022caching}:
-\begin{itemize}
-    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} 
-          Unrecorded decisions or parameter changes hinder replication.
-    
-    \item \textbf{Data and Environment Volatility:} Dataset alterations, 
-          framework updates, and inconsistent compute environments cause 
-          divergent outcomes. Empirical analysis shows that 61.8\% of 
-          CI/CD pipeline modifications in ML projects are driven by 
-          such dependency issues~\cite{rzig2024empirical}.
-
-    \item \textbf{Inherent Randomness:} Machine learning algorithms, 
-          particularly Feedforward Neural Networks (FFNNs), exhibit 
-          significant variation due to stochastic model initialization 
-          and training~\cite{raste2022quantifying}. These effects are 
-          further amplified by hardware-level non-determinism; for 
-          instance, NVIDIA's cuDNN routines utilize atomic operations 
-          that introduce "truly random floating point rounding errors" 
-          during execution~\cite{nvidia2024cudnn}.
-\end{itemize}
-
-
-These challenges are particularly acute during iterative experimentation,
-where researchers may run hundreds of configurations before identifying
-promising approaches. Without intelligent management of computational
-artifacts, substantial resources are wasted on redundant calculations.
-This observation motivates the central contribution of this thesis: a
-fingerprint-based caching framework that persists and reuses computational
-artifacts (extracted features and trained models) across iterative modeling
-phases while maintaining reproducibility through cryptographic configuration
-fingerprinting. Kreuzberger et al.'s Principle~P7 requires metadata tracking
-for maintaining model lineage~\cite{kreuzberger2023mlops}; the fingerprint-based
-framework implements this directly by hashing a canonical JSON representation
-of the complete experiment state---data configuration, code version, model
-parameters, and held-out subject identifier---into a SHA-256 fingerprint that
-simultaneously automates lineage tracking and serves as a deterministic cache key.
-
-\section{Context: Computational Efficiency in Research}
-
-Building on the iterative experimentation challenges described in
-Section 2.1, this section examines the computational efficiency bottlenecks
-that motivate intelligent caching frameworks.
-
-The increasing complexity and scale of Machine Learning models have
-substantially raised computational demands. Training models, tuning
-hyperparameters, and running repeated experiments consume vast compute,
-memory, and time resources, creating bottlenecks in research productivity
-and driving up costs.
-
-Several factors drive this resource consumption:
-
-\begin{itemize}
-\item \textbf{Large Datasets:} Massive datasets require intensive I/O and
-      memory usage.
-
-\item \textbf{Complex Models:} Both deep neural networks and ensemble
-      methods (e.g., gradient boosting with thousands of trees, large
-      random forests) require substantial computational resources for
-      training and inference.
-
-\item \textbf{Iterative Experimentation:} Frequent experiments often repeat
-      computations unnecessarily when modifying a subset of parameters while
-      keeping others constant.
-
-\item \textbf{Hyperparameter Optimization:} Searching large hyperparameter
-      spaces is inherently compute-intensive.
-
-\item \textbf{Rigorous Validation:} Cross-validation strategies (e.g.,
-      k-fold, leave-one-out) multiply training costs by the number of folds.
-\end{itemize}
-
-While caching can help, hardware-level research in cache management---such as the ML-aided strategies surveyed by Krishna (2025)---focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-scale access patterns rather than addressing macro-level requirements such as matching high-level experiment configurations to saved artifacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
-
-This thesis addresses these inefficiencies through a deterministic, fingerprint-based caching framework. By encoding complete experiment configurations (including cross-validation fold identity) into cryptographic SHA-256 cache keys, the framework enables automatic result reuse that is mathematically tied to the scientific parameters, ensuring both efficiency and reproducibility.
-
-\section{Technology: Configuration Fingerprinting and Caching}
-
-Efficient ML experimentation depends on configuration management and intelligent
-result reuse. This section reviews technologies directly relevant to the
-fingerprint-based LOSO caching approach developed in this thesis.
-
-A \textbf{cache} is a temporary store of computed results that can be reused when the same computation is requested again; its defining property is a \textit{validity condition}---a cached result is only reusable if the inputs that produced it remain unchanged. \textbf{Persistent storage}, by contrast, refers to the durable storage of artifacts whose validity does not depend on experimental configuration, such as raw data or fixed intermediate representations. Schubotz et al.\ (2022) formalize this distinction in data science experiments, demonstrating that reproducible result reuse requires explicit tracking of what produced each artifact and under which conditions it remains valid~\cite{schubotz2022caching}. This thesis operationalizes both concepts: extracted EEG features constitute persistent storage (computed once per dataset regardless of model choices), while trained LOSO models constitute a configuration-dependent cache (valid only for their specific fingerprint, as detailed in Section~\ref{sec:storage_vs_caching}).
-
-The adoption of Leave-One-Subject-Out (LOSO) cross-validation is driven by the requirement for algorithmic stability in high-dimensional EEG datasets. As established by Kearns and Ron (1999), leave-one-out estimators provide essential ``sanity-check'' bounds for generalisation error, ensuring that the model does not merely overfit to subject-specific artefacts~\cite{kearns1999}. However, the computational overhead of LOSO remains a significant barrier to iterative research. Jayaram (2018) emphasises that for EEG-based systems to move beyond the laboratory, processing pipelines must be validated across diverse datasets without requiring constant, redundant retraining~\cite{jayaram2018}. In this thesis, LOSO is utilised not only as a validation metric but as a primary driver for the caching framework: the repetitive nature of the 2{,}304 required training runs provides a high-volume workload where deterministic fingerprinting can demonstrate maximum efficiency gains.
-
-\subsection{Configuration Fingerprinting}
-
-Configuration fingerprinting uses cryptographic hash functions (e.g., SHA-256) 
-to create unique identifiers for experiment configurations. By hashing a 
-canonical representation of all parameters, these fingerprints enable 
-deterministic identification of identical configurations and automatic 
-cache invalidation when parameters change.
-
-Modern MLOps tools employ variants of this approach:
-\begin{itemize}
-    \item \textbf{DVC} logs pipeline signatures combining dependency contents, 
-          parameters, and commands~\cite{dvc_pipelines}.
-    \item \textbf{MLflow} tracks experiment metadata to enable versioning and 
-          visual comparison~\cite{zaharia2018mlflow}.
-    \item \textbf{MLXP} enforces reproducibility by linking Hydra-based 
-          configurations with specific Git commit hashes~\cite{arbel2024mlxp}.
-\end{itemize}
-
-\subsection{Hash-Based Caching in MLOps}
-
-MLOps pipeline caching implements content-addressable storage: when pipeline
-inputs and code match previous runs (verified through hash comparison),
-cached outputs are reused~\cite{dvc_pipelines}. DVC's run cache,
-for example, combines dependency hashes with parameter configurations to
-create cache keys. When a match is found, execution is skipped and previous
-results are restored.
-
-In practice, content-addressable caches are typically implemented as
-filesystem-based key--value stores: artifacts are saved to files whose names
-are derived from the configuration fingerprint, and a cache lookup is simply
-a file-existence check using the hash-derived filename. This is distinct from
-an in-memory hash table; lookup performance is governed by the operating
-system's directory indexing rather than constant-time hashing.
-
-This approach provides reproducibility: identical configurations produce
-identical cache keys, ensuring cached results correspond to recorded
-parameters~\cite{schubotz2022caching}.
-
-Google's MLOps maturity model~\cite{googlemlops2023} describes a progression
-from Level~0 (fully manual processes) to Level~1 (automated ML pipelines) in
-which experiment metadata, artifact versioning, and reproducible pipeline
-execution are central requirements. Hash-based caching supports this
-progression by providing the technical substrate for traceability: only through
-unique configuration fingerprints can the exact data and code versions that
-produced a specific artifact be identified with certainty.
-
-\subsection{Related Caching Approaches}
-
-Caching is applied across many computing domains, but with fundamentally
-different objectives. LLM inference caches manage attention key-value tensors
-to reduce autoregressive latency~\cite{kwon2023pagedattention}; hardware-level
-systems optimize replacement policies for microsecond-scale memory
-access~\cite{krishna2025cache}; and large-scale scientific computing uses
-distributed file caches for petabyte data distribution~\cite{sim2023xcache}.
-In contrast to these runtime or hardware-oriented approaches, this thesis
-implements \textit{experiment-level} caching: artifacts are indexed by the
-complete scientific configuration that produced them, and validity depends on
-configuration identity and cross-validation fold identity rather than access
-frequency or latency.
-
-\subsection{Reproducibility Considerations}
-
-Despite fingerprinting, perfect reproducibility remains challenging. Sources
-of non-determinism include random seed variation, software version differences,
-hardware-specific floating-point operations, and non-deterministic GPU
-algorithms~\cite{raste2022quantifying,nvidia2024cudnn}.
-
-Bouthillier et al.\ (2021) demonstrate that variance from data sampling,
-parameter initialization, and hyperparameter choice markedly impacts benchmark
-results across deep learning architectures, and that these sources of variation
-are routinely underestimated in published
-comparisons~\cite{bouthillier2021variance}. Raste et al.\ (2022) quantify
-inherent randomness specifically in tree-based methods (Random Forests, GBMs)
-and Feedforward Neural Networks, finding that variation from data splitting
-exceeds variation from model training, while FFNNs exhibit the largest
-training-induced variance~\cite{raste2022quantifying}. NVIDIA's cuDNN
-documentation explicitly states that certain GPU reduction operations use
-atomic operations that introduce non-deterministic floating-point rounding
-errors~\cite{nvidia2024cudnn}.
-
-Configuration fingerprinting addresses the controllable factors (seeds,
-hyperparameters, data splits, software versions) while accepting
-hardware-induced variance as irreducible. For caching purposes, cached
-results are considered valid if fingerprints match, with the understanding
-that minor numerical differences may occur when reproducing results across
-different hardware environments.
+This chapter provides the theoretical foundation and contextual background necessary to understand and evaluate the fingerprint-based LOSO caching framework. The chapter follows a bottom-up progression from the data domain to the computational solution. Sections~\ref{sec:sleep_medicine} and \ref{sec:eeg_processing} introduce the sleep medicine domain and EEG signal processing concepts that define the validation scenario. Section~\ref{sec:sleep_classification} surveys sleep stage classification methods and positions this thesis within that literature. Section~\ref{sec:ensemble_methods} describes the two ensemble classifiers used, highlighting their contrasting serialisation characteristics. Section~\ref{sec:loso_background} formalises Leave-One-Subject-Out cross-validation and its computational implications. Section~\ref{sec:mlresearch_efficiency} covers ML research methodology and computational efficiency challenges. Finally, Section~\ref{sec:fingerprinting} introduces the configuration fingerprinting and caching technologies the framework builds upon.
 
 % ============================================================================
 \section{Sleep Medicine Fundamentals}
@@ -242,8 +29,8 @@ thesis:
       transitional nature (typically 1--5 minutes).
 
 \item \textbf{N2 (Sleep):} Comprises 45--55\% of total sleep time. Defined
-      by sleep spindles (12--16~Hz as used in this thesis's feature extractor;
-      AASM defines spindles at 11--16~Hz) and K-complexes.
+      by sleep spindles (Sigma band, see Table~\ref{tab:eeg_bands}) and
+      K-complexes.
 
 \item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves
       (0.5--4~Hz, $\geq$20\% of epoch). Most prevalent in the first third
@@ -336,12 +123,53 @@ the following noise sources:
       extraction; whether to apply this step depends on dataset quality.
 \end{itemize}
 
-These steps constitute the preprocessing pipeline used in this thesis,
-producing clean 30-second epochs ready for feature extraction. The pipeline
-was originally developed for a prior subject-independent sleep staging project
-and is adopted here with minor adaptations; this thesis contributes the
-fingerprint-based caching layer on top of it, treating the preprocessing
-as a fixed, validated substrate.
+The specific filter parameters and rejection thresholds applied in this
+thesis are described in Section~\ref{sec:preprocessing}.
+
+% ============================================================================
+\section{Sleep Stage Classification Methods}
+\label{sec:sleep_classification}
+% ============================================================================
+
+Sleep stage classification is a well-studied problem in biomedical signal
+processing, with methods broadly grouped into feature-based and deep learning
+approaches.
+
+\subsection{Feature-Based Approaches}
+
+Feature-based sleep staging extracts domain-informed descriptors from EEG
+signals---time-domain statistics, frequency-domain band powers, and signal
+complexity measures---and feeds them to classical ML
+classifiers. Satapathy et al.\ (2024) demonstrate that multi-modality feature
+sets with ensemble classifiers achieve competitive performance, particularly
+in cross-subject settings where training data per subject is
+limited~\cite{satapathy2024multimodal}.
+
+This thesis follows the feature-based paradigm: 149 handcrafted features per
+30-second epoch across 6 EEG channels, classified using XGBoost and Random
+Forest. For reference, Bakian Dogaheh and Moradi (2023) report 81.3\%
+accuracy and Kappa 0.74 using XGBoost on 5-class AASM staging from a
+comparable EEG feature set~\cite{bakian2023xgboost}, providing a benchmark
+against which the 85.5\% LOSO accuracy achieved in this thesis can be
+situated. Feature-based models have the additional advantage of compact
+serialized representations well-suited to fingerprint-based caching.
+
+\subsection{Deep Learning Approaches}
+
+Deep learning methods learn representations directly from raw EEG signals.
+Perslev et al.\ (2021) present U-Sleep, achieving robust cross-hardware
+staging~\cite{perslev2021usleep}. Siddiqui et al.\ (2025) confirm that deep
+models require substantially more computational resources than traditional
+ensembles while ensemble classifiers remain highly competitive on
+standard benchmark datasets~\cite{siddiqui2025}. Deep learning workflows
+address the reuse problem through \textit{checkpointing}---saving intermediate
+training state to resume interrupted optimisation---rather than fold-level
+memoisation. Checkpointing targets a different inefficiency and does not
+prevent redundant retraining when only configuration parameters change.
+This thesis addresses the complementary gap: fold-level memoisation for
+feature-based models, where serialised representations range from
+approximately 1--2~MB per fold (XGBoost) to 120--180~MB per fold
+(Random Forest), and per-fold storage is tractable on a single workstation.
 
 % ============================================================================
 \section{Machine Learning Ensemble Methods}

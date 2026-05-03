@@ -23,8 +23,6 @@ Despite rapid advancements in Machine Learning (ML), iterative experimentation w
 
 The scope of the experimental grid was itself constrained by this computational reality. The original project design involved five to six model families, four correlation thresholds, four top-$K$ feature counts, and 128-fold LOSO evaluation---on the order of 12{,}000 individual training operations. This thesis scopes the empirical benchmark to 18 representative configurations ($2 \times 3 \times 3$). This controlled reduction was necessary to practically execute both the cold-start (fully uncached) and warm-start (fully cached) benchmarking cycles required to accurately quantify the framework's time savings---each of which requires a complete 2{,}304-fold run. The caching framework was, in effect, developed to make the systematic evaluation of caching itself tractable.
 
-The configuration space in the originating project was considerably larger than the thesis experiment: approximately 5--6 model types, 4 correlation thresholds, and 4 feature-count settings across the same 128-subject LOSO protocol, yielding up to 96 configurations and roughly 12{,}288 individual training operations. The thesis experiment was deliberately scoped to 18 configurations (2 models $\times$ 3 thresholds $\times$ 3 feature counts, totalling 2{,}304 LOSO folds) in order to keep the cold-start benchmarks---which must themselves be repeated to collect reliable timing data---feasible within the available compute budget. Even at this reduced scale, the cold-start cost for Random Forest exceeded 21 hours for a single 9-configuration sweep.
-
 This thesis addresses three interconnected challenges in managing these LOSO workflows:
 
 \begin{itemize}
