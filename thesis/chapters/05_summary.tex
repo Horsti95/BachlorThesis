@@ -208,7 +208,7 @@ $1/128 \approx 0.8\%$ of the data used to fit the global feature ranking.
 A na\"ive per-fold fix requires re-running ANOVA on every warm run before
 the cache key can even be computed, degrading XGBoost warm-run speedup from
 22.9$\times$ (global) to 4.4$\times$ at $N=20$ subjects
-(Figure~\ref{fig:global_vs_perfold}).
+(Table~\ref{tab:global_vs_fold}).
 
 A \textit{lazy selection cache} resolves this without accuracy cost.
 Because \texttt{f\_classif} is fully deterministic, the selected feature list

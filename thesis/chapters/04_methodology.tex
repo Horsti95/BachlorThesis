@@ -844,7 +844,7 @@ The primary thesis contribution was evaluated through caching metrics:
       speedup margins erode on smaller datasets, not that caching is
       net-negative in absolute terms.
       These boundaries are applied consistently in Table~\ref{tab:cache_viability}
-      and Figures~\ref{fig:cache_efficiency} and~\ref{fig:dual_metrics}.
+      and Figure~\ref{fig:cache_efficiency}.
 
 \item \textbf{Relative Cache Efficiency:} A complementary metric
       $\rho = (T_{\text{cold}}/T_{\text{warm}}) / \text{size (MB)}$ [$\times$/MB]
@@ -1063,62 +1063,99 @@ tested on the full 128-subject dataset (5 LOSO folds).
 
 \input{tables/tab4_cache_viability}
 
-\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable model
-types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common characteristic: large
-serialized model sizes (130--1544~MB per fold) and slow deserialization times,
-which eliminate the loading speed advantage over retraining. The top-performing
-viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
-speedup at only 0.4~MB per fold. Figure~\ref{fig:viability_scatter} visualises
-the viability spectrum.
+\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable
+types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common
+characteristic: large serialised model sizes (130--1{,}544~MB per fold) and
+slow deserialisation, which eliminate the loading-speed advantage over
+retraining. The top viable models are boosting-based, with Gradient Boosting
+reaching 18{,}030$\times$ speedup at only 0.4~MB per fold.
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig4b_viability_scatter.pdf}
-\caption{Cache viability across 15 model types. Speedup vs.\ cache size per fold.
-Models above the viability threshold (dashed line) are classified as cache-viable.}
-\label{fig:viability_scatter}
-\end{figure}
+The two diagnostic axes --- absolute time saved per fold and speedup factor
+--- can disagree in informative ways. Naive Bayes runs $5\times$ faster from
+cache but the absolute saving is fractions of a second (cold time is already
+0.29~s), so caching is technically viable but practically irrelevant.
+Conversely, Random Forest saves tens of seconds in absolute terms yet the
+speedup factor is modest ($14\times$) and the storage cost is large
+(130~MB/fold), placing it on the wrong side of the disk-I/O viability
+boundary. Figure~\ref{fig:cache_efficiency} on
+page~\pageref{fig:cache_efficiency} maps both axes simultaneously --- cache
+size on the x-axis and absolute time saved on the y-axis --- with the
+$T_\text{save} = \text{size}/B_\text{disk}$ diagonal as the viability cut.
+Models above the diagonal recover more compute time than they spend on
+storage I/O regardless of the speedup factor, which is the metric that
+actually matters for re-run economics.
 
 \subsection{Cache Scaling with Dataset Size}
 \label{sec:results_scaling}
 
 \begin{table}[htbp]
 \centering
-\caption{SVM cache speedup scaling from 10 to 128 subjects. Cache loading cost
-is constant while training cost grows with data size.}
-\label{tab:svm_scaling}
-\begin{tabular}{ccc}
+\caption[XGBoost and Random Forest cache scaling from 10 to 128 subjects]{XGBoost
+and Random Forest cache scaling from 10 to 128 subjects (per-fold averages,
+9-config sweep). Cold and warm times are wall-clock per fold; cache size is
+the serialized model size per fold.}
+\label{tab:xgbrf_scaling}
+\begin{tabular}{lrrrrr}
 \toprule
-\textbf{Subjects} & \textbf{SVM-Linear Speedup} & \textbf{SVM-RBF Speedup} \\
+\textbf{Model} & \textbf{Subjects} & \textbf{Cold/fold (s)} & \textbf{Warm/fold (s)} & \textbf{Speedup} & \textbf{Cache/fold} \\
 \midrule
-10  & 1{,}736$\times$ & 9.2$\times$   \\
-30  & 1{,}551$\times$ & 33.4$\times$  \\
-64  & 2{,}040$\times$ & 82.3$\times$  \\
-128 & 3{,}093$\times$ & 200.9$\times$ \\
+XGBoost       &  10 & 2.06  & 0.058 & 35.6$\times$ & 1.03~MB \\
+XGBoost       &  30 & 3.51  & 0.082 & 43.1$\times$ & 1.30~MB \\
+XGBoost       &  64 & 5.22  & 0.100 & 52.0$\times$ & 1.42~MB \\
+XGBoost       & 128 & 7.82  & 0.139 & 56.3$\times$ & 1.50~MB \\
+\midrule
+Random Forest &  10 & 1.81  & 0.371 &  4.9$\times$ & 11.64~MB \\
+Random Forest &  30 & 6.98  & 0.806 &  8.7$\times$ & 36.04~MB \\
+Random Forest &  64 & 15.89 & 1.460 & 10.9$\times$ & 71.88~MB \\
+Random Forest & 128 & 35.45 & 2.726 & 13.0$\times$ & 152.42~MB \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Cache speedup \textit{increases} with dataset size. SVM-RBF scaling illustrates
-this clearly: at 10 subjects the speedup is 9$\times$; at 128 subjects it reaches
-201$\times$. Training cost grows with data size (quadratically for SVM-RBF) while
-cache loading cost remains constant. This makes caching increasingly valuable as
-datasets grow. Figures~\ref{fig:cache_scaling} and~\ref{fig:svm_scaling} visualise
-this scaling behaviour.
+Cache speedup \textit{increases} with dataset size for both models, but the
+underlying cost--benefit curves diverge sharply. Figure~\ref{fig:xgbrf_scaling}
+visualises both axes side by side.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/fig_bonus_cache_scaling.pdf}
-\caption{Cache speedup scaling from 10 to 128 subjects (SVM models).}
-\label{fig:cache_scaling}
+\includegraphics[width=0.95\textwidth]{figures/fig_xgbrf_scaling.pdf}
+\caption[XGB and RF cache scaling: speedup and cache size]{XGBoost and Random
+Forest cache scaling from 10 to 128 subjects. Left: warm-run speedup grows
+monotonically for both models. Right: per-fold cache size (log scale) --- XGBoost
+grows sublinearly (1.03 to 1.50~MB, +46\%) while Random Forest grows
+roughly linearly with the dataset (11.64 to 152.42~MB, $13\times$).}
+\label{fig:xgbrf_scaling}
 \end{figure}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig_bonus_svm_scaling.pdf}
-\caption{SVM-Linear and SVM-RBF cache speedup scaling with dataset size.}
-\label{fig:svm_scaling}
-\end{figure}
+\textbf{Sublinear cache growth is the core viability argument for XGBoost.}
+From 10 to 128 subjects, XGBoost cold time scales nearly linearly with data
+($2.06 \to 7.82$~s, $+280\%$) while its serialised cache grows only $+46\%$
+($1.03 \to 1.50$~MB). Caching converts the linearly growing training cost
+into an asymptotically flat storage cost, and the speedup rises accordingly
+from $35.6\times$ to $56.3\times$.
+
+\textbf{Random Forest exhibits the opposite pattern.} Its speedup also grows
+($4.9\times \to 13.0\times$), but cache size grows roughly $13\times$ across
+the same range ($11.64 \to 152.42$~MB), tracking the dataset size directly.
+The speedup-per-MB ratio --- a hardware-portable measure of how much warm-run
+benefit each megabyte of disk buys --- diverges by approximately three orders
+of magnitude between the two models at $N=128$ ($56.3 / 1.50 \approx 37.5$
+$\times$/MB for XGBoost vs.\ $13.0 / 152.42 \approx 0.085$ $\times$/MB for
+Random Forest). This is the structural reason RF is borderline cache-viable
+at small scale and grows worse with $N$, while XGBoost becomes more attractive
+the larger the dataset gets.
+
+The same effect is visible in the feature-count direction within the
+128-subject sweep: XGBoost cold time scales from 964~s (30 features) to
+3{,}816~s (149 features) while warm load remains $\sim$19--28~s, raising the
+speedup from $38\times$ to $202\times$. Random Forest shows the same
+direction (11$\times$ to 23.5$\times$) but warm load is dominated by
+serialisation (339--416~s), confirming that for RF the binding cost is
+storage I/O rather than computation. As an aside, ad-hoc benchmarks on SVM
+models showed even more extreme scaling (SVM-RBF: $9\times$ at $N{=}10$ to
+$201\times$ at $N{=}128$), driven by O($n^2$) training against a constant
+load cost; SVMs are not part of the primary thesis benchmark but corroborate
+the general principle.
 
 \subsection{Feature Selection: ANOVA vs.\ Mutual Information}
 \label{sec:results_anova}
@@ -1143,82 +1180,6 @@ deterministic; GPU-level non-determinism~\cite{nvidia2024cudnn} does not apply h
 \item \textbf{Zero cache corruption:} All save/load cycles completed without
       data loss or serialization errors.
 \end{itemize}
-
-\subsection{Extended Analyses}
-\label{sec:results_extended}
-
-The primary benchmark (Sections~\ref{sec:results_caching}--\ref{sec:results_reproducibility})
-evaluated the framework on XGBoost and Random Forest across 18 configurations and 128 folds.
-After confirming the primary results, two secondary studies were conducted to test whether
-the viability picture generalises beyond these two models and whether caching benefit
-grows with dataset scale. These analyses were not part of the original experimental plan
-but emerged naturally from the observation that viability appears to be governed by
-serialization size, independent of model family.
-
-\subsubsection{Multi-Model Cache Viability}
-\label{sec:results_viability}
-
-The fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. Cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families to validate this generalizability.
-
-Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
-tested on the full 128-subject dataset (5 LOSO folds).
-
-\input{tables/tab4_cache_viability}
-
-\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable model
-types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common
-characteristic: large serialized model sizes (130--1{,}544~MB per fold) and slow
-deserialization times, which eliminate the loading speed advantage over retraining. The top-performing
-viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
-speedup at only 0.4~MB per fold. Figure~\ref{fig:dual_metrics} visualises
-the viability spectrum via both metrics.
-
-The two metrics $\eta$ and $\rho$ can diverge in informative ways: a fast-training
-model (e.g.\ 1~s cold, 0.0001~s warm) saves barely a second of absolute time
-(low $\eta$) but runs 10{,}000$\times$ faster on warm runs (high $\rho$).
-Figure~\ref{fig:dual_metrics} places both metrics side-by-side so that such
-cases are visible.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/fig4c_dual_metrics.pdf}
-\caption[Dual-metric viability: absolute $\eta$ vs.\ relative $\rho$ per MB]{Dual-metric
-cache viability. \textbf{Left:} absolute efficiency $\eta$ [s/MB] --- seconds of
-training saved per MB stored (answers: is caching worth the disk space?).
-\textbf{Right:} relative efficiency $\rho$ [$\times$/MB] --- speedup factor per MB
-stored (answers: how much faster are warm runs relative to cold?). Models sorted
-by $\eta$ in both panels; rank shifts in the right panel reveal where the two metrics
-diverge.}
-\label{fig:dual_metrics}
-\end{figure}
-
-\subsubsection{Cache Scaling with Dataset Size}
-\label{sec:results_scaling}
-
-SVM models are used here because their well-characterised training complexity---O($n$) for linear kernels, O($n^2$) for RBF---provides a theoretically grounded test case: as subjects increase, training cost grows predictably while cache loading stays constant, isolating the scaling effect cleanly.
-
-Cache speedup increases with dataset size for models whose training cost scales
-super-linearly. SVM-RBF illustrates this cleanly: its O($n^2$) training complexity
-causes cold run time to grow quadratically with subjects, while warm loading
-remains constant, producing a monotonically growing speedup from 9$\times$
-(10 subjects) to 201$\times$ (128 subjects). SVM-Linear, being O($n$), shows
-approximately stable speedup across scales (1{,}736$\times$ to 3{,}093$\times$
-with minor measurement variance at the 30-subject point), confirming that the
-cache loading cost remains negligible relative to even linear training costs
-at dataset scales above 30 subjects.
-
-The same principle holds for the primary models when the feature space grows.
-XGBoost training time scales with the number of input features: cold run time
-increases from 964 seconds (30 features) to 3{,}816 seconds (149 features), a
-4.0$\times$ increase in training cost. Cache loading remains constant at
-approximately 19--28 seconds regardless of feature count, so the speedup grows
-from 38$\times$ to 202$\times$ across the same range. Random Forest exhibits
-the same directional pattern (11$\times$ to 23.5$\times$) but with warm-load times
-of 339--416 seconds that do not scale with features, reflecting serialization cost
-rather than computational cost. This confirms that caching becomes progressively
-more valuable as model complexity or feature dimensionality increases---the
-framework is not a fixed-speedup tool but one whose benefit grows with the
-scale of the experiment.
 
 % ============================================================================
 \section{Findings}
@@ -1267,7 +1228,7 @@ verdicts before a single measurement is taken; the empirical results confirm it.
 
 XGBoost outperforms Random Forest on every measured dimension in this study:
 higher classification accuracy (85.5\% vs.\ 81.9\%), higher cache speedup
-(median 178$\times$ vs.\ 17.9$\times$), and dramatically smaller cache storage
+(median 54$\times$ vs.\ 11.6$\times$), and dramatically smaller cache storage
 (185~MB vs.\ 18.5~GB). This result challenges the common assumption that
 Random Forest and XGBoost are interchangeable ensemble alternatives. For
 LOSO-style experimentation with repeated runs, XGBoost is the clearly
@@ -1330,18 +1291,6 @@ clinical laptop operating in Eco mode will observe the same proportional
 reduction in computation---the caching architecture delivers equivalent
 benefits regardless of whether the system is throttled.
 
-Figure~\ref{fig:crossover} shows the crossover point at which caching becomes
-cost-effective.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/fig3_crossover.pdf}
-\caption[Crossover point: when caching becomes cost-effective]{Crossover
-analysis: number of re-runs at which warm caching recovers its initial
-cold-run cost and becomes net beneficial compared to full recomputation.}
-\label{fig:crossover}
-\end{figure}
-
 \subsection{Feature Selection Scope: Accuracy vs.\ Cache Efficiency}
 \label{sec:discussion_scope}
 
@@ -1354,49 +1303,16 @@ the global feature ranking --- but it has a significant cache efficiency cost.
 
 Global feature selection (used in this thesis) introduces a structural leakage
 of $1/128 \approx 0.8\%$ of selection data per fold. An empirical benchmark
-(Table~\ref{tab:global_vs_fold} and Figure~\ref{fig:global_vs_perfold}) measured
-this effect directly: the mean accuracy difference across all configurations and
-subject counts is $\pm 0.4\%$ with a maximum of $1.1\%$, and the direction is
-inconsistent --- per-fold occasionally outperforms global, confirming the effect
-is noise rather than systematic bias. The warm-run speedup benefit of global
-scope is more significant: XGBoost retains its full 14--23$\times$ warm speedup,
-whereas per-fold scope degrades to 4--9$\times$ because feature selection
-re-runs for every fold even on cache hits. Global selection is therefore the
-pragmatic choice for caching-oriented workflows.
+across $N \in \{3,5,10,20\}$ subjects (XGBoost and Random Forest, top-$k=50$,
+three correlation thresholds each) quantified the trade-off
+(Table~\ref{tab:global_vs_fold}): accuracy differences are within noise
+($\pm 0.4\%$ mean, $\leq 1.1\%$ max, with per-fold occasionally outperforming
+global) while the warm-run speedup gap is substantial ---  global retains
+$14$--$23\times$ for XGBoost vs.\ only $4$--$9\times$ per-fold, because
+per-fold selection re-runs once per fold even on cache hits. Global selection
+is therefore the pragmatic choice for caching-oriented workflows.
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- update from re-run:}
-Table~\ref{tab:global_vs_fold} values (accuracy differences and warm-run
-speedup ratios across $N \in \{3,5,10,20\}$ subjects) should be regenerated
-from clean desktop re-run. Update numbers in table and in the surrounding
-prose before final submission.
-\end{minipage}}
-\end{center}
 \input{tables/tab8_global_vs_fold}
-
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Draft Note -- figure update pending:}
-Global vs.\ per-fold bar chart has overlapping axis labels on the accuracy
-difference panel ($+0.006$/$-0.01$ range is too narrow for current tick spacing).
-Fix: widen y-axis range, move bar value annotations inside bars or increase
-figure height. Regenerate after re-run.
-\end{minipage}}
-\end{center}
-\begin{figure}[h]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_global_vs_perfold.pdf}
-\caption[Global vs.\ per-fold feature selection: accuracy and speedup]{Global vs.\ per-fold ANOVA: accuracy difference (left) and warm-run
-  speedup (right) across subject counts. The accuracy difference is negligible
-  ($\leq 1.1\%$, no consistent direction). The warm-run speedup advantage of
-  global scope is substantial for XGBoost: at $N=20$ it retains 22.9$\times$
-  speedup vs.\ only 4.4$\times$ for per-fold, because per-fold selection must
-  re-run once per fold even on cache hits.}
-\label{fig:global_vs_perfold}
-\end{figure}
 
 \subsection{Limitations}
 \label{sec:limitations}
