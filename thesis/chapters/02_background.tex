@@ -358,6 +358,22 @@ Chapter~\ref{chap:methodology}.
 Efficient ML experimentation depends on configuration management and intelligent
 result reuse. This section reviews technologies directly relevant to the
 fingerprint-based LOSO caching approach developed in this thesis.
+Two terms are used throughout this chapter and the remainder of the thesis:
+
+\begin{table}[htbp]
+\centering
+\caption{Core terminology: persistent storage versus cache.}
+\label{tab:storage_vs_cache}
+\begin{tabular}{lp{0.62\textwidth}}
+\toprule
+\textbf{Term} & \textbf{Meaning} \\
+\midrule
+Persistent storage$^{1}$ & Durable storage that retains data long-term, even after restart or failure. \\[3pt]
+Cache$^{2}$              & Temporary, faster storage that keeps copies of frequently accessed data to reduce latency. \\
+\bottomrule
+\multicolumn{2}{l}{\small $^{1,2}$~Definitions adapted from \url{https://aws.amazon.com/caching/}, accessed 2026-04-20.}
+\end{tabular}
+\end{table}
 
 As established in Section~\ref{sec:loso_background}, LOSO cross-validation
 is necessary for EEG-based ML to avoid inflated generalisation estimates.
