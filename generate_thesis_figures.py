@@ -62,6 +62,16 @@ def ensure_dirs():
     TAB_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _fix_table(latex: str) -> str:
+    """Post-process pandas to_latex output: add [htbp] placement and \\centering."""
+    latex = latex.replace(r"\begin{table}", r"\begin{table}[htbp]")
+    latex = latex.replace(
+        "\\begin{table}[htbp]\n",
+        "\\begin{table}[htbp]\n\\centering\n",
+    )
+    return latex
+
+
 # ===================================================================
 # 1. Speedup Bar Chart — cold vs warm per model type
 # ===================================================================
@@ -93,31 +103,31 @@ def fig1_speedup_bar(show: bool):
     w = 0.32
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    bars_cold = ax.bar(x - w / 2, cold_vals, w, label="Cold (no cache)", color="#d9534f")
-    bars_warm = ax.bar(x + w / 2, warm_vals, w, label="Warm (cached)", color="#5cb85c")
+    bars_cold = ax.bar(x - w / 2, cold_vals, w, label="Cold (no cache)", color="#D55E00")
+    bars_warm = ax.bar(x + w / 2, warm_vals, w, label="Warm (cached)", color="#0072B2")
 
-    ax.set_ylabel("Total time (minutes)")
+    ax.set_yscale("log")
+    ax.set_ylim(0.5, max(cold_vals) * 3)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}"))
+    ax.set_ylabel("Total time (minutes, log scale)")
     ax.set_title("Cache Speedup: Cold Start vs. Cached Execution (128 LOSO folds)")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.legend()
 
-    # Annotate speedup
+    # Annotate speedup above the cold bar (log scale → position near top of cold bar)
     for i, lbl in enumerate(labels):
         sp = data[lbl]["speedup"]
         ax.annotate(
-            f"{sp:.0f}x",
-            xy=(x[i] + w / 2, warm_vals[i]),
-            xytext=(0, 8),
+            f"{sp:.0f}×\nspeedup",
+            xy=(x[i] - w / 2, cold_vals[i]),
+            xytext=(0, 10),
             textcoords="offset points",
             ha="center",
             fontweight="bold",
-            fontsize=11,
+            fontsize=10,
+            color="#222222",
         )
-
-    ax.set_yscale("log")
-    ax.set_ylim(1, max(cold_vals) * 2)
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}"))
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig1_speedup_bar.pdf", bbox_inches="tight")
@@ -135,10 +145,9 @@ def tab2_performance(show: bool):
     for f in sorted(WARM_RUN_DIR.glob("result_*.json")):
         d = json.loads(f.read_text())
         rows.append({
-            "Config": d["config_id"],
             "Model": d["config"]["model_type"],
-            "Corr": d["config"]["feature_selection"].get("correlation_threshold", "None"),
-            "Top-K": d["config"]["feature_selection"].get("top_k_features", "All"),
+            "Corr": d["config"]["feature_selection"].get("correlation_threshold"),
+            "Top-K": d["config"]["feature_selection"].get("top_k_features"),
             "Accuracy": d["accuracy_mean"],
             "Acc Std": d["accuracy_std"],
             "Kappa": d["kappa_mean"],
@@ -146,25 +155,29 @@ def tab2_performance(show: bool):
         })
 
     df = pd.DataFrame(rows).sort_values("Accuracy", ascending=False).reset_index(drop=True)
-    df.index += 1
-    df.index.name = "Rank"
 
-    # Format for display
     df_disp = df.copy()
-    df_disp["Corr"] = df_disp["Corr"].apply(lambda x: str(x) if x is not None else "None")
-    df_disp["Top-K"] = df_disp["Top-K"].apply(lambda x: str(x) if x is not None else "All")
-    df_disp["Accuracy"] = df_disp.apply(lambda r: f"{r['Accuracy']:.3f} ± {r['Acc Std']:.3f}", axis=1)
+    df_disp["\\#"] = range(1, len(df_disp) + 1)
+    df_disp["Model"] = df_disp["Model"].map(
+        {"xgboost": "XGBoost", "random_forest": "Random Forest"}).fillna(df_disp["Model"])
+    df_disp["Corr"] = df_disp["Corr"].apply(
+        lambda x: "---" if x is None or str(x) in ("None", "nan") else str(x))
+    df_disp["Top-K"] = df_disp["Top-K"].apply(
+        lambda x: "All" if x is None or str(x) in ("None", "nan") else str(int(float(x))))
+    df_disp["Accuracy"] = df_disp.apply(
+        lambda r: f"{r['Accuracy']:.3f} $\\pm$ {r['Acc Std']:.3f}", axis=1)
     df_disp["Kappa"] = df_disp["Kappa"].apply(lambda x: f"{x:.3f}")
     df_disp["F1-Macro"] = df_disp["F1-Macro"].apply(lambda x: f"{x:.3f}")
-    df_disp = df_disp[["Model", "Corr", "Top-K", "Accuracy", "Kappa", "F1-Macro"]]
+    df_disp = df_disp[["\\#", "Model", "Corr", "Top-K", "Accuracy", "Kappa", "F1-Macro"]]
 
-    # LaTeX table
     latex = df_disp.to_latex(
         caption="Classification performance of all 18 configurations (128-fold LOSO, global ANOVA selection).",
         label="tab:performance_18configs",
-        column_format="rlccrrr",
+        column_format="rlllrrr",
         escape=False,
+        index=False,
     )
+    latex = _fix_table(latex)
     (TAB_DIR / "tab2_performance_18configs.tex").write_text(latex)
     print(f"  [2/10] Saved tab2_performance_18configs.tex")
 
@@ -185,7 +198,7 @@ def fig3_efficiency(show: bool):
     # Compute time saved per fold (cold - warm)
     df["time_saved_per_fold"] = df["cold_per_fold_time_s"] - df["warm_per_fold_time_s"]
 
-    colors = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+    colors = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -198,8 +211,8 @@ def fig3_efficiency(show: bool):
             s=120,
             edgecolors="black",
             linewidth=0.5,
-            label=f"{verdict.replace('_', ' ').title()}  (MB/s < 0.5)" if verdict == "VIABLE"
-                  else f"{verdict.replace('_', ' ').title()}  (MB/s > 2.0)",
+            label=f"{verdict.replace('_', ' ').title()}  (η > 2 s/MB)" if verdict == "VIABLE"
+                  else f"{verdict.replace('_', ' ').title()}  (η < 0.5 s/MB)",
             zorder=5,
         )
 
@@ -222,13 +235,13 @@ def fig3_efficiency(show: bool):
             color="#333333",
         )
 
-    # Draw viability boundary: MB/s-saved = 0.5 means time_saved = cache_size / 0.5
-    # i.e., time_saved = 2 * cache_size
+    # η = 2 s/MB boundary: time_saved = 2 × cache_size  (VIABLE above)
+    # η = 0.5 s/MB boundary: time_saved = 0.5 × cache_size  (NOT_VIABLE below)
     x_line = np.logspace(-3, 3, 100)
-    ax.plot(x_line, x_line / 0.5, "--", color="#888888", linewidth=1.5, alpha=0.6,
-            label="Viability boundary (0.5 MB/s)")
-    ax.plot(x_line, x_line / 2.0, ":", color="#cc0000", linewidth=1.2, alpha=0.5,
-            label="Not-viable boundary (2.0 MB/s)")
+    ax.plot(x_line, 2.0 * x_line, "--", color="#888888", linewidth=1.5, alpha=0.6,
+            label="Viable boundary (η = 2 s/MB)")
+    ax.plot(x_line, 0.5 * x_line, ":", color="#D55E00", linewidth=1.2, alpha=0.5,
+            label="Not-viable boundary (η = 0.5 s/MB)")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -272,11 +285,11 @@ def fig3b_crossover(show: bool):
 
     # --- XGBoost panel ---
     ax1.plot(xgb_avg["n_features"], xgb_avg["cold_per_fold_s"], "o-",
-             color="#d9534f", label="Cold (re-train)", linewidth=2, markersize=7)
+             color="#D55E00", label="Cold (re-train)", linewidth=2, markersize=7)
     ax1.plot(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"], "s-",
-             color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
+             color="#0072B2", label="Warm (cache load)", linewidth=2, markersize=7)
     ax1.fill_between(xgb_avg["n_features"], xgb_avg["warm_per_fold_s"],
-                     xgb_avg["cold_per_fold_s"], alpha=0.15, color="#5cb85c",
+                     xgb_avg["cold_per_fold_s"], alpha=0.15, color="#0072B2",
                      label="Time saved")
     # Annotate cold points with cache size (above the cold line, centered)
     for _, row in xgb_avg.iterrows():
@@ -295,11 +308,11 @@ def fig3b_crossover(show: bool):
 
     # --- RF panel ---
     ax2.plot(rf_avg["n_features"], rf_avg["cold_per_fold_s"], "o-",
-             color="#d9534f", label="Cold (re-train)", linewidth=2, markersize=7)
+             color="#D55E00", label="Cold (re-train)", linewidth=2, markersize=7)
     ax2.plot(rf_avg["n_features"], rf_avg["warm_per_fold_s"], "s-",
-             color="#5cb85c", label="Warm (cache load)", linewidth=2, markersize=7)
+             color="#0072B2", label="Warm (cache load)", linewidth=2, markersize=7)
     ax2.fill_between(rf_avg["n_features"], rf_avg["warm_per_fold_s"],
-                     rf_avg["cold_per_fold_s"], alpha=0.15, color="#f0ad4e",
+                     rf_avg["cold_per_fold_s"], alpha=0.15, color="#E69F00",
                      label="Small gap = I/O bottleneck")
     # Single summary annotation — RF cache size is ~131-154 MB/fold regardless of
     # feature count because it serializes 200 full trees (tree structure dominates)
@@ -331,30 +344,46 @@ def fig3b_crossover(show: bool):
 # 4. Cache Viability Table — 15 models
 # ===================================================================
 def tab4_viability(show: bool):
+    _model_names = {
+        "gradient_boosting": "Gradient Boosting", "adaboost": "AdaBoost",
+        "svm_linear": "SVM Linear",  "decision_tree": "Decision Tree",
+        "catboost": "CatBoost",      "svm_rbf": "SVM RBF",
+        "xgboost": "XGBoost",        "lightgbm": "LightGBM",
+        "logistic_regression": "Logistic Reg.", "random_forest": "Random Forest",
+        "naive_bayes": "Naive Bayes", "knn_5": "kNN ($k$=5)",
+        "knn_10": "kNN ($k$=10)",    "extra_trees": "Extra Trees",
+        "ridge_classifier": "Ridge Classifier",
+    }
+    _verdicts = {"VIABLE": "Viable", "NOT_VIABLE": "Not Viable", "BORDERLINE": "Borderline"}
+
     df = pd.read_csv(VIABILITY_CSV)
     df = df.sort_values("speedup_ratio", ascending=False).reset_index(drop=True)
-    df.index += 1
-    df.index.name = "#"
 
     df_disp = df[["model_name", "category", "cold_per_fold_time_s", "warm_per_fold_time_s",
                    "speedup_ratio", "cache_size_per_fold_mb", "cold_accuracy",
                    "accuracy_match", "cache_verdict"]].copy()
     df_disp.columns = ["Model", "Category", "Cold/fold (s)", "Warm/fold (s)",
-                        "Speedup", "Cache/fold (MB)", "Accuracy",
-                        "Match", "Verdict"]
+                        "Speedup", "Cache/fold (MB)", "Accuracy", "Match", "Verdict"]
 
-    df_disp["Cold/fold (s)"] = df_disp["Cold/fold (s)"].apply(lambda x: f"{x:.2f}")
-    df_disp["Warm/fold (s)"] = df_disp["Warm/fold (s)"].apply(lambda x: f"{x:.3f}")
-    df_disp["Speedup"] = df_disp["Speedup"].apply(lambda x: f"{x:.0f}x")
+    df_disp.insert(0, "Rank", range(1, len(df_disp) + 1))
+    df_disp["Model"]        = df_disp["Model"].map(_model_names).fillna(df_disp["Model"])
+    df_disp["Category"]     = df_disp["Category"].str.replace("_", " ")
+    df_disp["Cold/fold (s)"]= df_disp["Cold/fold (s)"].apply(lambda x: f"{x:.2f}")
+    df_disp["Warm/fold (s)"]= df_disp["Warm/fold (s)"].apply(lambda x: f"{x:.3f}")
+    df_disp["Speedup"]      = df_disp["Speedup"].apply(lambda x: f"${x:,.0f}\\times$")
     df_disp["Cache/fold (MB)"] = df_disp["Cache/fold (MB)"].apply(lambda x: f"{x:.2f}")
-    df_disp["Accuracy"] = df_disp["Accuracy"].apply(lambda x: f"{x:.3f}")
+    df_disp["Accuracy"]     = df_disp["Accuracy"].apply(lambda x: f"{x:.3f}")
+    df_disp["Match"]        = df_disp["Match"].map({True: r"\checkmark", False: r"$\times$"})
+    df_disp["Verdict"]      = df_disp["Verdict"].map(_verdicts).fillna(df_disp["Verdict"])
 
     latex = df_disp.to_latex(
         caption="Cache viability across 15 model types (128 subjects, 5 LOSO folds, RTX 5090 machine).",
         label="tab:cache_viability",
-        column_format="rlllrrrrccl",
+        column_format="rllrrrrrcl",
         escape=False,
+        index=False,
     )
+    latex = _fix_table(latex)
     (TAB_DIR / "tab4_cache_viability.tex").write_text(latex)
     print(f"  [4/10] Saved tab4_cache_viability.tex")
 
@@ -371,34 +400,36 @@ def fig4b_viability_scatter(show: bool):
     import matplotlib.pyplot as plt
 
     df = pd.read_csv(VIABILITY_CSV)
-    df = df.sort_values("mb_per_second_saved")
+    # Compute η = seconds saved per MB (higher = better)
+    df["eta_s_per_mb"] = 1.0 / df["mb_per_second_saved"]
+    df = df.sort_values("eta_s_per_mb")  # ascending: not-viable at bottom
 
-    # Horizontal bar chart: MB/s-saved per model, colored by verdict
-    colors_map = {"VIABLE": "#5cb85c", "NOT_VIABLE": "#d9534f", "BORDERLINE": "#f0ad4e"}
+    colors_map = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
     bar_colors = [colors_map.get(v, "#999") for v in df["cache_verdict"]]
 
     fig, ax = plt.subplots(figsize=(10, 6))
     y_pos = np.arange(len(df))
-    bars = ax.barh(y_pos, df["mb_per_second_saved"], color=bar_colors,
-                   edgecolor="white", linewidth=0.5)
+    ax.barh(y_pos, df["eta_s_per_mb"], color=bar_colors,
+            edgecolor="white", linewidth=0.5)
 
-    # Labels: model name + speedup
-    labels = [f"{row['model_name']}  ({row['speedup_ratio']:.0f}x, "
-              f"{row['cache_size_per_fold_mb']:.1f} MB)"
+    labels = [f"{row['model_name']}  ({row['speedup_ratio']:.0f}×, "
+              f"{row['cache_size_per_fold_mb']:.1f} MB/fold)"
               for _, row in df.iterrows()]
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels, fontsize=9)
 
-    # Threshold lines
-    ax.axvline(x=0.5, color="#888888", linestyle="--", linewidth=2, alpha=0.8,
-               label="Viable threshold (< 0.5)")
-    ax.axvline(x=2.0, color="#cc0000", linestyle=":", linewidth=2, alpha=0.7,
-               label="Not-viable threshold (> 2.0)")
+    # Threshold lines: VIABLE η > 2 s/MB, NOT_VIABLE η < 0.5 s/MB
+    ax.axvline(x=2.0, color="#888888", linestyle="--", linewidth=2, alpha=0.8,
+               label="Viable threshold (η > 2 s/MB)")
+    ax.axvline(x=0.5, color="#D55E00", linestyle=":", linewidth=2, alpha=0.7,
+               label="Not-viable threshold (η < 0.5 s/MB)")
 
     ax.set_xscale("log")
-    ax.set_xlabel("MB per second saved (lower = more efficient cache)", fontsize=11)
-    ax.set_title("Cache Viability Metric: Storage Cost per Second of Compute Saved\n"
-                 "Green = viable, Red = not viable (I/O dominates)", fontsize=11)
+    ax.set_xlabel("Seconds of compute saved per MB of cache  η  [s/MB]  (higher = more efficient)",
+                  fontsize=11)
+    ax.set_title("Cache Viability: Compute Value per MB of Storage\n"
+                 "Blue = viable (η > 2), Vermillion = not viable (η < 0.5)",
+                 fontsize=11)
     ax.legend(fontsize=9, loc="lower right")
     ax.grid(True, alpha=0.2, axis="x", which="both")
     ax.invert_yaxis()
@@ -406,6 +437,114 @@ def fig4b_viability_scatter(show: bool):
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig4b_viability_scatter.pdf", bbox_inches="tight")
     print(f"  [4b/10] Saved fig4b_viability_scatter.pdf")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
+# ===================================================================
+# 4c. Dual-Metric Viability: η (s/MB) and Speedup/MB side by side
+# ===================================================================
+def fig4c_dual_metrics(show: bool):
+    """Two-panel horizontal bar chart showing η (s/MB) and Speedup/MB.
+
+    Both panels share the same y-axis (sorted by η so rank shifts in the
+    right panel reveal models whose relative efficiency differs from their
+    absolute efficiency). This is the paper-friendly alternative to a 3-D plot.
+    """
+    import matplotlib.pyplot as plt
+
+    df = pd.read_csv(VIABILITY_CSV)
+    df = df[df["model_name"] != "knn_10"].reset_index(drop=True)
+
+    _model_names = {
+        "gradient_boosting": "Gradient Boosting", "adaboost": "AdaBoost",
+        "svm_linear": "SVM Linear",  "decision_tree": "Decision Tree",
+        "catboost": "CatBoost",      "svm_rbf": "SVM RBF",
+        "xgboost": "XGBoost",        "lightgbm": "LightGBM",
+        "logistic_regression": "Logistic Reg.", "random_forest": "Random Forest",
+        "naive_bayes": "Naive Bayes", "knn_5": r"kNN ($k$=5)",
+        "extra_trees": "Extra Trees", "ridge_classifier": "Ridge Classifier",
+    }
+
+    # Compute metrics; cap near-zero denominators
+    df["eta_s_per_mb"] = df["mb_per_second_saved"].apply(
+        lambda v: 1.0 / v if v > 1e-6 else 1e7
+    )
+    df["speedup_per_mb"] = df.apply(
+        lambda r: r["speedup_ratio"] / r["cache_size_per_fold_mb"]
+        if r["cache_size_per_fold_mb"] > 0.001 else 1e7,
+        axis=1,
+    )
+
+    # Sort ascending by η so the most efficient model appears at the TOP
+    df = df.sort_values("eta_s_per_mb", ascending=True).reset_index(drop=True)
+
+    colors_map = {"VIABLE": "#0072B2", "NOT_VIABLE": "#D55E00", "BORDERLINE": "#E69F00"}
+    bar_colors = [colors_map.get(v, "#999") for v in df["cache_verdict"]]
+
+    y_pos = np.arange(len(df))
+
+    # Display cap (log scale, just for rendering)
+    ETA_DISPLAY_CAP   = 2e5
+    SP_MB_DISPLAY_CAP = 5e5
+    eta_disp   = df["eta_s_per_mb"].clip(upper=ETA_DISPLAY_CAP)
+    sp_mb_disp = df["speedup_per_mb"].clip(upper=SP_MB_DISPLAY_CAP)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7), sharey=True)
+    fig.subplots_adjust(wspace=0.04)
+
+    # ── Panel A: η (s/MB) ──────────────────────────────────────────
+    ax1.barh(y_pos, eta_disp, color=bar_colors, edgecolor="white", linewidth=0.4)
+    ax1.axvline(x=2.0, color="#009E73", linestyle="--", linewidth=1.8, alpha=0.85,
+                label="Viable  η > 2 s/MB")
+    ax1.axvline(x=0.5, color="#D55E00", linestyle=":",  linewidth=1.5, alpha=0.7,
+                label="Not-viable  η < 0.5 s/MB")
+    ax1.set_xscale("log")
+    ax1.set_xlabel(
+        "Absolute efficiency  η  [s/MB]\n"
+        "seconds of training saved per MB stored   (higher → better)",
+        fontsize=9.5,
+    )
+    ax1.set_title("Absolute Efficiency  (η)", fontsize=11, fontweight="bold")
+    ax1.legend(fontsize=8, loc="upper right")
+    ax1.grid(True, alpha=0.2, axis="x", which="both")
+    ax1.invert_yaxis()
+
+    # ── Panel B: Speedup / MB ──────────────────────────────────────
+    ax2.barh(y_pos, sp_mb_disp, color=bar_colors, edgecolor="white", linewidth=0.4)
+    # Threshold lies between RF (0.11) and SVM-RBF (2.2) → use 1 ×/MB
+    ax2.axvline(x=1.0, color="#009E73", linestyle="--", linewidth=1.8, alpha=0.85,
+                label="Approx. viable  > 1 ×/MB")
+    ax2.set_xscale("log")
+    ax2.set_xlabel(
+        "Relative efficiency  [×/MB]\n"
+        "speedup factor per MB stored   (higher → better)",
+        fontsize=9.5,
+    )
+    ax2.set_title("Relative Efficiency  (Speedup/MB)", fontsize=11, fontweight="bold")
+    ax2.legend(fontsize=8, loc="upper right")
+    ax2.grid(True, alpha=0.2, axis="x", which="both")
+
+    # Y-axis labels on left panel
+    _BOLD_MODELS = {"XGBoost", "Random Forest"}
+    ylabels = [_model_names.get(r["model_name"], r["model_name"]) for _, r in df.iterrows()]
+    ax1.set_yticks(y_pos)
+    ax1.set_yticklabels(ylabels, fontsize=10)
+    for lbl in ax1.get_yticklabels():
+        if lbl.get_text() in _BOLD_MODELS:
+            lbl.set_fontweight("bold")
+
+    fig.suptitle(
+        "Cache Viability: Absolute vs. Relative Efficiency\n"
+        "Blue = VIABLE  |  Red = NOT VIABLE  |  Sorted by η (absolute)",
+        fontsize=11,
+        fontweight="bold",
+    )
+
+    out = FIG_DIR / "fig4c_dual_metrics.pdf"
+    fig.savefig(out, bbox_inches="tight")
+    print(f"  [4c] Saved fig4c_dual_metrics.pdf")
     if show:
         plt.show()
     plt.close(fig)
@@ -424,12 +563,17 @@ def tab5_fingerprint(show: bool):
         {"model": "random_forest", "corr": "None", "top_k": "149", "seed": 42, "subject": "sub-001"},
     ]
 
+    _tab5_names = {
+        "xgboost": "XGBoost", "random_forest": "Random Forest",
+        "gradient_boosting": "Gradient Boosting", "svm_linear": "SVM Linear",
+    }
+
     rows = []
     for ex in examples:
         raw = f"v1.0|{ex['seed']}|{ex['model']}|corr={ex['corr']}|k={ex['top_k']}|{ex['subject']}"
         h = sha256(raw.encode()).hexdigest()[:32]
         rows.append({
-            "Model": ex["model"],
+            "Model": _tab5_names.get(ex["model"], ex["model"]),
             "Corr": ex["corr"],
             "Top-K": ex["top_k"],
             "Subject": ex["subject"],
@@ -437,7 +581,7 @@ def tab5_fingerprint(show: bool):
         })
 
     df = pd.DataFrame(rows)
-    df["Changed"] = ["—", "subject", "corr + top\\_k", "model"]
+    df["Changed"] = ["---", "subject", "corr + top-k", "model"]
 
     latex = df.to_latex(
         index=False,
@@ -446,6 +590,7 @@ def tab5_fingerprint(show: bool):
         column_format="llllll",
         escape=False,
     )
+    latex = _fix_table(latex)
     (TAB_DIR / "tab5_fingerprint_integrity.tex").write_text(latex)
     print(f"  [5/10] Saved tab5_fingerprint_integrity.tex")
 
@@ -475,7 +620,7 @@ def fig6_per_class_f1(show: bool):
     heatdata = df[stages].values
 
     fig, ax = plt.subplots(figsize=(8, 7))
-    im = ax.imshow(heatdata, cmap="RdYlGn", aspect="auto", vmin=0, vmax=1)
+    im = ax.imshow(heatdata, cmap="viridis", aspect="auto", vmin=0, vmax=1)
 
     ax.set_xticks(range(len(stages)))
     ax.set_xticklabels(stages, fontsize=11)
@@ -523,11 +668,11 @@ def fig7_feature_importance(show: bool):
 
     # Color by channel
     channel_colors = {
-        "O1": "#e74c3c", "O2": "#c0392b",
-        "F3": "#3498db", "F4": "#2980b9",
-        "C3": "#2ecc71", "C4": "#27ae60",
-        "EMG": "#f39c12", "EOG": "#e67e22",
-        "global": "#9b59b6",
+        "O1": "#D55E00", "O2": "#D55E00",
+        "F3": "#0072B2", "F4": "#0072B2",
+        "C3": "#009E73", "C4": "#009E73",
+        "EMG": "#E69F00", "EOG": "#E69F00",
+        "global": "#CC79A7",
     }
 
     colors = []
@@ -547,10 +692,10 @@ def fig7_feature_importance(show: bool):
     # Legend for channels
     from matplotlib.patches import Patch
     legend_elements = [
-        Patch(facecolor="#e74c3c", label="O1/O2 (Occipital)"),
-        Patch(facecolor="#3498db", label="F3/F4 (Frontal)"),
-        Patch(facecolor="#2ecc71", label="C3/C4 (Central)"),
-        Patch(facecolor="#f39c12", label="EMG"),
+        Patch(facecolor="#D55E00", label="O1/O2 (Occipital)"),
+        Patch(facecolor="#0072B2", label="F3/F4 (Frontal)"),
+        Patch(facecolor="#009E73", label="C3/C4 (Central)"),
+        Patch(facecolor="#E69F00", label="EMG"),
     ]
     ax.legend(handles=legend_elements, loc="lower right", fontsize=8)
 
@@ -567,26 +712,27 @@ def fig7_feature_importance(show: bool):
 # ===================================================================
 def tab8_global_vs_fold(show: bool):
     note = r"""% Global vs. Fold-Specific Feature Selection Tradeoff
-% Include this in the Discussion chapter.
+% Data source: benchmark_global_vs_perfold.py
+%   N={3,5,10,20} subjects x XGBoost + RF x 3 corr thresholds, top-k=50
 %
-% Data source: ANOVA benchmark (10 subjects), thesis design decision
-%
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
-\caption{Global vs.\ fold-specific feature selection tradeoff.
-         Global selection fits once on all data (minor leakage);
-         fold-specific fits per fold (correct but slower).}
+\caption{Global vs.\ fold-specific ANOVA feature selection: empirical comparison
+         across subject counts (XGBoost and Random Forest, top-$k=50$, 3 correlation
+         thresholds each).}
 \label{tab:global_vs_fold}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Aspect} & \textbf{Global} & \textbf{Fold-Specific} \\
 \midrule
-Selection fitted on    & All subjects        & Training fold only \\
-Data leakage           & Minor ($<$1\%)      & None \\
-Accuracy difference    & $+$0.3--0.8\%       & Baseline \\
-Runtime (128 folds)    & 1$\times$ (single fit) & 128$\times$ (per fold) \\
-Cache compatibility    & Excellent (one fingerprint) & Complex (per-fold keys) \\
-Thesis choice          & \checkmark           & --- \\
+Selection fitted on        & All subjects (once)         & Training fold only \\
+Label leakage              & $1/128 \approx 0.8\%$       & None \\
+Accuracy difference        & $\pm 0.4\%$ mean, $\leq 1.1\%$ max & Baseline \\
+XGBoost warm speedup       & $14$--$23\times$            & $4$--$9\times$ \\
+Random Forest warm speedup & $3$--$5\times$              & $2.5$--$2.8\times$ \\
+Speedup degrades with $N$  & No (fingerprint stable)     & Yes (re-select per fold) \\
+Cache key complexity       & One key per config          & One key per fold \\
+Thesis choice              & \checkmark                  & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -624,8 +770,8 @@ def fig_bonus_svm_scaling(show: bool):
                 svm_linear_speedup.append(row["speedup_ratio"])
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.plot(subjects, svm_rbf_speedup, "o-", color="#e74c3c", linewidth=2, markersize=8, label="SVM-RBF")
-    ax.plot(subjects, svm_linear_speedup, "s-", color="#3498db", linewidth=2, markersize=8, label="SVM-Linear")
+    ax.plot(subjects, svm_rbf_speedup, "o-", color="#D55E00", linewidth=2, markersize=8, label="SVM-RBF")
+    ax.plot(subjects, svm_linear_speedup, "s-", color="#0072B2", linewidth=2, markersize=8, label="SVM-Linear")
 
     ax.set_xlabel("Number of subjects")
     ax.set_ylabel("Speedup factor (cold / warm)")
@@ -637,10 +783,10 @@ def fig_bonus_svm_scaling(show: bool):
     for i, n in enumerate(subjects):
         ax.annotate(f"{svm_rbf_speedup[i]:.0f}x", (n, svm_rbf_speedup[i]),
                      textcoords="offset points", xytext=(0, 10), ha="center", fontsize=9,
-                     color="#e74c3c", fontweight="bold")
+                     color="#D55E00", fontweight="bold")
         ax.annotate(f"{svm_linear_speedup[i]:.0f}x", (n, svm_linear_speedup[i]),
                      textcoords="offset points", xytext=(0, -14), ha="center", fontsize=9,
-                     color="#3498db", fontweight="bold")
+                     color="#0072B2", fontweight="bold")
 
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig_bonus_svm_scaling.pdf", bbox_inches="tight")
@@ -664,11 +810,11 @@ def fig_bonus_cache_scaling(show: bool):
 
     topk_vals = [10, 30, 50, 149]
     model_groups = {
-        "Random Forest":    ("random_forest",    "#e74c3c", "o-"),
-        "Extra Trees":      ("extra_trees",      "#e67e22", "D-"),
-        "XGBoost":          ("xgboost",          "#3498db", "s-"),
-        "Gradient Boosting": ("gradient_boosting", "#2ecc71", "^-"),
-        "LightGBM":         ("lightgbm",         "#9b59b6", "v-"),
+        "Random Forest":    ("random_forest",    "#D55E00", "o-"),
+        "Extra Trees":      ("extra_trees",      "#E69F00", "D-"),
+        "XGBoost":          ("xgboost",          "#0072B2", "s-"),
+        "Gradient Boosting": ("gradient_boosting", "#009E73", "^-"),
+        "LightGBM":         ("lightgbm",         "#CC79A7", "v-"),
     }
 
     # Collect data across feature counts
@@ -717,9 +863,12 @@ def fig_bonus_cache_scaling(show: bool):
                  style, color=color, label=label, linewidth=2, markersize=7)
 
     ax2.set_xlabel("Number of features", fontsize=11)
-    ax2.set_ylabel("Cold training time per fold (s)", fontsize=11)
+    ax2.set_ylabel("Cold training time per fold (s, log scale)", fontsize=11)
     ax2.set_title("Training Time vs. Feature Count", fontsize=12)
     ax2.legend(fontsize=9)
+    ax2.set_yscale("log")
+    ax2.yaxis.set_major_formatter(plt.FuncFormatter(
+        lambda v, _: f"{v:.2f}" if v < 1 else f"{v:.0f}"))
     ax2.grid(True, alpha=0.2)
     ax2.set_xticks(topk_vals)
 
@@ -748,11 +897,11 @@ def fig_bonus_cache_efficiency(show: bool):
 
     topk_vals = [10, 30, 50, 149]
     model_groups = {
-        "Random Forest":    ("random_forest",    "#e74c3c", "o-"),
-        "Extra Trees":      ("extra_trees",      "#e67e22", "D-"),
-        "XGBoost":          ("xgboost",          "#3498db", "s-"),
-        "Gradient Boosting": ("gradient_boosting", "#2ecc71", "^-"),
-        "LightGBM":         ("lightgbm",         "#9b59b6", "v-"),
+        "Random Forest":    ("random_forest",    "#D55E00", "o-"),
+        "Extra Trees":      ("extra_trees",      "#E69F00", "D-"),
+        "XGBoost":          ("xgboost",          "#0072B2", "s-"),
+        "Gradient Boosting": ("gradient_boosting", "#009E73", "^-"),
+        "LightGBM":         ("lightgbm",         "#CC79A7", "v-"),
     }
 
     records = []
@@ -778,9 +927,9 @@ def fig_bonus_cache_efficiency(show: bool):
             })
     data = pd.DataFrame(records)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    fig, ax1 = plt.subplots(1, 1, figsize=(7, 5))
 
-    # --- Left: Seconds saved per MB (higher = more efficient) ---
+    # Seconds saved per MB (higher = more efficient)
     for label, (model_key, color, style) in model_groups.items():
         subset = data[data["model"] == model_key].sort_values("n_features")
         if subset.empty:
@@ -790,43 +939,19 @@ def fig_bonus_cache_efficiency(show: bool):
 
     ax1.set_xlabel("Number of features", fontsize=11)
     ax1.set_ylabel("Seconds saved per MB of cache", fontsize=11)
-    ax1.set_title("Cache Efficiency (higher = better)", fontsize=12)
+    ax1.set_title("Cache Efficiency Improves with Model Complexity\n"
+                  "(higher = more compute saved per MB stored)", fontsize=11)
     ax1.legend(fontsize=9)
     ax1.set_yscale("log")
     ax1.grid(True, alpha=0.2)
     ax1.set_xticks(topk_vals)
 
-    # Viable threshold annotation: viability uses mb_per_s_saved < 0.5 → equiv. to efficiency > 2.0 s/MB
+    # Viable threshold: efficiency > 2.0 s/MB ↔ mb_per_s < 0.5
     ax1.axhline(y=2.0, color="#888888", linestyle="--", linewidth=1.5, alpha=0.6)
-    ax1.text(155, 2.3, "Viable threshold\n(> 2.0 s/MB)", fontsize=8, color="#666666",
-             ha="right", va="bottom")
+    ax1.text(topk_vals[-1] + 2, 2.3, "Viable threshold\n(> 2.0 s/MB)",
+             fontsize=8, color="#555555", ha="right", va="bottom")
 
-    # --- Right: MB per second saved (lower = better, matches viability metric) ---
-    for label, (model_key, color, style) in model_groups.items():
-        subset = data[data["model"] == model_key].sort_values("n_features")
-        if subset.empty:
-            continue
-        ax2.plot(subset["n_features"], subset["mb_per_s_saved"],
-                 style, color=color, label=label, linewidth=2, markersize=7)
-
-    # Threshold lines matching viability definition
-    ax2.axhline(y=0.5, color="#5cb85c", linestyle="--", linewidth=1.5, alpha=0.7,
-                label="Viable (< 0.5)")
-    ax2.axhline(y=2.0, color="#d9534f", linestyle=":", linewidth=1.5, alpha=0.7,
-                label="Not viable (> 2.0)")
-
-    ax2.set_xlabel("Number of features", fontsize=11)
-    ax2.set_ylabel("MB per second saved (lower = better)", fontsize=11)
-    ax2.set_title("Viability Metric vs. Feature Count", fontsize=12)
-    ax2.legend(fontsize=8, loc="upper left")
-    ax2.set_yscale("log")
-    ax2.grid(True, alpha=0.2)
-    ax2.set_xticks(topk_vals)
-
-    fig.suptitle("Cache Efficiency Improves with Model Complexity\n"
-                 "More features → more training time → more compute saved per MB of cache",
-                 fontsize=12, fontweight="bold")
-    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    fig.tight_layout()
     fig.savefig(FIG_DIR / "fig_bonus_cache_efficiency.pdf", bbox_inches="tight")
     print(f"  [11/12] Saved fig_bonus_cache_efficiency.pdf")
     if show:
@@ -927,7 +1052,7 @@ def fig_bonus_rf_size_vs_time(show: bool):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     # Left: Cache size vs tree count, colored by feature count
-    colors = {"30f": "#e74c3c", "50f": "#3498db", "149f": "#2ecc71"}
+    colors = {"30f": "#D55E00", "50f": "#0072B2", "149f": "#009E73"}
     for feat_label, color in colors.items():
         subset = df128[df128["features_label"] == feat_label].groupby("tree_count").mean(numeric_only=True).reset_index()
         ax1.plot(subset["tree_count"], subset["cache_size_mb"], "o-",
@@ -981,6 +1106,7 @@ def main():
     fig3b_crossover(args.show)
     tab4_viability(args.show)
     fig4b_viability_scatter(args.show)
+    fig4c_dual_metrics(args.show)
     tab5_fingerprint(args.show)
     fig6_per_class_f1(args.show)
     fig7_feature_importance(args.show)

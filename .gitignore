@@ -67,3 +67,7 @@ logs/
 *.log
 cache/
 .cache/
+
+__pycache__/
+*.pyc
+*.pyo

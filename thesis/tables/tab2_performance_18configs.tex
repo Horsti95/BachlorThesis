@@ -1,29 +1,29 @@
-\begin{table}
+\begin{table}[htbp]
+\centering
 \caption{Classification performance of all 18 configurations (128-fold LOSO, global ANOVA selection).}
 \label{tab:performance_18configs}
-\begin{tabular}{rlccrrr}
+\begin{tabular}{rlllrrr}
 \toprule
- & Model & Corr & Top-K & Accuracy & Kappa & F1-Macro \\
-Rank &  &  &  &  &  &  \\
+\# & Model & Corr & Top-K & Accuracy & Kappa & F1-Macro \\
 \midrule
-1 & xgboost & nan & nan & 0.849 $\pm$ 0.064 & 0.726 & 0.629 \\
-2 & xgboost & 0.9 & nan & 0.844 $\pm$ 0.063 & 0.718 & 0.618 \\
-3 & xgboost & 0.9 & 50.0 & 0.831 $\pm$ 0.065 & 0.691 & 0.599 \\
-4 & xgboost & nan & 50.0 & 0.830 $\pm$ 0.067 & 0.687 & 0.596 \\
-5 & xgboost & 0.75 & nan & 0.822 $\pm$ 0.072 & 0.672 & 0.584 \\
-6 & xgboost & 0.75 & 50.0 & 0.822 $\pm$ 0.072 & 0.672 & 0.584 \\
-7 & xgboost & 0.9 & 30.0 & 0.820 $\pm$ 0.069 & 0.669 & 0.586 \\
-8 & random\_forest & nan & 50.0 & 0.815 $\pm$ 0.069 & 0.647 & 0.558 \\
-9 & random\_forest & nan & nan & 0.815 $\pm$ 0.073 & 0.643 & 0.551 \\
-10 & random\_forest & 0.9 & nan & 0.813 $\pm$ 0.069 & 0.642 & 0.546 \\
-11 & xgboost & 0.75 & 30.0 & 0.811 $\pm$ 0.072 & 0.654 & 0.569 \\
-12 & random\_forest & 0.9 & 50.0 & 0.810 $\pm$ 0.069 & 0.636 & 0.542 \\
-13 & random\_forest & 0.9 & 30.0 & 0.807 $\pm$ 0.067 & 0.633 & 0.549 \\
-14 & random\_forest & 0.75 & 50.0 & 0.796 $\pm$ 0.075 & 0.606 & 0.525 \\
-15 & random\_forest & 0.75 & nan & 0.796 $\pm$ 0.075 & 0.606 & 0.525 \\
-16 & random\_forest & 0.75 & 30.0 & 0.793 $\pm$ 0.074 & 0.600 & 0.523 \\
-17 & xgboost & nan & 30.0 & 0.781 $\pm$ 0.069 & 0.591 & 0.534 \\
-18 & random\_forest & nan & 30.0 & 0.769 $\pm$ 0.070 & 0.549 & 0.504 \\
+1 & XGBoost & --- & All & 0.849 $\pm$ 0.064 & 0.726 & 0.629 \\
+2 & XGBoost & 0.9 & All & 0.844 $\pm$ 0.063 & 0.718 & 0.618 \\
+3 & XGBoost & 0.9 & 50 & 0.831 $\pm$ 0.065 & 0.691 & 0.599 \\
+4 & XGBoost & --- & 50 & 0.830 $\pm$ 0.067 & 0.687 & 0.596 \\
+5 & XGBoost & 0.75 & All & 0.822 $\pm$ 0.072 & 0.672 & 0.584 \\
+6 & XGBoost & 0.75 & 50 & 0.822 $\pm$ 0.072 & 0.672 & 0.584 \\
+7 & XGBoost & 0.9 & 30 & 0.820 $\pm$ 0.069 & 0.669 & 0.586 \\
+8 & Random Forest & --- & 50 & 0.815 $\pm$ 0.069 & 0.647 & 0.558 \\
+9 & Random Forest & --- & All & 0.815 $\pm$ 0.073 & 0.643 & 0.551 \\
+10 & Random Forest & 0.9 & All & 0.813 $\pm$ 0.069 & 0.642 & 0.546 \\
+11 & XGBoost & 0.75 & 30 & 0.811 $\pm$ 0.072 & 0.654 & 0.569 \\
+12 & Random Forest & 0.9 & 50 & 0.810 $\pm$ 0.069 & 0.636 & 0.542 \\
+13 & Random Forest & 0.9 & 30 & 0.807 $\pm$ 0.067 & 0.633 & 0.549 \\
+14 & Random Forest & 0.75 & 50 & 0.796 $\pm$ 0.075 & 0.606 & 0.525 \\
+15 & Random Forest & 0.75 & All & 0.796 $\pm$ 0.075 & 0.606 & 0.525 \\
+16 & Random Forest & 0.75 & 30 & 0.793 $\pm$ 0.074 & 0.600 & 0.523 \\
+17 & XGBoost & --- & 30 & 0.781 $\pm$ 0.069 & 0.591 & 0.534 \\
+18 & Random Forest & --- & 30 & 0.769 $\pm$ 0.070 & 0.549 & 0.504 \\
 \bottomrule
 \end{tabular}
 \end{table}

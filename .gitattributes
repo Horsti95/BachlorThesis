@@ -1,0 +1,21 @@
+# Normalize line endings to LF in repo, auto-convert on Windows checkout
+* text=auto
+*.py text eol=lf
+*.tex text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.csv text eol=lf
+*.bib text eol=lf
+
+# Binaries — no conversion
+*.pdf binary
+*.png binary
+*.jpg binary
+*.svg binary
+*.pyc binary
+*.npz binary
+*.joblib binary
+*.pt binary

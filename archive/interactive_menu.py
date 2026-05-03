@@ -103,19 +103,19 @@ SUBJECT_PRESETS = {
 MODEL_INFO = {
     'xgboost': {
         'name': 'XGBoost',
-        'status': '✓ IMPLEMENTED',
+        'status': 'IMPLEMENTED',
         'description': 'Gradient boosting - fast, accurate',
         'implemented': True
     },
     'random_forest': {
         'name': 'Random Forest',
-        'status': '✓ IMPLEMENTED',
+        'status': 'IMPLEMENTED',
         'description': 'Ensemble trees - robust baseline',
         'implemented': True
     },
     'fnn': {
         'name': 'Feedforward Neural Network',
-        'status': '⚠ TODO',
+        'status': 'TODO',
         'description': 'Deep learning - may have ±0.5% nondeterminism',
         'implemented': False,
         'note': 'FNN nondeterminism expected due to GPU/parallel ops'
@@ -482,7 +482,7 @@ class InteractiveMenu:
         # Warning for unimplemented models
         unimplemented = [m for m in models if not MODEL_INFO.get(m, {}).get('implemented', False)]
         if unimplemented:
-            print(f"\n⚠ WARNING: {', '.join(unimplemented)} not yet implemented!")
+            print(f"\nWARNING: {', '.join(unimplemented)} not yet implemented!")
             print("  These will be skipped. Implement them first or remove from selection.")
         
         print("\n" + "-" * 70)
@@ -528,18 +528,18 @@ class InteractiveMenu:
         leaderboard_path = Path("results/cache_leaderboard.json")
         
         print(f"\nData Path: {data_path}")
-        print(f"  Status: {'✓ EXISTS' if data_path.exists() else '✗ NOT FOUND'}")
+        print(f"  Status: {'EXISTS' if data_path.exists() else 'NOT FOUND'}")
         
         print(f"\nGlobal Cache: {cache_path}")
         if cache_path.exists():
             cache_files = list(cache_path.glob("*.npz"))
             total_size = sum(f.stat().st_size for f in cache_files) / (1024*1024)
-            print(f"  Status: ✓ EXISTS ({len(cache_files)} files, {total_size:.1f} MB)")
+            print(f"  Status: EXISTS ({len(cache_files)} files, {total_size:.1f} MB)")
         else:
-            print("  Status: ✗ NOT INITIALIZED")
+            print("  Status: NOT INITIALIZED")
         
         print(f"\nLeaderboard: {leaderboard_path}")
-        print(f"  Status: {'✓ EXISTS' if leaderboard_path.exists() else '○ Will be created'}")
+        print(f"  Status: {'EXISTS' if leaderboard_path.exists() else '○ Will be created'}")
         
         # Model status
         print("\nModel Implementation Status:")

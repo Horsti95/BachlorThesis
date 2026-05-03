@@ -180,7 +180,7 @@ def test_fingerprint_determinism():
     assert fp1 == fp2 == fp3, "FAIL: Fingerprints should be identical!"
     assert len(fp1) == 32, f"FAIL: Fingerprint should be 32 chars, got {len(fp1)}"
     
-    print("✓ PASS: Fingerprints are deterministic and correct length (32 chars)", flush=True)
+    print("PASS: Fingerprints are deterministic and correct length (32 chars)", flush=True)
     return True
 
 
@@ -222,17 +222,17 @@ def test_fingerprint_sensitivity():
         fp = LOSOFingerprint.generate(**config)
         
         if fp == base_fp:
-            print(f"✗ FAIL: Changing {change_name} didn't change fingerprint!", flush=True)
+            print(f"FAIL: Changing {change_name} didn't change fingerprint!", flush=True)
             all_pass = False
         elif fp in unique_fps:
-            print(f"✗ FAIL: Changing {change_name} produced collision!", flush=True)
+            print(f"FAIL: Changing {change_name} produced collision!", flush=True)
             all_pass = False
         else:
-            print(f"✓ Changed {change_name:20s} -> {fp}", flush=True)
+            print(f"Changed {change_name:20s} -> {fp}", flush=True)
             unique_fps.add(fp)
     
     if all_pass:
-        print("\n✓ PASS: All config changes produce unique fingerprints", flush=True)
+        print("\nPASS: All config changes produce unique fingerprints", flush=True)
     return all_pass
 
 
@@ -263,10 +263,10 @@ def test_fingerprint_held_out_uniqueness():
     # Check all unique
     unique_fps = set(fps.values())
     if len(unique_fps) != len(subjects):
-        print("✗ FAIL: Some fingerprints are not unique!", flush=True)
+        print("FAIL: Some fingerprints are not unique!", flush=True)
         return False
     
-    print(f"\n✓ PASS: {len(subjects)} subjects -> {len(unique_fps)} unique fingerprints", flush=True)
+    print(f"\nPASS: {len(subjects)} subjects -> {len(unique_fps)} unique fingerprints", flush=True)
     return True
 
 
@@ -309,37 +309,37 @@ def test_cache_basic_operations():
         # Test: not exists initially
         set_step("Testing cache.exists() on empty cache")
         assert not cache.exists(fingerprint, subject), "Cache should be empty initially"
-        print("✓ Cache is empty initially", flush=True)
+        print("Cache is empty initially", flush=True)
         
         # Test: get returns None for missing
         set_step("Testing cache.get() on empty cache")
         result = cache.get(fingerprint, subject)
         assert result is None, "Get should return None for missing entry"
-        print("✓ Get returns None for missing entry", flush=True)
+        print("Get returns None for missing entry", flush=True)
         
         # Test: put model
         set_step("Testing cache.put() to store model")
         success = cache.put(fingerprint, subject, model, model_type="rf", training_time=1.5)
         assert success, "Put should succeed"
-        print("✓ Put succeeded", flush=True)
+        print("Put succeeded", flush=True)
         
         # Test: exists after put
         set_step("Testing cache.exists() after put")
         assert cache.exists(fingerprint, subject), "Cache should contain model after put"
-        print("✓ Exists returns True after put", flush=True)
+        print("Exists returns True after put", flush=True)
         
         # Test: get returns model
         set_step("Testing cache.get() after put")
         loaded_model = cache.get(fingerprint, subject)
         assert loaded_model is not None, "Get should return model"
-        print("✓ Get returns model", flush=True)
+        print("Get returns model", flush=True)
         
         # Test: model works
         set_step("Testing loaded model predictions")
         preds = loaded_model.predict(X[:5])
         assert len(preds) == 5, "Loaded model should work"
         print(f"    Predictions: {preds}", flush=True)
-        print("✓ Loaded model makes predictions", flush=True)
+        print("Loaded model makes predictions", flush=True)
         
         # Test: cache metrics
         set_step("Checking cache metrics")
@@ -350,14 +350,14 @@ def test_cache_basic_operations():
         set_step("Verifying registry file")
         registry_path = Path(temp_dir) / "cache_registry.json"
         assert registry_path.exists(), "Registry file should exist"
-        print("✓ Registry file created", flush=True)
+        print("Registry file created", flush=True)
         
         # Read and verify registry
         with open(registry_path) as f:
             registry = json.load(f)
         print(f"  Registry entries: {len(registry)}", flush=True)
         
-        print("\n✓ PASS: All basic cache operations work correctly", flush=True)
+        print("\nPASS: All basic cache operations work correctly", flush=True)
         return True
         
     finally:
@@ -520,7 +520,7 @@ def test_cache_with_synthetic_loso():
         speedup = sum(run1_times) / max(sum(run2_times), 0.001)
         print(f"\n    Speedup Factor: {speedup:.1f}x (Run 1: {sum(run1_times):.4f}s vs Run 2: {sum(run2_times):.4f}s)", flush=True)
         
-        print("\n✓ PASS: Synthetic LOSO caching works correctly!", flush=True)
+        print("\nPASS: Synthetic LOSO caching works correctly!", flush=True)
         return True
         
     finally:
@@ -544,7 +544,7 @@ def test_real_data_10_subjects():
     set_step("Checking for feature cache directory")
     feature_cache_dir = Path("results/features_cache_global")
     if not feature_cache_dir.exists():
-        print("⚠ Feature cache not found - skipping real data test", flush=True)
+        print("Feature cache not found - skipping real data test", flush=True)
         print("  Run a full experiment first to populate the feature cache", flush=True)
         return None  # Skip, not fail
     print(f"    Feature cache found: {feature_cache_dir}", flush=True)
@@ -562,7 +562,7 @@ def test_real_data_10_subjects():
             print(f"    Found: {subj}", flush=True)
     
     if len(available) < 3:
-        print(f"⚠ Not enough cached subjects found: {len(available)}", flush=True)
+        print(f"Not enough cached subjects found: {len(available)}", flush=True)
         return None
     
     print(f"    Total available: {len(available)} subjects", flush=True)
@@ -710,11 +710,11 @@ def test_real_data_10_subjects():
         # Verify results are identical
         set_step("Verifying result consistency")
         if not np.allclose(run1_results, run2_results):
-            print("⚠ WARNING: Run 1 and Run 2 accuracies differ!", flush=True)
+            print("WARNING: Run 1 and Run 2 accuracies differ!", flush=True)
             print(f"  Run 1: {run1_results}", flush=True)
             print(f"  Run 2: {run2_results}", flush=True)
         else:
-            print("    ✓ Results are identical between runs!", flush=True)
+            print("    Results are identical between runs!", flush=True)
         
         # Final statistics
         set_step("Calculating final statistics")
@@ -740,7 +740,7 @@ def test_real_data_10_subjects():
         if len(cache_files) > 3:
             print(f"  ... and {len(cache_files) - 3} more", flush=True)
         
-        print("\n✓ PASS: Real data LOSO caching works correctly!", flush=True)
+        print("\nPASS: Real data LOSO caching works correctly!", flush=True)
         return True
         
     finally:
@@ -773,7 +773,7 @@ def test_real_pipeline_integration():
     set_step("Checking for feature cache directory")
     feature_cache_dir = Path("results/features_cache_global")
     if not feature_cache_dir.exists():
-        print("⚠ Feature cache not found - skipping pipeline test", flush=True)
+        print("Feature cache not found - skipping pipeline test", flush=True)
         return None
     print(f"    Feature cache found: {feature_cache_dir}", flush=True)
     
@@ -784,9 +784,9 @@ def test_real_pipeline_integration():
         from training import TrainingPipeline, TrainingConfig
         from feature_selection import FeatureSelectionConfig
         from output_formatter import Verbosity
-        print("    ✓ Imports successful", flush=True)
+        print("    Imports successful", flush=True)
     except ImportError as e:
-        print(f"⚠ Import error: {e}", flush=True)
+        print(f"Import error: {e}", flush=True)
         return None
     
     # Load subjects (use 5 to keep it fast)
@@ -801,7 +801,7 @@ def test_real_pipeline_integration():
             print(f"    Found: {subj}", flush=True)
     
     if len(available) < 3:
-        print(f"⚠ Not enough cached subjects: {len(available)}", flush=True)
+        print(f"Not enough cached subjects: {len(available)}", flush=True)
         return None
     
     # Load and combine data
@@ -926,9 +926,9 @@ def test_real_pipeline_integration():
         kappa_match = np.isclose(result1.kappa_mean, result2.kappa_mean, atol=1e-6)
         
         if acc_match and kappa_match:
-            print("    ✓ Results match between cold and warm runs!", flush=True)
+            print("    Results match between cold and warm runs!", flush=True)
         else:
-            print(f"    ⚠ Results differ!", flush=True)
+            print(f"    Results differ!", flush=True)
             print(f"      Run 1 Acc: {result1.accuracy_mean:.6f}", flush=True)
             print(f"      Run 2 Acc: {result2.accuracy_mean:.6f}", flush=True)
             return False
@@ -937,9 +937,9 @@ def test_real_pipeline_integration():
         expected_hits = len(available)  # One hit per fold
         actual_hits = cache_stats2['session']['hits']
         if actual_hits >= expected_hits:
-            print(f"    ✓ Cache hits as expected: {actual_hits} >= {expected_hits}", flush=True)
+            print(f"    Cache hits as expected: {actual_hits} >= {expected_hits}", flush=True)
         else:
-            print(f"    ⚠ Fewer cache hits than expected: {actual_hits} < {expected_hits}", flush=True)
+            print(f"    Fewer cache hits than expected: {actual_hits} < {expected_hits}", flush=True)
             return False
         
         # Calculate speedup
@@ -953,7 +953,7 @@ def test_real_pipeline_integration():
         print(f"Speedup: {speedup:.1f}x", flush=True)
         print(f"Cache hits on warm run: {actual_hits}", flush=True)
         
-        print("\n✓ PASS: Real pipeline integration works correctly!", flush=True)
+        print("\nPASS: Real pipeline integration works correctly!", flush=True)
         return True
         
     finally:
@@ -1028,11 +1028,11 @@ def main():
     
     for test_name, result in results.items():
         if result is True:
-            status = "✓ PASS"
+            status = "PASS"
         elif result is False:
-            status = "✗ FAIL"
+            status = "FAIL"
         else:
-            status = "⚠ SKIP"
+            status = "SKIP"
         print(f"  {test_name:30s} {status}", flush=True)
     
     # Overall result
@@ -1044,10 +1044,10 @@ def main():
     print(f"Duration: {overall_elapsed:.1f} seconds", flush=True)
     
     if failures > 0:
-        print("\n⚠ Some tests failed!", flush=True)
+        print("\nSome tests failed!", flush=True)
         return 1
     else:
-        print("\n✓ All tests passed!", flush=True)
+        print("\nAll tests passed!", flush=True)
         return 0
 
 

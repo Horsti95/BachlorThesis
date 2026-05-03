@@ -1,40 +1,84 @@
-\chapter{Methodology}
-
+\chapter{Methodology and Results}
+\label{chap:methodology}
 \begin{center}
 \colorbox{yellow!20}{%
 \begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
+\textbf{Working Draft Note:}
 Goal 20 pages currently 31 shorten to at least 25
 \end{minipage}}
 \end{center}
-While Satapathy et al.\ (2024) demonstrate high performance using a set of 63 multi-modal features~\cite{satapathy2024multimodal}, this thesis implements an expanded set of 149 EEG-specific features. This deliberate over-provisioning serves a dual purpose in evaluating the caching framework: first, it increases the computational cost of the feature extraction phase, providing a more rigorous stress test for the Tier~1 Persistent Feature Store; second, it enables the systematic evaluation of feature-count cut-offs as a configuration parameter. Because all 149 features are cached as a Materialised Intermediate Representation, the framework can test various sub-selections (e.g., top 20, 50, or 100 features) with near-zero latency, demonstrating the advantage of deterministic caching over traditional linear pipelines.
 
-This chapter presents the complete methodology for implementing and evaluating the intelligent caching framework. Section~\ref{sec:theoretical} establishes the theoretical foundations, Section~\ref{sec:data} describes the dataset, Sections~\ref{sec:preprocessing}--\ref{sec:features} detail the signal processing and feature extraction pipeline, Section~\ref{sec:caching} explains the caching implementation, Section~\ref{sec:experiment_setup} outlines the experimental design, and Section~\ref{sec:evaluation_plan} defines the evaluation metrics.
+This chapter follows a quantitative experimental methodology. EEG-based sleep
+stage classification serves as the validation vehicle --- a domain where LOSO
+cross-validation is standard practice --- rather than as the primary
+contribution. The contribution is the fingerprint-based caching framework
+itself; sleep staging provides a realistic, high-volume workload
+(128 subjects, 18 configurations, 2{,}304 training operations) on which to
+demonstrate and measure it. Section~\ref{sec:theoretical} establishes the
+theoretical foundations, Section~\ref{sec:data} describes the dataset,
+Sections~\ref{sec:preprocessing}--\ref{sec:features} detail the signal
+processing and feature extraction pipeline, Section~\ref{sec:caching}
+explains the caching implementation, Section~\ref{sec:experiment_setup}
+outlines the experimental design, and Section~\ref{sec:evaluation_plan}
+defines the evaluation metrics.
 
 \section{Theoretical Framework}
 \label{sec:theoretical}
 
-The framework is grounded in three key concepts: configuration fingerprinting, a distinction between persistent storage and intelligent caching, and two orthogonal evaluation dimensions.
+The central engineering challenge in LOSO caching is determining when two
+experimental runs are \emph{identical enough} to reuse prior results. A
+traditional approach would compare configuration files by hand or rely on
+naming conventions, both of which are error-prone and do not scale to
+2{,}304 operations across 18 configurations. The framework introduced here
+instead encodes every relevant parameter into a deterministic cryptographic
+key, so correctness becomes structural rather than a matter of human
+discipline. Three design concepts underpin this approach.
 
 \subsection{Configuration Fingerprinting}
 
-Configuration fingerprinting provides the foundation for cache key generation and reproducibility tracking. Each experiment configuration is uniquely identified by a cryptographic hash computed as:
+Configuration fingerprinting provides the foundation for cache key generation
+and reproducibility tracking. Each experiment configuration --- comprising
+model hyperparameters, feature-selection settings, random seed, code version,
+and the held-out subject identifier --- is serialised to a canonical JSON
+string and hashed with SHA-256, truncated to 32 hex characters (128 bits)
+for filesystem compatibility:
 
-\begin{equation}
-\text{fingerprint} = \text{SHA256}(\text{canonical\_json}(\text{config}))[:32]
-\end{equation}
+\begin{center}
+\texttt{fingerprint = sha256(canonical\_json(config))[:32]}
+\end{center}
 
-The fingerprint uses 32 hexadecimal characters (128 bits), providing strong collision resistance suitable for large-scale experiment tracking. The configuration dictionary includes:
+\noindent
+The 32-character prefix provides ample collision resistance at the
+experimental scale ($\sim$2{,}300 configurations), and the canonical
+serialisation (\texttt{sort\_keys=True}, compact separators) ensures
+identical output regardless of dictionary insertion order.
+Table~\ref{tab:fingerprint_fields} lists the tracked fields.
 
-\begin{itemize}
-    \item \textbf{Random seed:} Ensures deterministic behavior (e.g., \texttt{42})
-    \item \textbf{Code version:} Git commit or semantic version (e.g., \texttt{v1.0}, \texttt{git:abc123})
-    \item \textbf{Model configuration:} Algorithm name and hyperparameters (e.g., \texttt{xgboost}, \texttt{max\_depth: 6})
-    \item \textbf{Feature configuration:} Base feature count, correlation threshold, and top-K selection
-    \item \textbf{Held-out subject ID:} Critical for LOSO---prevents cross-fold contamination (e.g., \texttt{SC4001})
-\end{itemize}
+\begin{table}[htbp]
+\centering
+\caption[Configuration fields in the SHA-256 fingerprint]{Configuration fields included in the SHA-256 fingerprint.}
+\label{tab:fingerprint_fields}
+\begin{tabular}{lll}
+\toprule
+\textbf{Source} & \textbf{Field} & \textbf{Example value} \\
+\midrule
+Execution & Random seed       & \texttt{42} \\
+Execution & Code version      & \texttt{git:abc123} \\
+Model     & Algorithm         & \texttt{xgboost} \\
+Model     & Hyperparameters   & \texttt{max\_depth: 6, n\_estimators: 200} \\
+Features  & Base count        & \texttt{149} \\
+Features  & Correlation threshold & \texttt{0.90} \\
+Features  & Top-K selected    & \texttt{50} \\
+Features  & Feature name hash & SHA-256[:16] of sorted selected names \\
+LOSO fold & Held-out subject  & \texttt{SC4001} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-An example fingerprint: \texttt{a3f2b8c1d4e5f6a7b8c9d0e1f2a3b4c5}.
+The held-out subject field is the critical LOSO-specific addition: it encodes
+the fold identity directly into the key, ensuring a model cached for subject
+$S_i$ can never be retrieved for subject $S_j$. An example combined cache
+key: \texttt{a3f2b8c1...\_SC4001.joblib}.
 
 The fingerprint generation module is fully implemented, providing the \texttt{LOSOFingerprint} class with methods for generating fingerprints from configuration objects or dictionaries. The \texttt{generate\_cache\_key()} function provides a convenient interface that combines the fingerprint with the held-out subject ID (e.g., \texttt{a3f2b8c1...\_SC4001}) for direct use as cache file names.
 
@@ -50,7 +94,7 @@ A fundamental distinction in this framework is between \textit{configuration-ind
 In concrete terms: Layer~1 stores extracted features ($\sim$1.1~MB per subject, NPZ format) as persistent storage — no fingerprint needed, always valid. Layer~2 stores trained LOSO models (1--150~MB per fold depending on model type) as a fingerprint cache — keyed by configuration hash, automatically invalidated when parameters change.
 
 
-\subsubsection{Layer 1: Feature Extraction as Persistent Storage (Implemented)}
+\subsubsection{Layer 1: Feature Extraction as Persistent Storage}
 
 The feature extraction layer computes \textbf{all 149 features} for each subject across 6 EEG channels (F3, F4, C3, C4, O1, O2) and stores them in compressed NPZ format. This is classified as persistent storage because:
 
@@ -60,67 +104,38 @@ The feature extraction layer computes \textbf{all 149 features} for each subject
     \item The full feature set is extracted once; downstream selection operates on this cached superset
 \end{itemize}
 
+In this implementation, the pipeline checks for \texttt{\{subject\_id\}.npz}
+before extracting; if found, it is loaded directly and extraction is skipped.
 This layer is fully implemented and provides measured speedups of approximately 227$\times$ for feature loading compared to re-extraction.
 
-\subsubsection{Layer 2: LOSO Model Caching (Primary Contribution)}
+\subsubsection{Layer 2: LOSO Model Caching}
 \label{sec:loso_caching}
 
-The LOSO model cache represents the \textbf{primary contribution} of this thesis.
-The complete system---including fingerprint generation, cache storage, retrieval
-logic, and automatic invalidation---is fully implemented and validated through
-comprehensive testing (see Section~\ref{sec:verification}) and the full-scale
-18-configuration experiment (see Chapter: Results and Discussion).
+The LOSO model cache stores one trained model per fingerprint--subject pair.
+The complete system---fingerprint generation, cache storage, retrieval logic,
+and automatic invalidation---is validated through verification testing
+(Section~\ref{sec:verification}) and the full-scale 18-configuration experiment
+(Section~\ref{sec:results_caching}).
 
 \textbf{Full-Scale Results:} The caching system achieved 100\% cache hit rate
 across all 18 configurations and 128 LOSO folds (2{,}304 total operations).
-Measured speedups for XGBoost ranged from 122$\times$ to 498$\times$ (average
-208$\times$) with cache sizes of $\sim$185~MB. Random Forest achieved 12--110$\times$
-speedup (average 28$\times$) but required $\sim$18.5~GB of cache storage.
+Measured speedups for XGBoost ranged from 37.5$\times$ to 202$\times$ (median
+54$\times$) with cache sizes of $\sim$185~MB per 9-configuration sweep
+(128 models per configuration, $\sim$1.4~MB per fold). Random Forest achieved
+11--23.5$\times$ speedup (median 11.6$\times$) but required $\sim$18.5~GB per
+configuration ($\sim$145~MB per fold).
 
 \textbf{Why LOSO-Level Caching, Not Just Model Caching?}
 
-A critical design decision is caching at the \textit{LOSO fold level} rather than caching a single global model. This distinction is essential:
+A critical design decision is caching at the LOSO fold level rather than caching a single global model. This distinction is essential:
 
 \begin{enumerate}
-    \item \textbf{Data Leakage Prevention:} Each LOSO fold has a unique fingerprint that includes the \texttt{held\_out\_subject} field. A model trained with Subject~A held out \textit{cannot} be retrieved when Subject~B is the test subject---the fingerprints differ (as demonstrated by the implemented \texttt{LOSOFingerprint} class), forcing a cache miss and retraining.
+    \item \textbf{Data Leakage Prevention:} Each LOSO fold has a unique fingerprint that includes the \texttt{held\_out\_subject} field. A model trained with Subject~A held out cannot be retrieved when Subject~B is the test subject---the fingerprints differ (as demonstrated by the implemented \texttt{LOSOFingerprint} class), forcing a cache miss and retraining.
     
-    \item \textbf{Scientific Validity:} In LOSO cross-validation, each fold produces a \textit{different} model because the training data differs. Caching a single ``global model'' would be scientifically invalid---there is no single model, but rather $N$ distinct models (one per subject held out).
+    \item \textbf{Scientific Validity:} In LOSO cross-validation, each fold produces a different model because the training data differs. There is no single ``global model''---there are $N$ distinct models, one per subject held out; reusing any one for a different held-out subject would apply a model trained on different data.
     
     \item \textbf{Incremental Experimentation:} When adding new subjects or modifying experimental parameters, only affected folds require retraining. Cached models for unchanged configurations remain valid and are reused automatically.
 \end{enumerate}
-
-\textbf{Why Model-Level Caching, Not Result-Level Caching?}
-
-Within each LOSO fold, the framework caches the \textit{trained model} rather than just the evaluation metrics:
-
-\begin{itemize}
-    \item \textbf{Post-hoc Analysis:} Cached models enable feature importance analysis, prediction on new data, or computation of additional metrics without retraining.
-    \item \textbf{Reproducibility Verification:} Identical fingerprints guarantee identical model states, enabling verification that predictions (not just aggregate metrics) are reproducible.
-    \item \textbf{Debugging Capability:} When unexpected results occur, the exact model state can be inspected rather than requiring reproduction of the entire training process.
-\end{itemize}
-
-The trade-off is increased storage (models are larger than metric summaries), but this is acceptable given the scientific benefits and modern storage capacities.
-
-\subsection{Two Orthogonal Evaluation Dimensions}
-
-The framework evaluation follows two orthogonal dimensions that structure the experimental analysis:
-
-\begin{itemize}
-    \item \textbf{WHY dimension (Optimization Goals):}
-    \begin{itemize}
-        \item Latency: Time to retrieve cached vs. computed results
-        \item Throughput: Subjects processed per unit time
-        \item Time Saved: Cumulative computation time avoided across experimental iterations
-    \end{itemize}
-    \item \textbf{WHERE dimension (Cached Artifact Levels):}
-    \begin{itemize}
-        \item Layer 1: Extracted feature matrices (persistent storage---implemented)
-        \item Layer 2: Trained LOSO fold models (intelligent cache--implemented)
-        \item Results: Final metrics (always recomputed from cached models for verification)
-    \end{itemize}
-\end{itemize}
-
-This two-dimensional framework enables systematic evaluation of caching benefits across different experimental scenarios, from simple re-runs (maximum cache hits) to parameter sweeps (partial cache hits) to completely new configurations (cache misses establishing new baselines).
 
 \section{Data: BOAS Dataset}
 
@@ -128,29 +143,29 @@ This two-dimensional framework enables systematic evaluation of caching benefits
 
 \subsection{Dataset Overview}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-TODO Lennart: Generate a \textbf{Sleep Stage Distribution Bar Chart} showing
-the class distribution across all 128 subjects (Wake/N1/N2/N3/REM percentages).
-This is standard for any classification thesis and shows the class imbalance
-problem (N1 underrepresented, N2 dominant). Save as
-\texttt{figures/fig\_sleep\_stage\_distribution.pdf} and add it here.
-\end{minipage}   }
-\end{center}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig_sleep_stage_distribution.pdf}
+\caption[Sleep stage distribution across all 128 BOAS subjects]{Sleep stage
+epoch distribution across all 128 BOAS subjects (119,759 epochs total).
+N2 dominates at 60.3\% and N1 is severely underrepresented at 3.7\%,
+reflecting the natural structure of healthy adult sleep.}
+\label{fig:sleep_distribution}
+\end{figure}
 
 
-This research utilizes the Bitbrain Open Access Sleep (BOAS) dataset, a 
-comprehensive polysomnographic database specificallydesigned for evaluating sleep staging algorithms across a diverse subject pool \cite{esparza2026automatic}. With 128 subjects, it provides a robust foundation for testing the scalability and validity of the proposed LOSO caching framework. Table 1 summarizes the key characteristics of the PSG recordings used in this study, as the BOAS dataset provides both clinical PSG and wearable headband data \cite{esparza2026automatic} Table~\ref{tab:dataset_overview} summarizes the 
-key characteristics of the dataset used in this study.
+This research utilizes the Bitbrain Open Access Sleep (BOAS) dataset, a
+polysomnographic database designed for evaluating sleep staging algorithms
+across a diverse subject pool~\cite{esparza2026automatic,boas_dataset}.
+Table~\ref{tab:dataset_overview} summarizes the key signal characteristics
+used in this study.
 
 \begin{table}[ht]
 \centering
-\begin{tabular}{|l|l|}
-\hline
+\begin{tabular}{ll}
+\toprule
 \textbf{Parameter} & \textbf{Value} \\
-\hline
+\midrule
 Dataset & Bitbrain Open Access Sleep (BOAS) \\
 Total Subjects & 128 healthy adults \\
 PSG EEG Channels & 6 (F3, F4, C3, C4, O1, O2) \\
@@ -162,21 +177,44 @@ Samples per Epoch & 3,840 (at 128 Hz) \\
 Total Epochs & $\sim$120,000 \\
 Sleep Stages & 5 (W, N1, N2, N3, REM) per AASM \\
 Labeling Process & 4-Expert Consensus (128 nights) \\
-\hline
+\bottomrule
 \end{tabular}
-\caption{BOAS dataset characteristics and signal configuration used for benchmarking.}
+\caption[BOAS dataset characteristics]{BOAS dataset characteristics and signal configuration used for benchmarking.}
 \label{tab:dataset_overview}
 \end{table}
 
 \subsection{Dataset Selection Justification}
-Unlike older datasets, BOAS provides a consensus label derived from three independent experts and a fourth senior arbitrator \cite{esparza2026automatic}, reducing the impact of inter-scorer variability on model training.
 
-\subsection{Expected Class Distribution}
+BOAS was selected for four reasons: \textbf{scale}---128 subjects yield 128 LOSO folds, sufficient for reliable speedup distributions and scaling experiments; \textbf{label quality}---each epoch carries a consensus label from three independent scorers arbitrated by a senior expert~\cite{esparza2026automatic}, with 87.08\% human-AI agreement serving as a natural performance ceiling; \textbf{continuity}---the dataset was used in the prior course project from which this thesis evolved, preserving the conditions under which the caching bottleneck was first identified; and \textbf{public availability}~\cite{boas_dataset}---external researchers can reproduce all benchmarks without institutional access.
 
-Sleep stage classification exhibits inherent class imbalance, with N1 (light sleep) typically underrepresented. Based on literature and analysis of the BOAS dataset, the distribution is approximately: Wake (15--20\%), N1 (5--10\%), N2 (45--50\%), N3 (15--20\%), REM (15--20\%). This imbalance was addressed through macro-averaged metrics in the evaluation.
+\subsection{Class Distribution and LOSO Justification}
+
+Across all 128 subjects the 119,759 labelled epochs break down as:
+Wake~16.0\%, N1~3.7\%, N2~60.3\%, N3~4.4\%, REM~15.7\%
+(Figure~\ref{fig:sleep_distribution}). N2 dominates while N1 is nearly
+16$\times$ less frequent, motivating macro-averaged F1 as the primary metric.
+
+The aggregate distribution masks substantial inter-subject variability
+(Figure~\ref{fig:subject_variation}): sub-114 spends 80\% of recorded time
+in N2 with no N3 epochs at all; sub-34 is awake for over half the
+recording (51.5\%); sub-2 has an unusually high N3 fraction (22.6\%);
+sub-119 has the highest REM fraction (25.2\%).
+These distributional extremes motivate LOSO evaluation (Section~\ref{sec:loso_background}):
+no single subject's distribution is representative of the pool.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/fig_subject_variation.pdf}
+\caption[Inter-subject variability in sleep stage distribution]{Sleep stage
+distribution for four extreme subjects selected from the BOAS dataset.
+Dashed lines indicate the dataset-wide average per stage.
+The pronounced differences across subjects motivate Leave-One-Subject-Out
+evaluation: no single subject's distribution is representative of the pool.}
+\label{fig:subject_variation}
+\end{figure}
 
 
-\section{Data Validation and Integrity Verification}
+\subsection{Data Validation and Integrity Verification}
 \label{sec:data_validation}
 
 Prior to feature extraction, each recording undergoes an automated 12-point
@@ -186,11 +224,8 @@ continuity), structural consistency (correct channel count and sampling rate),
 EDF-annotation alignment (onset bounds, sample bounds), and signal quality
 (no NaN/$\pm\infty$ values, no flat channels, amplitude $<10^6~\mu$V).
 
-All 128 BOAS subjects passed all checks. The dataset exhibits minimal
-artifact contamination ($<$0.1\% epoch exclusion rate). The dataset
-creators report a human-AI agreement of 87.08\% for PSG
-data~\cite{esparza2026automatic}, which serves as a performance benchmark
-in this thesis.
+All 128 BOAS subjects passed all checks; the dataset exhibits minimal
+artefact contamination ($<$0.1\% epoch exclusion rate).
 
 
 
@@ -212,54 +247,53 @@ The following signal conditioning is applied sequentially to each EEG channel:
 
 All preprocessing parameters are included in the cache fingerprint, ensuring automatic invalidation when parameters change.
 
-\subsection{Epoch Creation}
+\subsection{Epoch Creation and Quality Control}
 
-Continuous signals are segmented into 30-second epochs aligned with hypnogram annotations. Each epoch contains 3,840 samples (30 seconds $\times$ 128 Hz) across 6 channels, resulting in an array of shape $(n_\text{epochs}, 3840, 6)$ per subject.
-
-\subsection{Quality Control}
-
-Epochs are filtered according to the comprehensive validation criteria established in Section~\ref{sec:data_validation}. In summary, epochs must satisfy:
-\begin{itemize}
-\item Amplitude within $\pm$500 $\mu$V (reject artifacts)
-\item No NaN or infinite values
-\item Valid sleep stage annotation (exclude disconnection events, artifacts, and unknown stages)
-\end{itemize}
-
-The full 12-point validation protocol ensures data integrity before feature extraction begins.
+Continuous signals are segmented into 30-second epochs aligned with hypnogram
+annotations. Each epoch contains 3,840 samples (30 s $\times$ 128 Hz) across
+6 channels. An optional per-epoch amplitude rejection step
+(threshold $\pm$1{,}000~$\mu$V) is available but disabled in the main
+benchmark (\texttt{validate\_quality=False}); recording-level screening
+via the 12-point validation (Section~\ref{sec:data_validation}) is
+sufficient given the BOAS dataset's $<$0.1\% artefact rate.
 
 \section{Feature Extraction: The 149-Feature Set}
 \label{sec:features}
 
-This research employs a comprehensive extraction of 149 EEG features per epoch strategy designed for robust cross-subject generalization. Features are computed for each 30-second epoch and organized into four domains, as detailed in Table~\ref{tab:feature_breakdown_149}.
+149 EEG features are extracted per 30-second epoch, spanning four domains
+(Table~\ref{tab:feature_breakdown_149}).
 
 \begin{table}[ht]
 \centering
-\begin{tabular}{|p{3.5cm}|p{1.5cm}|p{7cm}|}
-\hline
-\textbf{Domain} & \textbf{Count} & \textbf{Features} \\
-\hline
-Time-Domain & 60 & Mean, std, variance, min, max, peak-to-peak, RMS, skewness, kurtosis, zero-crossing rate (10 $\times$ 6 channels) \\
-\hline
-Frequency-Domain & 54 & Band powers (delta 0.5--4 Hz, theta 4--8 Hz, alpha 8--13 Hz, sigma 12--15 Hz, beta 13--30 Hz, gamma 30--40 Hz), spectral entropy, peak frequency, median frequency (9 $\times$ 6 channels) \\
-\hline
-Signal Complexity & 24 & Hjorth mobility, Hjorth complexity, Hurst exponent, Detrended Fluctuation Analysis (4 $\times$ 6 channels) \\
-\hline
-Inter-Channel & 11 & Coherence pairs (6), Phase Locking Value pairs (3), global entropy, global complexity \\
-\hline
-\textbf{Total} & \textbf{149} & \textbf{Comprehensive EEG-based feature set} \\
-\hline
-\end{tabular}
-\caption{Complete 149-feature breakdown for sleep stage classification.}
+\caption[149-feature breakdown by domain]{149 EEG features extracted per
+30-second epoch, grouped by domain. Band boundaries match
+Table~\ref{tab:eeg_bands}.}
 \label{tab:feature_breakdown_149}
+\begin{tabular}{p{3.2cm}rp{7.5cm}}
+\toprule
+\textbf{Domain} & \textbf{Count} & \textbf{Features} \\
+\midrule
+Time-Domain      & 60 & Mean, std, variance, min, max, peak-to-peak, RMS,
+                        skewness, kurtosis, zero-crossing rate
+                        (10 $\times$ 6 channels) \\[4pt]
+Frequency-Domain & 54 & Band powers: $\delta$ 0.5--4, $\theta$ 4--8,
+                        $\alpha$ 8--13, $\sigma$ 12--16, $\beta$ 16--30,
+                        $\gamma$ 30--40~Hz; spectral entropy, peak frequency,
+                        median frequency (9 $\times$ 6 channels) \\[4pt]
+Signal Complexity & 24 & Hjorth mobility, Hjorth complexity, Hurst exponent,
+                         Detrended Fluctuation Analysis
+                         (4 $\times$ 6 channels) \\[4pt]
+Inter-Channel    & 11 & Coherence (6 pairs), Phase Locking Value (3 pairs),
+                        global entropy, global complexity \\
+\midrule
+\textbf{Total}   & \textbf{149} & \\
+\bottomrule
+\end{tabular}
 \end{table}
 
 \subsection{Feature Engineering Strategy and Caching Prioritization}
 
-The feature extraction pipeline implements a comprehensive 149-feature representation spanning time-domain statistics, frequency-domain band powers, complexity measures, and cross-channel connectivity metrics. This feature set was deliberately designed to balance discriminative power for sleep stage classification with computational tractability for caching optimization.
-
-While additional features such as sample entropy, permutation entropy, band power ratios, or spindle density detection could marginally enhance classification performance, the current architecture intentionally prioritizes caching efficiency as the central research contribution. By establishing a fixed, comprehensive feature space, the system enables complete cache validity across experimental variations in feature selection, model hyperparameters, and cross-validation strategies---changes that would otherwise trigger costly recomputation.
-
-This design philosophy reflects a strategic trade-off: rather than pursuing incremental gains in classification accuracy through feature proliferation, the framework optimizes for reproducibility, computational efficiency, and scalability. The result is a system where subsequent experiments achieve near-instantaneous feature retrieval, reducing pipeline latency from hours to seconds, minimizing computational resource consumption, and ensuring deterministic reproducibility across research iterations. Future extensions may incorporate additional feature domains; however, the current implementation demonstrates that intelligent caching of a well-designed feature set delivers substantial practical benefits that outweigh marginal accuracy improvements from feature expansion.
+While Satapathy et al.\ (2024) demonstrate competitive performance using 63 multi-modal features~\cite{satapathy2024multimodal}, this thesis extracts an expanded set of 149 EEG-specific features. The larger set serves the caching evaluation: it increases extraction cost (providing a stronger stress test for Layer~1) and enables systematic comparison of feature-count cut-offs as a configuration parameter. Because all 149 features are stored in the persistent Layer~1 cache, downstream experiments select any sub-set (top-30, top-50, or all 149) with near-zero latency, without re-extracting from raw signals.
 
 \subsection{Feature Selection Strategy}
 
@@ -276,75 +310,98 @@ After extracting all 149 features, optional feature selection is applied using a
 \begin{itemize}
 \item Ranks features by class-discriminative power using F-statistic (\texttt{f\_classif})
 \item Top-K options: 30, 50, or None (retain all 149 features)
-\item ANOVA selected over Mutual Information based on a dedicated benchmark: ANOVA was 174$\times$ faster (0.022s vs.\ 3.74s) \textit{and} 3.68 percentage points more accurate (84.26\% vs.\ 80.58\%) on a 10-subject pilot with 5-fold CV\footnote{ANOVA vs.\ MI benchmark: ANOVA \texttt{f\_classif} 0.022s, 84.26\% accuracy; MI 3.74s, 80.58\% accuracy. The accuracy advantage of ANOVA on this dataset is attributed to the linear discriminative structure of EEG frequency-domain features, which ANOVA's F-statistic captures more directly than MI's nonparametric estimation.}. ANOVA is therefore not a speed--accuracy trade-off but strictly dominates MI for this feature set
+\item ANOVA selected over Mutual Information based on a pilot benchmark (10 subjects, 5-fold CV): ANOVA was 174$\times$ faster \textit{and} 3.68 percentage points more accurate, giving strict dominance with no trade-off (Table~\ref{tab:anova_vs_mi}).
 \end{itemize}
 
-\textbf{Implementation Note:} Feature selection is performed \textbf{globally} (not per-fold) to enable consistent cache fingerprinting. This design choice prioritizes caching efficiency while accepting minimal impact on cross-validation purity. The Stage 2 cache stores all 149 features, and selection parameters only affect the final model training step.
+\begin{table}[htbp]
+\centering
+\caption[ANOVA vs.\ Mutual Information feature selection comparison]{ANOVA F-statistic vs.\ Mutual Information feature selection
+(10-subject pilot, 5-fold CV). ANOVA strictly dominates on both speed and accuracy.}
+\label{tab:anova_vs_mi}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Method} & \textbf{Time (s)} & \textbf{Accuracy} \\
+\midrule
+ANOVA (f\_classif)  & 0.022 & 84.26\% \\
+Mutual Information  & 3.74  & 80.58\% \\
+\midrule
+\textbf{Difference} & \textbf{174$\times$ faster} & \textbf{$+$3.68\% ANOVA} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This is not a trade-off: ANOVA is simultaneously faster \textit{and} more accurate on this dataset.
+
+\textbf{Methodological note on feature-selection scope.}
+Feature selection is performed \textbf{globally} (\texttt{scope=global}): the
+ANOVA selector is fitted once on all 128 subjects and the resulting feature
+set is reused across all LOSO folds, rather than being refitted independently
+inside each fold (\texttt{scope=per\_fold}).
+
+Per-fold refitting is the strict best practice in MLOps because it eliminates
+information leakage from the held-out subject's labels into the feature
+ranking. The global variant is used here for computational efficiency in the
+caching study, with the supervisor's prior approval. Performance numbers in
+this thesis should therefore be interpreted as \textit{upper-bound estimates}
+of generalisation accuracy rather than fully unbiased scores: the $1/128
+\approx 0.8\%$ contribution of the held-out subject's labels to the global
+ranking produces a minor optimistic bias. An empirical benchmark
+(Table~\ref{tab:global_vs_fold}) measured this effect at $\leq 1.1\%$
+accuracy difference with no consistent direction, confirming the bias is
+negligible in practice.
+
+The framework supports \texttt{scope=per\_fold} and the same 18-configuration
+experimental grid can be re-run under that setting if a future replication
+requires strict isolation (Section~\ref{sec:limitations}).
 
 \subsection{Feature Extraction Optimization}
 
-To enable efficient processing of the BOAS dataset (128 subjects, $\sim$1000 epochs each, $\sim$128,000 total epochs), several optimization strategies were evaluated and implemented.
-
-\subsubsection{Implemented Optimizations (No Quality Loss)}
-
-\textbf{Multiprocess Parallelization:} Feature extraction was parallelized across CPU cores using Python's joblib library with process-based workers. Thread-based parallelization was initially attempted but provided no speedup due to Python's Global Interpreter Lock (GIL) blocking concurrent execution of CPU-bound NumPy/SciPy operations. Process-based parallelization achieved near-linear scaling, reducing per-epoch extraction time from $\sim$4.7s to $\sim$1.1s on an 8-core system (4.3$\times$ speedup).
-
-\textbf{Optimized Complexity Measures:} The computationally expensive complexity features (Detrended Fluctuation Analysis, Hurst exponent, Hjorth parameters) were accelerated using the antropy library, which provides Numba JIT-compiled implementations of identical peer-reviewed algorithms. This optimization maintained mathematical equivalence while reducing complexity feature computation time by approximately 2--3$\times$.
-
-\textbf{Feature Caching Strategy:} A comprehensive caching system was implemented to compute features once for all 6 EEG channels and store them in compressed NumPy archives. Subsequent experiments can load cached features and filter to the required channel subset at runtime, eliminating redundant computation when comparing channel configurations.
-
-\subsubsection{Evaluated But Not Implemented (Would Reduce Quality)}
-
-\textbf{Approximate Hurst Exponent:} Replacing the DFA-based Hurst exponent with faster auto\-correlation-based approximations was considered but rejected. While offering 5--10$\times$ speedup, this approach produces systematically different values (10--15\% deviation) and would compromise comparability with existing sleep staging literature that relies on standard DFA.
-
-\textbf{Reduced DFA Scale Resolution:} Decreasing the number of window scales in DFA from 10 to 5 was evaluated. Although this would halve DFA computation time, it introduces 2--3\% variance in the resulting exponents, potentially affecting the discrimination of sleep stages with similar spectral profiles (particularly N2/N3 differentiation).
-
-\textbf{Sample Entropy Approximation:} Fast approximate entropy measures were considered but not implemented, as sample entropy's $O(N^2)$ complexity was already addressed through parallelization, and approximate methods would alter the feature's discriminative properties for sleep stage classification.
-
-\subsubsection{Performance Summary}
-
-Table~\ref{tab:optimization_summary} summarizes the optimization decisions and their impact.
-
-\begin{table}[ht]
-\centering
-\begin{tabular}{|l|c|c|c|}
-\hline
-\textbf{Optimization} & \textbf{Status} & \textbf{Speedup} & \textbf{Quality Impact} \\
-\hline
-Process parallelization & Implemented & 4.3$\times$ & None \\
-\hline
-Antropy complexity & Implemented & 2--3$\times$ & None \\
-\hline
-Feature caching & Implemented & N/A* & None \\
-\hline
-Approximate Hurst & Rejected & 5--10$\times$ & $-$10--15\% accuracy \\
-\hline
-Reduced DFA scales & Rejected & 1.5$\times$ & $-$2--3\% variance \\
-\hline
-\end{tabular}
-\caption{Feature extraction optimization decisions. *Caching eliminates recomputation entirely for repeated experiments.}
-\label{tab:optimization_summary}
-\end{table}
-
-The combined optimizations (process-based parallelization on 8 cores + Numba-accelerated complexity measures via antropy) reduced total feature extraction time from approximately 150 hours (sequential, unoptimized) to approximately 53 minutes for the complete 128-subject dataset. With the caching system enabled, subsequent runs retrieve cached features near-instantly ($<$1 minute), representing a 227$\times$ speedup over the cold start.
+The extraction pipeline parallelizes across subjects via joblib to bypass
+Python's GIL for CPU-bound NumPy/SciPy operations. Each subject's full
+149-feature set is computed once and stored as a compressed NumPy archive;
+downstream experiments apply correlation filtering and top-K selection at
+runtime without re-extracting. Cold extraction of all 128 subjects takes
+approximately 53~minutes; warm loading from Layer~1 cache completes in under
+one minute ($227\times$ speedup).
 
 
 
 \section{Caching Framework Implementation}
 \label{sec:caching}
 
-Figure~\ref{fig:pipeline_architecture} illustrates the overall architecture of
-the fingerprint-based caching framework, showing the two-layer cache hierarchy
-and the decision flow from configuration input to cached or freshly computed
-output.
+Figure~\ref{fig:pipeline_architecture} shows the end-to-end pipeline from
+raw EEG recordings to evaluation results. The two orange blocks mark the
+two cache layers; green bypass arrows show the warm-run paths that skip
+redundant computation when cached artefacts exist.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/ml_framework_architecture.pdf}
-\caption{Overall architecture of the fingerprint-based caching framework
-showing the two-layer cache hierarchy.}
+\includegraphics[width=\textwidth]{figures/fig_pipeline_overview.pdf}
+\caption[End-to-end pipeline overview]{End-to-end fingerprint-based caching
+pipeline. Blue blocks: data and signal processing. Orange: two-tier cache
+(Layer~1 feature store, Layer~2 model cache). Pink: LOSO split and
+fingerprint generation. Green arrows indicate warm-run bypass paths;
+the full warm run completes in $\sim$7~s versus $\sim$25~min cold.}
 \label{fig:pipeline_architecture}
 \end{figure}
+
+\subsection{Code Provenance}
+\label{sec:code_provenance}
+
+The EEG signal processing and feature extraction pipeline (bandpass filtering,
+artifact rejection, epoch segmentation, and computation of the 149 per-epoch
+features) was adapted from an implementation originally developed during a prior
+university course project on sleep stage classification. That implementation
+was written by the same author and provides the domain-specific signal
+processing foundation on which this thesis builds.
+
+The fingerprint-based caching framework itself---including the SHA-256
+configuration fingerprinting mechanism, the two-layer cache architecture
+(Layer~1: subject-wise feature store; Layer~2: fingerprint-keyed model cache),
+the LOSO cross-validation harness with fold-aware cache key generation, and
+the full 18-configuration benchmark and viability study---constitutes original
+work developed for and within this thesis. No caching logic or experimental
+infrastructure was taken from the prior project.
 
 \subsection{Fingerprint Generation}
 \label{sec:fingerprint_generation}
@@ -352,34 +409,33 @@ showing the two-layer cache hierarchy.}
 Cache key generation follows a five-step process:
 
 \begin{enumerate}
-\item \textbf{Configuration assembly.} All tracked parameters
-      (\texttt{random\_seed}, \texttt{code\_version}, \texttt{model\_config}
-      with algorithm name and hyperparameters, \texttt{feature\_config} with
-      base feature count, correlation threshold, top-K selection, and the
-      sorted list of selected feature names, and \texttt{held\_out\_subject})
-      are combined into a single Python dictionary.
+\item \textbf{Configuration assembly.} All tracked parameters are combined
+      into a single dictionary: \texttt{random\_seed}, \texttt{code\_version},
+      \texttt{model\_config} (algorithm name and hyperparameters),
+      \texttt{feature\_config} (base feature count, correlation threshold,
+      top-K selection, and a 16-character SHA-256 hash of the sorted selected
+      feature names), and \texttt{held\_out\_subject}. The feature list is
+      represented as a compact hash (\texttt{features\_hash}) rather than the
+      full name list to keep the fingerprint string short.
 
-\item \textbf{Canonical serialization.} The dictionary is serialized to
-      JSON using \texttt{json.dumps()} with \texttt{sort\_keys=True} and
-      compact separators \texttt{(',',':')}, ensuring a deterministic string
-      representation regardless of insertion order.
+\item \textbf{Canonical serialization.} The dictionary is serialized to JSON
+      with \texttt{sort\_keys=True} and compact separators \texttt{(',',':')}
+      (\texttt{json.dumps}), producing a deterministic string regardless of
+      dictionary insertion order.
 
-\item \textbf{SHA-256 hashing.} The canonical JSON string is encoded to
-      UTF-8 and hashed using SHA-256, producing a 256-bit (64 hexadecimal
-      character) digest.
-
-\item \textbf{Truncation.} The hash is truncated to 32 hexadecimal
-      characters (128 bits) for filesystem compatibility, while retaining
-      sufficient collision resistance for the experimental scale
+\item \textbf{SHA-256 hashing and truncation.} The canonical JSON string is
+      hashed with SHA-256 (256 bits = 64 hex characters) and then truncated to
+      32 hex characters (128 bits) for filesystem compatibility. 128 bits
+      provides ample collision resistance at the experimental scale
       ($\sim$2{,}300 configurations).
 
-\item \textbf{Cache key formation.} The truncated hash is concatenated
-      with the held-out subject identifier to form the final cache key:
-      \texttt{\{fingerprint\}\_\{subject\}}, e.g.,
-      \texttt{a3f2b8c1d4e5f6a7...\_sub-001}.
+\item \textbf{Cache key formation.} The 32-character fingerprint is
+      concatenated with the held-out subject identifier:
+      \texttt{\{fingerprint\}\_\{subject\}}, e.g.\
+      \texttt{a3f2b8c1...\_sub-001}.
 \end{enumerate}
 
-The corresponding implementation in \texttt{fingerprint.py}:
+The implementation in \texttt{fingerprint.py} (steps 2--4):
 
 \begin{verbatim}
 canonical = json.dumps(config.to_dict(),
@@ -388,219 +444,237 @@ fingerprint = hashlib.sha256(canonical.encode()).hexdigest()[:32]
 cache_key = f"{fingerprint}_{held_out_subject}"
 \end{verbatim}
 
-\textbf{Partial cache reuse across experiment sweeps.} Because the
-fingerprint is computed independently per configuration--subject pair,
-experiment runs that share a subset of configurations automatically
-benefit from cached results. For example, if a first sweep trains
-configurations $\{A_1, A_2, B_1, B_2\}$ and a second sweep trains
-$\{B_1, B_2, C_1, C_2\}$, the models for $B_1$ and $B_2$ produce
-identical fingerprints in both runs and are loaded from cache, while
-$C_1$ and $C_2$ are trained fresh. This behaviour was verified
-experimentally in the benchmark suite
-(\texttt{experiment\_b\_fingerprint\_invalidation} in
-\texttt{run\_thesis\_benchmark.py}), where overlapping configurations
-across successive sweeps correctly produced cache hits for shared
-configurations and cache misses for new ones.
+\textbf{Partial cache reuse across experiment sweeps.} Configurations sharing
+identical hyperparameters and subject folds produce matching fingerprints,
+enabling automatic reuse. For example, sweeps $\{A_1, A_2, B_1, B_2\}$ and
+$\{B_1, B_2, C_1, C_2\}$ reuse cached $B_1$, $B_2$ models while training
+$C_1$, $C_2$ fresh. This was verified via incremental sweep expansion
+(Section~\ref{sec:verification}).
+
+\textbf{Design note: why \texttt{features\_hash} is in the fingerprint.}
+During development, a cache-collision bug occurred: two fingerprints with
+identical selection parameters (same threshold, same top-K) but different
+resulting feature subsets matched on disk, causing a model trained on 37
+features to be loaded for a configuration that had selected 33. The fix was
+to include a 16-character SHA-256 hash of the sorted selected feature names
+(\texttt{features\_hash}) in the fingerprint. A change in the actual feature
+set now produces a different key even when threshold and top-K are unchanged.
 
 \textbf{Version control safety.} The \texttt{code\_version} parameter
 (set to the current semantic version or Git commit hash) ensures that
-code changes automatically invalidate the cache. If a code migration
-introduces a bug or modifies model behaviour, the resulting fingerprint
+implementation changes automatically invalidate the cache. If an implementation
+migration introduces a bug or modifies model behaviour, the resulting fingerprint
 differs from previous versions, preventing retrieval of stale cached
 models.
 
+Table~\ref{tab:fingerprint_integrity} shows representative fingerprints generated
+across different configurations, confirming that every distinct parameter combination
+produces a unique 32-character SHA-256 prefix.
+
+\input{tables/tab5_fingerprint_integrity}
+
 \subsection{Cache Storage Structure}
 
-The cache uses a directory structure organized by fingerprint:
+The two-layer directory layout reflects the key/no-key distinction:
+Layer~1 filenames carry no fingerprint (features are configuration-independent);
+Layer~2 filenames embed the 32-character fingerprint so any parameter or
+subject change forces a cache miss and prevents accidental reuse.
 
-\begin{verbatim}
-cache/
-+-- features/ # Extracted features (all 195, config-independent)
-| +-- subject_sub-1_full.npz  # NO fingerprint - always valid
-| +-- subject_sub-2_full.npz
-| +-- ...
-+-- loso_model_cache/ # Trained models (config-dependent)
-  +-- {fingerprint}_sub-1.joblib  # WITH fingerprint
-  +-- {fingerprint}_sub-2.joblib
-  +-- cache_registry.json  # Fingerprint metadata
-\end{verbatim}
-
-\textbf{Critical Design Decision:} Layer 1 (features) uses filenames 
-\textit{without} fingerprints because features are configuration-independent, they 
-remain valid regardless of model hyperparameters or feature selection settings. 
-Layer 2 (models) includes fingerprints in filenames because models become invalid 
-when training configurations change. This naming convention prevents accidental 
-cache misuse and enables visual inspection of cache validity.
+Layer~1 files follow the fingerprint-free pattern
+\texttt{features/sub-N\_full.npz} (always valid, never invalidated).
+Layer~2 files embed the fingerprint in their filename:
+\texttt{models/\{fp32\}\_sub-N.joblib}, so any parameter or subject
+change forces a cache miss. A companion \texttt{models/registry.json}
+maps each fingerprint to its full configuration metadata.
 
 \subsection{Cache Hit/Miss Logic}
 
 For each LOSO fold, the system generates the configuration fingerprint and
-checks whether \verb|{fingerprint}_{subject}.joblib| exists on disk. On a
-\textbf{cache hit}, the model is loaded (XGBoost: $\sim$58~ms; RF:
-$\sim$2.5~s). On a \textbf{cache miss}, the model is trained (XGBoost:
-$\sim$29~s; RF: $\sim$248~s) and saved to disk for future reuse.
+checks whether the corresponding joblib file exists on disk. On a cache hit,
+the model is loaded (XGBoost: $\sim$58~ms; RF: $\sim$2.5~s). On a cache miss,
+the model is trained (XGBoost: $\sim$29~s; RF: $\sim$248~s) and saved for
+future reuse. This single-tier disk-based approach suits the batch-oriented
+workflow, where each model is accessed exactly once per run.
 
-This single-tier disk-based approach is well-suited to the batch-oriented
-experimental workflow, where each model is accessed once per run.
+An in-memory LRU tier was considered but not implemented: because each model
+is accessed once per run, an in-memory layer would never produce a second hit.
+Two-tier RAM+disk caching is discussed as a future extension in Chapter~5.
 
+\subsection{Cache Invalidation}
 
-\textbf{Note on Two-Tier RAM+Disk Caching:} An in-memory caching layer
-(LRU cache in RAM, backed by disk) was considered but not implemented. The
-batch-oriented experimental workflow accesses each model exactly once per run,
-so the RAM layer would not achieve repeated hits. Additionally, preliminary
-testing indicated that the performance bottleneck is disk I/O throughput rather
-than seek latency---an in-memory tier did not meaningfully reduce loading times
-for the model sizes encountered. A detailed discussion of two-tier caching as
-a future extension is provided in Chapter~5 (Future Work).
-
-\subsection{Handling Data Changes and Cache Invalidation}
-
-A critical challenge in ML experiment caching is ensuring cache validity when underlying data changes. Our implementation addresses this through a multi-layered integrity system embedded in the cache metadata. Each cached entry stores a configuration fingerprint---a SHA-256 hash of all preprocessing parameters, alongside explicit version identifiers (\texttt{data\_version} and \texttt{feature\_version}) and source file metadata.
-
-When raw data modifications occur, three invalidation strategies are available:
+Two invalidation strategies handle data or code changes:
 
 \begin{enumerate}
-\item \textbf{Version Bumping:} Incrementing the \texttt{data\_version} parameter in the configuration file causes the fingerprint to change, automatically invalidating all cached entries without requiring manual intervention. This approach preserves the cache structure while ensuring fresh computation.
+\item \textbf{Version bumping.} Incrementing the \texttt{code\_version} string
+in the configuration changes the fingerprint, automatically invalidating all
+cached entries without deleting files. The \texttt{code\_version} field is
+currently set to a fixed semantic string (\texttt{"1.0.0"}); in a CI/CD
+deployment it would be populated automatically from the Git commit hash
+(e.g.\ \texttt{git rev-parse HEAD}), so that any code change implicitly
+invalidates dependent caches without manual intervention. Manual bumping is
+sufficient for the controlled scope of this thesis, where the codebase is
+frozen for the experimental run, but a production deployment should automate
+this derivation.
 
-\item \textbf{Cache Purging:} For significant data changes or version migrations, the global cache directory can be deleted entirely, triggering a complete recomputation on the next execution.
-
-\item \textbf{Strict Validation:} An optional \texttt{strict\_validation} mode computes file checksums during cache lookup, detecting any byte-level changes to source files. While more computationally expensive, this provides cryptographic guarantees of data integrity.
+\item \textbf{Cache purging.} For major data or model changes, the cache
+directory is deleted entirely, triggering full recomputation on the next run.
 \end{enumerate}
 
-Our implementation defaults to version-based validation (Option 1), balancing integrity assurance with computational efficiency. The fingerprint system ensures that configuration drift---such as modified filter parameters or channel selections---automatically triggers recomputation, while unchanged configurations benefit from cached results. This approach aligns with reproducibility requirements in scientific computing, where identical inputs must yield identical outputs.
+Both strategies are available; the benchmark uses version bumping for
+controlled invalidation tests and purging for full cold-start baselines.
 
+\subsection{Verification and Invalidation Testing}
+\label{sec:verification}
 
+Prior to the full 18-configuration benchmark, the caching system was verified
+on a 3-subject, 12-configuration reduced grid (24 cache operations total).
+Three tests were run:
+
+\textbf{Cold/warm correctness:} An empty cache produced 24 misses;
+an identical re-run retrieved all 24 cached models (100\% hit rate).
+Cached models produced bitwise-identical predictions to freshly trained
+models (\texttt{numpy.array\_equal()}), and accuracy / F1 / Cohen's $\kappa$
+matched to floating-point precision ($<10^{-10}$). All 12 configurations
+generated distinct SHA-256 fingerprints (zero collisions).
+
+\textbf{Incremental sweep expansion:} Table~\ref{tab:incremental_sweep}
+shows that expanding the grid in three steps reuses all previously cached
+configurations automatically, without manual cache management.
+
+\begin{table}[htbp]
+\centering
+\caption[Incremental sweep test: partial cache reuse]{Incremental sweep test: cache hit/miss pattern as the experiment
+grid grows.}
+\label{tab:incremental_sweep}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Step} & \textbf{Grid} & \textbf{Operations} & \textbf{Hits} & \textbf{Misses} \\
+\midrule
+1 & XGB $\times$ [0.90] $\times$ [30, 50] & 6 & 0 & 6 \\
+2 & XGB $\times$ [0.90] $\times$ [30, 50, None] & 9 & 6 & 3 \\
+3 & [XGB, RF] $\times$ [0.90] $\times$ [30, 50, None] & 18 & 9 & 9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Invalidation correctness:} Table~\ref{tab:invalidation} confirms
+that each of three deliberate parameter changes produces a new fingerprint
+and forces a cache miss.
+\label{sec:invalidation}
+
+\begin{table}[htbp]
+\centering
+\caption[Cache invalidation tests]{Cache invalidation: each parameter change produces a distinct
+SHA-256 fingerprint and forces retraining.}
+\label{tab:invalidation}
+\begin{tabular}{llll}
+\toprule
+\textbf{Change} & \textbf{Parameter} & \textbf{Fingerprint} & \textbf{Result} \\
+\midrule
+Hyperparameter & \texttt{max\_depth}: 6 $\to$ 8 & Different & Cache miss \checkmark \\
+Feature selection & top-K: 30 $\to$ 50 & Different & Cache miss \checkmark \\
+Held-out subject & sub-1 $\to$ sub-2 & Different & Separate entry \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All three tests passed. The third test confirms no cross-fold contamination:
+models for sub-1 and sub-2 are stored under distinct keys. These results
+justified proceeding to the full 2{,}304-operation experiment
+(Section~\ref{sec:results_caching}).
 
 \section{Experimental Setup}
 \label{sec:experiment_setup}
 
 \subsection{Technical Environment}
 
-Table~\ref{tab:technical_env} specifies the software environment for reproducibility. All code was developed and tested with Python 3.12.2 and the following dependencies.
+Two machines were used across the project lifecycle
+(Table~\ref{tab:hardware_env}). The HP ProBook laptop was used for initial
+pipeline development and unit testing; all timing benchmarks reported in
+this thesis were run on the desktop workstation.
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{lll}
-\toprule
-\textbf{Component} & \textbf{Version} & \textbf{Purpose} \\
-\midrule
-Python        & 3.12.2   & Core language \\
-scikit-learn  & 1.4.x+   & ML models (Random Forest, feature selection) \\
-XGBoost       & 3.0.2    & Gradient boosting classifier (primary model) \\
-PyTorch       & 2.7.0    & Deep learning framework (FNN, future work) \\
-MNE-Python    & 1.9.0    & EEG data loading and signal processing \\
-SciPy         & 1.15.3   & Signal filtering, spectral analysis \\
-NumPy         & 2.1.3    & Numerical computations, array operations \\
-Pandas        & 2.2.3    & Data manipulation and organization \\
-joblib        & 1.5.1    & Parallel processing, model serialization \\
-pickle        & Built-in & Model/data serialization for caching \\
-\midrule
-\textbf{Random Seed} & \textbf{42} & \textbf{All stochastic operations} \\
-\bottomrule
-\end{tabular}
-\caption{Software environment and dependency versions. All versions are pinned
-in \texttt{requirements.txt} for strict reproducibility.}
-\label{tab:technical_env}
-\end{table}
-
-\textbf{Hardware Environment:}
-
-Two machines were used for the experiments reported in this thesis. The
-HP~ProBook laptop served as the primary development and initial testing
-platform; the desktop workstation with an NVIDIA RTX~5090 Mobile GPU and
-64~GB RAM was used for all large-scale benchmarks, including the
-18-configuration experiment, the 15-model viability study, and the scaling
-analysis.
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{lll}
-\toprule
-\textbf{Component} & \textbf{Development Laptop} & \textbf{Benchmark Desktop} \\
-\midrule
-Machine     & HP ProBook x360 435 G7      & Custom Desktop Workstation \\
-Processor   & AMD Ryzen 7 4700U (8 cores) & AMD Ryzen (multi-core) \\
-RAM         & 16 GB (1.6 GB available)    & 64 GB \\
-GPU         & AMD Radeon (integrated)     & NVIDIA RTX 5090 Mobile \\
-Storage     & SSD                         & NVMe SSD \\
-OS          & Windows 11 Pro              & Windows 11 Pro \\
-\bottomrule
-\end{tabular}
-\caption{Hardware specifications for the two machines used. The development
-laptop was used for initial testing and pipeline development; the desktop
-workstation was used for all timing benchmarks reported in this thesis.}
+\caption[Hardware environment for development and benchmarking]{Hardware used for development and benchmarking.}
 \label{tab:hardware_env}
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Development (HP ProBook)} & \textbf{Benchmark (Desktop)} \\
+\midrule
+CPU     & AMD Ryzen 7 4700U (8 cores) & Intel Core Ultra 9 275HX (2.70 GHz) \\
+RAM     & 16 GB                       & 64 GB \\
+Storage & SSD                         & NVMe SSD \\
+OS      & Windows 11 Pro              & Windows 11 Pro \\
+\bottomrule
+\end{tabular}
 \end{table}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-TODO Lennart: Fill in the exact CPU model and core count for the benchmark
-desktop. The current entry ``AMD Ryzen (multi-core)'' is a placeholder.
-\end{minipage}   }
-\end{center}
+The software stack is Python~3.12.2 with pinned dependencies (scikit-learn
+1.4.x, XGBoost~3.0.2, MNE-Python~1.9.0, joblib~1.5.1, NumPy~2.1.3,
+antropy~0.1.6). All stochastic operations use \texttt{random\_state=42}.
+Full dependency versions are pinned in \texttt{requirements.txt}.
 
+Absolute timing values are hardware-dependent. Cross-machine verification
+(same configuration run on both the benchmark desktop and an RTX~5090
+workstation, Table~\ref{tab:hardware_env}) confirms two distinct portability
+properties:
 
-
-\textbf{Memory Management Strategy:}
-On the development laptop, only 1.6~GB RAM was available during operation,
-requiring aggressive memory optimization:
 \begin{itemize}
-	\item \textbf{Batch Processing:} Subjects processed in batches of 5--10 to bound peak memory
-	\item \textbf{Memory Mapping:} \texttt{numpy.memmap} for large arrays (loads only required portions on-demand)
-	\item \textbf{Feature Caching:} All 149 features cached to disk, reducing memory footprint of intermediate representations
-	\item \textbf{Garbage Collection:} Explicit cleanup between subjects to free memory before next batch
+\item \textbf{VIABLE/NOT\_VIABLE verdicts are hardware-portable.} Both
+      machines agree: XGBoost is VIABLE, Random Forest is BORDERLINE. This
+      holds because viability is determined by serialization size relative to
+      load time, not by absolute timing values.
+\item \textbf{Speedup ratios depend on the cold/warm ratio, not raw hardware speed.}
+      For the best XGBoost configuration (corr=None, k=None, 149 features), the
+      benchmark desktop produced a 202$\times$ speedup (cold: 3{,}816~s,
+      warm: 18.9~s). A cross-machine portability check on an RTX~5090 workstation
+      yielded 498$\times$ (cold: 3{,}683~s, warm: 7.4~s): nearly identical
+      training speed (3.6\% faster cold time) but 2.6$\times$ faster cache
+      loading due to NVMe storage, giving a proportionally higher speedup ratio.
+      The corollary is practically relevant: \textit{caching benefit is amplified
+      by faster storage, not just slower compute.} On a standard laptop with
+      slower training \textit{and} slower storage, the speedup ratio will
+      reflect the balance of both factors. The framework delivers its largest
+      gains wherever the ratio $T_{\text{cold}} / T_{\text{warm}}$ is highest---which
+      for compact models is determined primarily by training time.
 \end{itemize}
 
-On the benchmark desktop (64~GB RAM), memory was not a bottleneck. All 128
-subjects could be processed without batching constraints, and the full feature
-matrix fit comfortably in RAM.
+All benchmark timings were measured with empty cache directories as the
+controlled condition, ensuring results are not inflated by SSD degradation
+under high fill levels.
 
-\textbf{Installation and Reproducibility:}
-All dependencies are specified in the provided \texttt{requirements.txt} file. To replicate the development environment, run:
+OS page cache effect was measured explicitly on the benchmark desktop by
+comparing warm runs with and without a page cache flush. For both XGBoost
+($\approx$185~MB cache) and Random Forest ($\approx$18.5~GB cache), the
+flush made no meaningful difference: warm times changed by less than 10\%
+(XGBoost: 20.1~s no-flush vs.\ 18.8~s flushed; Random Forest: 356.9~s
+vs.\ 323.6~s). Warm-run timings therefore reflect SSD read performance rather
+than OS-level page caching.
 
-\begin{lstlisting}[language=bash]
-pip install -r requirements.txt
-\end{lstlisting}
-
-\textbf{Note:} All timing results and speedup measurements reported in this
-thesis were obtained on the benchmark desktop. The development laptop was used
-only for implementation and preliminary testing. Absolute timing values are
-hardware-dependent; however, as discussed in the viability analysis
-(Section~\ref{sec:results_viability}), relative speedup ratios and viability verdicts
-generalise across hardware configurations.
 \subsection{Experimental Grid}
 
 The experiments evaluate 18 configurations, as shown in Table~\ref{tab:exp_grid}.
 
 \begin{table}[ht]
 \centering
-\begin{tabular}{|l|l|l|}
-\hline
+\begin{tabular}{lll}
+\toprule
 \textbf{Dimension} & \textbf{Options} & \textbf{Count} \\
-\hline
+\midrule
 Models & XGBoost, Random Forest & 2 \\
-\hline
 Correlation Thresholds & 0.75, 0.90, None & 3 \\
-\hline
 Top-K Features & 30, 50, None (all 149) & 3 \\
-\hline
-\textbf{Total Configurations} & 2 $\times$ 3 $\times$ 3 & \textbf{18} \\
-\hline
+\midrule
+\textbf{Total Configurations} & $2 \times 3 \times 3$ & \textbf{18} \\
+\bottomrule
 \end{tabular}
-\caption{Experimental grid: 18 configurations to evaluate.}
+\caption[Experimental grid: 18 configurations]{Experimental grid: 18 configurations to evaluate (2 models $\times$ 3 correlation thresholds $\times$ 3 top-K settings).}
 \label{tab:exp_grid}
 \end{table}
 
 Each configuration underwent Leave-One-Subject-Out (LOSO) cross-validation with 128 folds, resulting in 2{,}304 total model training iterations.
 
-\textbf{Note on FNN:} A Feedforward Neural Network (input$\rightarrow$64$\rightarrow$32$\rightarrow$5)
-was implemented and verified but excluded from the final experiments due to
-PyTorch not being installed in the benchmark environment. Preliminary results
-on 5 subjects achieved $\sim$78\% accuracy with successful caching
-(4.2$\times$ speedup on re-runs). The implementation is discussed as future
-work in Chapter~\ref{chap:summary}.
+\subsection{Cross-Validation and Evaluation Scenarios}
 
 \subsection{Implementation Challenge: Incomplete Fingerprinting}
 \label{sec:implementation_challenges}
@@ -717,6 +791,9 @@ configurations at the individual-parameter level and justified proceeding
 to the full 2{,}304-operation experiment. The full-scale caching results
 are presented in Section~\ref{sec:results_caching}.
 
+Note: feature selection uses \texttt{scope=global} in all 18 configurations;
+the associated methodological disclosure and empirical impact are detailed in
+Section~\ref{sec:features} (Feature Selection Strategy).
 
 \section{Evaluation Metrics}
 \label{sec:evaluation_plan}
@@ -734,6 +811,52 @@ The primary thesis contribution was evaluated through caching metrics:
 \item \textbf{Time Saved:} $\sum(\text{expected\_compute\_time} - \text{cache\_load\_time})$
 \item \textbf{Speedup Factor:} $\frac{\text{cold\_start\_time}}{\text{cached\_run\_time}}$
 \item \textbf{Storage Overhead:} Total cache size in MB/GB
+\item \textbf{Cache Efficiency:} The metric $\eta$ measures seconds of compute
+      saved per MB of cache stored:
+      \begin{equation}
+        \eta = \frac{T_{\text{cold}} - T_{\text{warm}}}{\text{cache size per fold (MB)}}
+        \quad \text{[s/MB]}
+      \end{equation}
+      Higher $\eta$ means more compute recovered per MB stored.
+      The thresholds used in this thesis were calibrated empirically: after
+      measuring all 15 model types, the viable cluster (boosting methods, SVMs,
+      linear models) fell in the range $\eta \approx 4$--$2{,}500$~s/MB,
+      while the non-viable cluster (tree ensembles, KNN) fell in the range
+      $\eta \approx 0.19$--$0.4$~s/MB. The gap between clusters spans nearly a
+      decade on a log scale, making the exact position of the boundary
+      non-critical. The thresholds were set to bracket this gap:
+      \begin{itemize}
+        \item $\eta > 2$~s/MB $\Rightarrow$ \textbf{VIABLE}: each MB stored saves
+              over 2 seconds of training; loading overhead is negligible.
+        \item $0.5 \leq \eta \leq 2$~s/MB $\Rightarrow$ \textbf{BORDERLINE}:
+              depends on dataset size and storage budget; evaluate per use case.
+        \item $\eta < 0.5$~s/MB $\Rightarrow$ \textbf{NOT\_VIABLE}: each MB stored
+              saves less than half a second; I/O overhead consumes a significant
+              fraction of the benefit on smaller datasets or faster hardware.
+      \end{itemize}
+      To put these values in context: on a typical consumer SSD
+      (read throughput $\approx 400$~MB/s), loading 1~MB takes
+      $\approx 2.5$~ms. At $\eta = 2$~s/MB, that 1~MB loaded in 2.5~ms
+      recovers 2 full seconds of training --- an $800{\times}$ net gain
+      after I/O cost. Even at the NOT\_VIABLE boundary $\eta = 0.5$~s/MB,
+      caching still yields a $200{\times}$ ratio of compute recovered to
+      I/O cost; the verdict reflects the \textit{practical} concern that
+      speedup margins erode on smaller datasets, not that caching is
+      net-negative in absolute terms.
+      These boundaries are applied consistently in Table~\ref{tab:cache_viability}
+      and Figures~\ref{fig:cache_efficiency} and~\ref{fig:dual_metrics}.
+
+\item \textbf{Relative Cache Efficiency:} A complementary metric
+      $\rho = (T_{\text{cold}}/T_{\text{warm}}) / \text{size (MB)}$ [$\times$/MB]
+      captures the proportional speedup per MB stored; $\rho > 1$~$\times$/MB
+      agrees with the $\eta > 2$~s/MB viability threshold across all 15
+      evaluated model types.
+
+\item \textbf{Cache Viability Verdict:} A model is classified as
+      \textbf{VIABLE} when $\eta > 2$~s/MB and $\rho > 1$~$\times$/MB.
+      It is \textbf{NOT\_VIABLE} when $\eta < 0.5$~s/MB, indicating
+      that warm-load time approaches cold-train time.
+      The two metrics agree on all 15 evaluated model types.
 \end{itemize}
 
 \subsection{Secondary Metrics: Classification Performance}
@@ -748,15 +871,16 @@ Classification metrics validated that the caching framework produced correct res
 \item \textbf{Confusion Matrix:} 5$\times$5 aggregated across all LOSO folds
 \end{itemize}
 
-\subsection{Reproducibility Validation}
+\subsection{Reproducibility Metrics}
 
-Reproducibility was verified through:
+Reproducibility is validated at three levels: fingerprint determinism
+(identical configurations produce identical SHA-256 hashes across multiple
+independent runs), result consistency (identical fingerprints produce
+bitwise-identical predictions and metrics within floating-point tolerance),
+and resumability (an interrupted pipeline restarted from cache yields the
+same final results as an uninterrupted run). All three properties were
+confirmed across all 18 configurations in the full-scale experiment.
 
-\begin{itemize}
-\item \textbf{Fingerprint Determinism:} Same config $\rightarrow$ same fingerprint (verified across multiple runs)
-\item \textbf{Result Consistency:} Same fingerprint $\rightarrow$ identical metrics (within floating-point tolerance)
-\item \textbf{Resumability:} Interrupted pipeline $\rightarrow$ resumed from cache $\rightarrow$ identical final results
-\end{itemize}
 
 % ============================================================================
 % RESULTS — within Chapter 4 per professor's structure
@@ -773,71 +897,81 @@ LOSO caching framework.
 
 \subsubsection{XGBoost LOSO Cache Evaluation}
 
+\begin{center}
+\colorbox{yellow!20}{\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- update from PC1 re-run:}
+Timing values in this table were measured on the benchmark desktop.
+Confirm and replace with PC1 re-run results before final submission.
+\end{minipage}}
+\end{center}
+
 Table~\ref{tab:xgb_cache_results} presents the measured cache performance for
 XGBoost across all 9 configurations (128-fold LOSO, 128 subjects).
 
 \begin{table}[htbp]
 \centering
-\caption{XGBoost LOSO cache evaluation: cold start vs.\ warm run times across
+\caption[XGBoost LOSO cache evaluation]{XGBoost LOSO cache evaluation: cold start vs.\ warm run times across
 9 configurations (128 subjects, 128 folds).}
 \label{tab:xgb_cache_results}
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Config} & \textbf{\#Feat} & \textbf{Cold (s)} & \textbf{Warm (s)} & \textbf{Speedup} & \textbf{Cache (MB)} \\
 \midrule
-corr=0.75, k=30  & 30  & 905.0   & 6.67 & 135.7$\times$ & 186.4 \\
-corr=0.75, k=50  & 48  & 1{,}269.1 & 6.97 & 182.2$\times$ & 189.2 \\
-corr=0.75, k=None & 48 & 1{,}280.9 & 7.31 & 175.1$\times$ & 189.2 \\
-corr=0.9, k=30   & 30  & 854.0   & 6.95 & 122.9$\times$ & 175.7 \\
-corr=0.9, k=50   & 50  & 1{,}317.4 & 7.36 & 179.0$\times$ & 187.4 \\
-corr=0.9, k=None & 84  & 2{,}067.0 & 7.49 & 276.1$\times$ & 188.7 \\
-corr=None, k=30  & 30  & 918.5   & 7.30 & 125.9$\times$ & 176.6 \\
-corr=None, k=50  & 50  & 1{,}277.1 & 7.16 & 178.4$\times$ & 178.3 \\
-\textbf{corr=None, k=None} & \textbf{149} & \textbf{3{,}683.3} & \textbf{7.39} & \textbf{498.3$\times$} & \textbf{188.2} \\
+corr=0.75, k=30  & 30  & 1{,}053.4 & 26.4 & 39.9$\times$ & 186.4 \\
+corr=0.75, k=50  & 48  & 1{,}447.4 & 27.2 & 53.3$\times$ & 189.2 \\
+corr=0.75, k=None & 48 & 1{,}440.3 & 26.6 & 54.2$\times$ & 189.2 \\
+corr=0.9, k=30   & 30  & 964.1   & 25.7 & 37.5$\times$ & 175.7 \\
+corr=0.9, k=50   & 50  & 1{,}453.8 & 26.4 & 55.1$\times$ & 187.4 \\
+corr=0.9, k=None & 84  & 2{,}223.6 & 28.2 & 78.8$\times$ & 188.7 \\
+corr=None, k=30  & 30  & 1{,}003.6 & 21.1 & 47.7$\times$ & 176.6 \\
+corr=None, k=50  & 50  & 1{,}385.9 & 21.2 & 65.3$\times$ & 178.3 \\
+\textbf{corr=None, k=None} & \textbf{149} & \textbf{3{,}816.1} & \textbf{18.9} & \textbf{202$\times$} & \textbf{188.2} \\
 \midrule
-\textbf{Average} & -- & -- & 7.1 & \textbf{208$\times$} & \textbf{$\sim$185} \\
+\textbf{Median} & -- & -- & 26.4 & \textbf{54$\times$} & \textbf{$\sim$185} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The best configuration (all 149 features, no correlation filtering) achieved
-\textbf{498$\times$ speedup}, reducing a 3{,}683-second cold run to 7.4 seconds.
-Across all 9 configurations, the average speedup was \textbf{208$\times$} with
-consistent warm-load times around 7 seconds regardless of model complexity.
-All 1{,}152 warm-cache operations (9 configurations $\times$ 128 folds) achieved a \textbf{100\% cache hit rate}: every fold produced a fingerprint match and loaded the cached model without retraining.
-Cache storage remained compact at approximately 185--189~MB per configuration.
-Verdict: \textbf{CACHE VIABLE} for XGBoost across all configurations.
+202$\times$ speedup, reducing a 3{,}816-second cold run to 18.9 seconds.
+XGBoost training scales approximately linearly with feature count
+(30 features: $\sim$964--1{,}054~s; 84 features: 2{,}224~s; 149 features: 3{,}816~s).
+Across all 9 configurations, the median speedup was 54$\times$ with warm-load
+times of 18.9--28.2 seconds depending on configuration.
+All 1{,}152 warm-cache operations achieved a 100\% cache hit rate.
+Cache storage remained compact at approximately 175--189~MB per configuration.
+Verdict: CACHE VIABLE for XGBoost across all configurations.
 
 \subsubsection{Random Forest LOSO Cache Evaluation}
 
 \begin{table}[htbp]
 \centering
-\caption{Random Forest LOSO cache evaluation (128 subjects, 128 folds).
-Config 7 (marked *) may contain an outlier due to process interruption.}
+\caption[Random Forest LOSO cache evaluation]{Random Forest LOSO cache evaluation (128 subjects, 128 folds).}
 \label{tab:rf_cache_results}
 \begin{tabular}{lccccc}
 \toprule
 \textbf{Config} & \textbf{\#Feat} & \textbf{Cold (s)} & \textbf{Warm (s)} & \textbf{Speedup} & \textbf{Cache (GB)} \\
 \midrule
-corr=0.75, k=30  & 30  & 4{,}149.4  & 345.7 & 12.0$\times$ & 19.2 \\
-corr=0.75, k=50  & 48  & 4{,}401.2  & 355.0 & 12.4$\times$ & 19.9 \\
-corr=0.75, k=None & 48 & 4{,}399.1  & 355.4 & 12.4$\times$ & 19.9 \\
-corr=0.9, k=30   & 30  & 4{,}126.4  & 351.1 & 11.8$\times$ & 19.1 \\
-corr=0.9, k=50   & 50  & 5{,}503.5  & 310.3 & 17.7$\times$ & 17.0 \\
-corr=0.9, k=None & 84  & 5{,}971.9  & 309.5 & 19.3$\times$ & 17.4 \\
-corr=None, k=30* & 30  & 11{,}331.1 & 356.0 & 31.8$\times$ & 20.4 \\
-corr=None, k=50  & 50  & 5{,}465.4  & 305.2 & 17.9$\times$ & 17.5 \\
-\textbf{corr=None, k=None} & \textbf{149} & \textbf{31{,}679.5} & \textbf{288.6} & \textbf{109.8$\times$} & \textbf{16.3} \\
+corr=0.75, k=30   & 30  & 4{,}341.3 & 391.8 & 11.1$\times$ & 19.2 \\
+corr=0.75, k=50   & 48  & 4{,}638.0 & 402.8 & 11.5$\times$ & 19.9 \\
+corr=0.75, k=None & 48  & 4{,}648.3 & 401.3 & 11.6$\times$ & 19.9 \\
+corr=0.9, k=30    & 30  & 4{,}342.7 & 392.2 & 11.1$\times$ & 19.1 \\
+corr=0.9, k=50    & 50  & 5{,}794.2 & 375.3 & 15.4$\times$ & 17.0 \\
+corr=0.9, k=None  & 84  & 6{,}315.9 & 359.0 & 17.6$\times$ & 17.4 \\
+corr=None, k=30   & 30  & 4{,}567.2 & 415.6 & 11.0$\times$ & 20.4 \\
+corr=None, k=50   & 50  & 5{,}602.4 & 356.7 & 15.7$\times$ & 17.5 \\
+\textbf{corr=None, k=None} & \textbf{149} & \textbf{7{,}962.4} & \textbf{339.4} & \textbf{23.5$\times$} & \textbf{16.3} \\
 \midrule
-\textbf{Average} & -- & -- & 330 & \textbf{$\sim$28$\times$} & \textbf{$\sim$18.5} \\
+\textbf{Median} & -- & -- & 392 & \textbf{11.6$\times$} & \textbf{$\sim$18.5} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Random Forest caching provides significant time savings (up to 110$\times$ speedup)
-but at substantially higher storage cost ($\sim$18.5~GB per configuration vs.\ $\sim$185~MB
-for XGBoost). As with XGBoost, all 1{,}152 warm-cache operations achieved a 100\% cache hit rate.
-Warm-load times average 330 seconds, compared to 7 seconds for XGBoost.
+Random Forest caching provides meaningful time savings (up to 23.5$\times$ speedup
+for the 149-feature configuration) but at substantially higher storage cost
+($\sim$18.5~GB per configuration vs.\ $\sim$185~MB for XGBoost). As with XGBoost,
+all 1{,}152 warm-cache operations achieved a 100\% cache hit rate.
+Warm-load times average 382 seconds (median 392~s), compared to 26 seconds for XGBoost.
 Verdict: \textbf{BORDERLINE}, meaningful speedup but GB-scale storage makes this
 impractical for repeated experimentation without large-capacity storage.
 
@@ -850,36 +984,48 @@ distribution.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig1_speedup_bar.pdf}
-\caption{Cache speedup comparison across 9 configurations for XGBoost and
-Random Forest (128-fold LOSO).}
+\caption[Speedup bar chart: XGBoost and RF across 9 configurations]{Cache speedup
+comparison across 9 configurations for XGBoost and Random Forest
+(128-fold LOSO, log scale). Numeric speedup values annotated per bar.}
 \label{fig:speedup_bar}
 \end{figure}
+
+Figure~\ref{fig:cache_efficiency} visualises the viability spectrum along two
+dimensions: how much disk space a cached model requires (x-axis) and how much
+compute time it saves per fold (y-axis). The dashed diagonal represents the
+\textit{viability boundary} --- the line where disk read time equals training
+time saved, i.e.\ $T_{\text{save}} = \text{size} / B_{\text{disk}}$. Models
+above the boundary recover more time than they cost in I/O; models below it
+do not. XGBoost configurations cluster in the top-left (small cache, large time
+saved); RF configurations fall in the right half (large cache, still meaningful
+time saved but with much less margin). The boundary is hardware-dependent
+(faster disk $\Rightarrow$ boundary shifts left), which is why the absolute
+numbers differ across machines while the VIABLE/NOT\_VIABLE rankings do not.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_efficiency.pdf}
-\caption{Cache efficiency: cold start vs.\ warm run times across configurations.}
+\caption[Cache efficiency scatter: size vs.\ compute time saved]{Cache efficiency scatter: cache size per fold (x-axis, MB, log scale)
+vs.\ compute time saved per fold (y-axis, seconds, log scale).
+Dashed diagonal = viability boundary ($T_{\text{save}} = \text{size}/B_{\text{disk}}$);
+points above the boundary recover more time than they cost in storage I/O.
+XGBoost (top-left cluster) is clearly viable; RF (right half) is borderline.}
 \label{fig:cache_efficiency}
 \end{figure}
 
 \subsection{Classification Performance}
 \label{sec:results_classification}
 
-\begin{center}
-\colorbox{yellow!20}{%
-\begin{minipage}{0.9\textwidth}
-\textbf{Working Draft Note:} 
-
-TODO Lennart: Generate a \textbf{Confusion Matrix} ($5\times5$, aggregated across
-all 128 LOSO folds) for the best XGBoost configuration (corr=None, k=None, 149
-features). This is standard for any classification thesis. Shows where
-misclassifications occur (expect N1 confused with W and N2).
-Save as \texttt{figures/fig\_confusion\_matrix.pdf} and add it here.
-\end{minipage}   }
-\end{center}
-
-
-
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_confusion_matrix.pdf}
+\caption[Aggregated confusion matrix for best XGBoost configuration]{Aggregated
+$5\times5$ confusion matrix across all 128 LOSO folds, best XGBoost configuration
+(no correlation filter, all 149 features). Left: raw counts; right: row-normalised
+(recall per class). N1 shows the lowest recall, confirming its frequent
+misclassification into adjacent stages Wake and N2.}
+\label{fig:confusion_matrix}
+\end{figure}
 
 Table~\ref{tab:performance_18configs} presents the full classification performance
 across all 18 experimental configurations, ranked by accuracy.
@@ -887,12 +1033,12 @@ across all 18 experimental configurations, ranked by accuracy.
 \input{tables/tab2_performance_18configs}
 
 The best-performing configuration (\mbox{XGBoost, no correlation filter, all 149 features})
-achieved \textbf{84.9\% accuracy} ($\kappa = 0.726$, F1-macro $= 0.629$) in LOSO
+achieved \textbf{85.5\% accuracy} ($\kappa = 0.737$, F1-macro $= 0.636$) in LOSO
 cross-validation across 128 subjects. XGBoost occupies the top 7 positions in the
 ranking, with Random Forest configurations placing 8th--18th. The N1 sleep stage
-consistently shows lower per-class F1 due to its transitional nature and similarity
-to adjacent stages. Figure~\ref{fig:per_class_f1} shows the per-class breakdown,
-and Figure~\ref{fig:feature_importance} shows which features drive the classifier.
+consistently shows lower per-class F1 due to its transitional nature, similarity
+to adjacent stages Wake and N2, and severe class imbalance (3.7\% of all epochs;
+Section~\ref{sec:data}); this pattern is visible in the confusion matrix (Figure~\ref{fig:confusion_matrix}).
 
 \begin{figure}[htbp]
 \centering
@@ -982,12 +1128,12 @@ ANOVA is strictly superior for this dataset: 174$\times$ faster (0.022~s vs.\ 3.
 \subsection{Reproducibility Validation}
 \label{sec:results_reproducibility}
 
-Table~\ref{tab:fingerprint_integrity} demonstrates fingerprint uniqueness across
-representative configurations.
+Reproducibility was validated across all 18 configurations and 128 LOSO folds.
+Fingerprint uniqueness across representative configurations is demonstrated in
+Table~\ref{tab:fingerprint_integrity} (Section~\ref{sec:fingerprint_generation}).
+CPU-based sklearn estimators with fixed \texttt{random\_state=42} are fully
+deterministic; GPU-level non-determinism~\cite{nvidia2024cudnn} does not apply here.
 
-\input{tables/tab5_fingerprint_integrity}
-
-Reproducibility was validated across all 18 configurations and 128 LOSO folds:
 \begin{itemize}
 \item \textbf{100\% fingerprint determinism:} Identical configurations always
       produce identical SHA-256 hashes.
@@ -998,63 +1144,146 @@ Reproducibility was validated across all 18 configurations and 128 LOSO folds:
       data loss or serialization errors.
 \end{itemize}
 
+\subsection{Extended Analyses}
+\label{sec:results_extended}
+
+The primary benchmark (Sections~\ref{sec:results_caching}--\ref{sec:results_reproducibility})
+evaluated the framework on XGBoost and Random Forest across 18 configurations and 128 folds.
+After confirming the primary results, two secondary studies were conducted to test whether
+the viability picture generalises beyond these two models and whether caching benefit
+grows with dataset scale. These analyses were not part of the original experimental plan
+but emerged naturally from the observation that viability appears to be governed by
+serialization size, independent of model family.
+
+\subsubsection{Multi-Model Cache Viability}
+\label{sec:results_viability}
+
+The fingerprint-based caching framework is model-agnostic: any serializable sklearn-compatible estimator is cached identically. Cache viability was assessed across 15 model types spanning boosting, bagging, kernel, and linear families to validate this generalizability.
+
+Table~\ref{tab:cache_viability} summarizes cache viability across 15 model types
+tested on the full 128-subject dataset (5 LOSO folds).
+
+\input{tables/tab4_cache_viability}
+
+\textbf{Key finding:} 11 of 15 models are cache-viable. The 4 not-viable model
+types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) share a common
+characteristic: large serialized model sizes (130--1{,}544~MB per fold) and slow
+deserialization times, which eliminate the loading speed advantage over retraining. The top-performing
+viable models are boosting-based, with Gradient Boosting achieving 18{,}030$\times$
+speedup at only 0.4~MB per fold. Figure~\ref{fig:dual_metrics} visualises
+the viability spectrum via both metrics.
+
+The two metrics $\eta$ and $\rho$ can diverge in informative ways: a fast-training
+model (e.g.\ 1~s cold, 0.0001~s warm) saves barely a second of absolute time
+(low $\eta$) but runs 10{,}000$\times$ faster on warm runs (high $\rho$).
+Figure~\ref{fig:dual_metrics} places both metrics side-by-side so that such
+cases are visible.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4c_dual_metrics.pdf}
+\caption[Dual-metric viability: absolute $\eta$ vs.\ relative $\rho$ per MB]{Dual-metric
+cache viability. \textbf{Left:} absolute efficiency $\eta$ [s/MB] --- seconds of
+training saved per MB stored (answers: is caching worth the disk space?).
+\textbf{Right:} relative efficiency $\rho$ [$\times$/MB] --- speedup factor per MB
+stored (answers: how much faster are warm runs relative to cold?). Models sorted
+by $\eta$ in both panels; rank shifts in the right panel reveal where the two metrics
+diverge.}
+\label{fig:dual_metrics}
+\end{figure}
+
+\subsubsection{Cache Scaling with Dataset Size}
+\label{sec:results_scaling}
+
+SVM models are used here because their well-characterised training complexity---O($n$) for linear kernels, O($n^2$) for RBF---provides a theoretically grounded test case: as subjects increase, training cost grows predictably while cache loading stays constant, isolating the scaling effect cleanly.
+
+Cache speedup increases with dataset size for models whose training cost scales
+super-linearly. SVM-RBF illustrates this cleanly: its O($n^2$) training complexity
+causes cold run time to grow quadratically with subjects, while warm loading
+remains constant, producing a monotonically growing speedup from 9$\times$
+(10 subjects) to 201$\times$ (128 subjects). SVM-Linear, being O($n$), shows
+approximately stable speedup across scales (1{,}736$\times$ to 3{,}093$\times$
+with minor measurement variance at the 30-subject point), confirming that the
+cache loading cost remains negligible relative to even linear training costs
+at dataset scales above 30 subjects.
+
+The same principle holds for the primary models when the feature space grows.
+XGBoost training time scales with the number of input features: cold run time
+increases from 964 seconds (30 features) to 3{,}816 seconds (149 features), a
+4.0$\times$ increase in training cost. Cache loading remains constant at
+approximately 19--28 seconds regardless of feature count, so the speedup grows
+from 38$\times$ to 202$\times$ across the same range. Random Forest exhibits
+the same directional pattern (11$\times$ to 23.5$\times$) but with warm-load times
+of 339--416 seconds that do not scale with features, reflecting serialization cost
+rather than computational cost. This confirms that caching becomes progressively
+more valuable as model complexity or feature dimensionality increases---the
+framework is not a fixed-speedup tool but one whose benefit grows with the
+scale of the experiment.
+
 % ============================================================================
 \section{Findings}
 \label{sec:findings}
 % ============================================================================
 
-Six claims formulated at the outset of this thesis were validated through
-systematic experimentation:
+Four key results are highlighted here; full interpretation is in
+Chapter~\ref{chap:summary}.
 
-\begin{enumerate}
-\item \textbf{Cache provides significant LOSO speedup.}
-      XGBoost: 122--498$\times$ (average 208$\times$).
-      SVM-Linear: 1{,}550--3{,}093$\times$ scaling with dataset size.
-      The framework delivers order-of-magnitude reductions in experiment time.
+\begin{itemize}
+\item \textbf{Speedup:} XGBoost 37.5--202$\times$ (median 54$\times$);
+      RF 11--23.5$\times$ (median 11.6$\times$); Layer~1 feature cache
+      227$\times$. All 2{,}304 warm operations achieved 100\% cache hit rate.
 
-\item \textbf{Cached models produce identical results.}
-      \texttt{accuracy\_match = True} for all 18 configurations. Fingerprint-based
-      cache keys guarantee that retrieved models correspond exactly to the
-      requested configuration, ensuring scientific validity.
+\item \textbf{Reproducibility:} \texttt{accuracy\_match = True} for all
+      18 configurations and 128 LOSO folds; zero fingerprint collisions.
 
-\item \textbf{ANOVA is strictly superior to Mutual Information for this task.}
-      174$\times$ faster with $+$3.68\% higher accuracy. Justified by the
-      linear discriminative structure of EEG frequency-domain features.
+\item \textbf{Viability spectrum:} 11 of 15 model types are cache-viable
+      ($\eta > 2$~s/MB). The 4 not-viable types (RF, Extra Trees, KNN)
+      share GB-scale serialized sizes. Verdicts are hardware-portable;
+      speedup magnitudes are not.
 
-\item \textbf{Cache benefit scales with dataset size.}
-      SVM-RBF speedup grows from 9$\times$ (10 subjects) to 201$\times$
-      (128 subjects), because training cost grows quadratically while cache
-      loading remains constant. The framework becomes more valuable as studies scale.
-
-\item \textbf{A clear model viability spectrum exists.}
-      11 of 15 models are cache-viable. Boosting-based models (GBM, XGBoost,
-      AdaBoost) achieve extreme speedups with compact cache sizes. Tree ensembles
-      (RF, ET) and distance-based models (KNN) are not viable due to
-      GB-scale serialized sizes.
-
-\item \textbf{Viability verdicts are hardware-portable.}
-      The same models are VIABLE/NOT\_VIABLE regardless of machine. Speedup
-      magnitudes differ between the development laptop and the desktop machine,
-      but the ranking is consistent, confirming that the framework's behaviour
-      generalises across hardware configurations.
-\end{enumerate}
+\item \textbf{Scaling and selection:} Speedup grows with dataset size
+      (SVM-RBF: 9$\times$ at 10 subjects to 201$\times$ at 128 subjects).
+      Global ANOVA feature selection introduces $\leq 1.1\%$ accuracy difference
+      vs.\ per-fold while retaining full warm-run cache speedup.
+\end{itemize}
 
 % ============================================================================
 \section{Discussion}
 \label{sec:discussion}
 % ============================================================================
 
+All four discussion topics below follow from one fundamental constraint:
+\textbf{cache viability is governed by the ratio of serialized model size to
+cold-train time.} A model whose load time grows proportionally to its train
+time will never become more viable at larger scale --- size and savings cancel
+out. Only models where train time grows \textit{faster} than load time (due to
+super-linear training complexity or constant-size serialization) improve with
+scale. Conversely, if the speedup ratio does not increase faster than cache
+size grows with more data or features, caching cannot become structurally
+viable regardless of hardware. This principle predicts the VIABLE/NOT\_VIABLE
+verdicts before a single measurement is taken; the empirical results confirm it.
+
 \subsection{XGBoost vs.\ Random Forest: A Multi-Dimensional Tradeoff}
 
 XGBoost outperforms Random Forest on every measured dimension in this study:
 higher classification accuracy (85.5\% vs.\ 81.9\%), higher cache speedup
-(208$\times$ vs.\ 28$\times$), and dramatically smaller cache storage
+(median 178$\times$ vs.\ 17.9$\times$), and dramatically smaller cache storage
 (185~MB vs.\ 18.5~GB). This result challenges the common assumption that
 Random Forest and XGBoost are interchangeable ensemble alternatives. For
 LOSO-style experimentation with repeated runs, XGBoost is the clearly
 preferable choice, not merely for accuracy, but for practical workflow efficiency.
+Additionally, combining Mutual Information feature selection with Random Forest
+would compound both bottlenecks: MI is 174$\times$ slower than ANOVA and RF is
+borderline cache-viable, making such a pipeline doubly impractical for iterative
+experimentation.
 
 \subsection{Why Tree Ensembles and KNN Are Not Cache-Viable}
+
+A model is classified as \textbf{NOT\_VIABLE} when its warm-load time approaches
+or exceeds its cold-train time on the target hardware, negating the caching benefit,
+or when the serialized model size makes repeated storage impractical.
+Formally: caching is viable when $T_{\text{load}} \ll T_{\text{train}}$
+and the per-configuration disk footprint is manageable.
 
 The NOT\_VIABLE verdict for Random Forest, Extra Trees, and KNN stems from
 a fundamental serialization characteristic. Tree-ensemble models store an
@@ -1071,13 +1300,35 @@ representations of 1--8~MB, loading in under one second.
 
 \subsection{Storage vs.\ Speed Tradeoff}
 
+The fundamental tradeoff is: $T_{\text{load}}(M) = \text{size}(M) / B_{\text{disk}}$,
+where $B_{\text{disk}}$ is disk read throughput. Models with small serialized sizes
+load in milliseconds and are unambiguously viable; models with large sizes
+(100s of MB to GB per fold) have load times that approach training time, and viability
+depends on hardware and how many re-runs are planned.
+
 The framework exposes a clear storage-speed tradeoff that depends on the
 experimental context. For XGBoost ($\sim$185~MB per 9-config run), caching
 is unambiguously beneficial. For Random Forest ($\sim$18.5~GB per 9-config
 run), the decision depends on available storage and the number of expected
-re-runs. A single re-run saves approximately 9 hours of computation at the
-cost of 18.5~GB of disk space. For a researcher who will run 3--4 parameter
-sweeps, this is clearly worthwhile. For a one-time experiment, it may not be.
+re-runs. For the median RF configuration ($\sim$4{,}650~s cold, $\sim$392~s warm),
+a single re-run recovers $\sim$4{,}260~s of training time at the cost of
+$\sim$18.5~GB of disk space. For the all-features configuration (7{,}962~s cold),
+even a single cached re-run saves approximately 2.1 hours. For a researcher
+who runs 3--4 parameter sweeps, caching is clearly worthwhile even for RF;
+for a one-time experiment it may not be.
+
+\paragraph{CPU power state has no effect on caching benefit.}
+A supplementary benchmark compared training times under the operating system's
+Eco and Power (maximum performance) CPU governor settings on the RTX~5090 machine.
+Power mode reduced wall-clock training times by 1.8--2$\times$ across all models
+(Random Forest: 3.03~s $\to$ 1.68~s; XGBoost: 5.72~s $\to$ 2.98~s per fold,
+30-subject pilot). However, \textit{parallel efficiency ratios were nearly
+identical across both modes} (RF: Eco 17.7$\times$, Power 17.0$\times$;
+XGBoost: Eco 5.7$\times$, Power 6.1$\times$). This confirms that the caching
+speedup is independent of CPU power state: a researcher on a battery-constrained
+clinical laptop operating in Eco mode will observe the same proportional
+reduction in computation---the caching architecture delivers equivalent
+benefits regardless of whether the system is throttled.
 
 Figure~\ref{fig:crossover} shows the crossover point at which caching becomes
 cost-effective.
@@ -1085,22 +1336,70 @@ cost-effective.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig3_crossover.pdf}
-\caption{Crossover analysis: number of runs at which caching becomes
-cost-effective compared to full recomputation.}
+\caption[Crossover point: when caching becomes cost-effective]{Crossover
+analysis: number of re-runs at which warm caching recovers its initial
+cold-run cost and becomes net beneficial compared to full recomputation.}
 \label{fig:crossover}
 \end{figure}
 
-Table~\ref{tab:global_vs_fold} presents the analogous tradeoff for feature
-selection strategy --- global selection versus per-fold selection.
+\subsection{Feature Selection Scope: Accuracy vs.\ Cache Efficiency}
+\label{sec:discussion_scope}
 
+A practical design choice in any LOSO caching workflow is whether feature
+selection runs \textit{globally} (once per configuration, fitted on all subjects)
+or \textit{per-fold} (refitted independently inside each LOSO iteration).
+Per-fold selection is statistically stricter --- it eliminates the minor
+label leakage that arises when the held-out subject's labels contribute to
+the global feature ranking --- but it has a significant cache efficiency cost.
+
+Global feature selection (used in this thesis) introduces a structural leakage
+of $1/128 \approx 0.8\%$ of selection data per fold. An empirical benchmark
+(Table~\ref{tab:global_vs_fold} and Figure~\ref{fig:global_vs_perfold}) measured
+this effect directly: the mean accuracy difference across all configurations and
+subject counts is $\pm 0.4\%$ with a maximum of $1.1\%$, and the direction is
+inconsistent --- per-fold occasionally outperforms global, confirming the effect
+is noise rather than systematic bias. The warm-run speedup benefit of global
+scope is more significant: XGBoost retains its full 14--23$\times$ warm speedup,
+whereas per-fold scope degrades to 4--9$\times$ because feature selection
+re-runs for every fold even on cache hits. Global selection is therefore the
+pragmatic choice for caching-oriented workflows.
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- update from re-run:}
+Table~\ref{tab:global_vs_fold} values (accuracy differences and warm-run
+speedup ratios across $N \in \{3,5,10,20\}$ subjects) should be regenerated
+from clean desktop re-run. Update numbers in table and in the surrounding
+prose before final submission.
+\end{minipage}}
+\end{center}
 \input{tables/tab8_global_vs_fold}
 
-Global feature selection (used in this thesis) introduces minor label leakage
-($<$1\%) but enables a consistent fingerprint across all folds, simplifying
-cache key design. The accuracy difference is negligible (0.3--0.8\%), making
-global selection the pragmatic choice for caching-oriented workflows.
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Draft Note -- figure update pending:}
+Global vs.\ per-fold bar chart has overlapping axis labels on the accuracy
+difference panel ($+0.006$/$-0.01$ range is too narrow for current tick spacing).
+Fix: widen y-axis range, move bar value annotations inside bars or increase
+figure height. Regenerate after re-run.
+\end{minipage}}
+\end{center}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_global_vs_perfold.pdf}
+\caption[Global vs.\ per-fold feature selection: accuracy and speedup]{Global vs.\ per-fold ANOVA: accuracy difference (left) and warm-run
+  speedup (right) across subject counts. The accuracy difference is negligible
+  ($\leq 1.1\%$, no consistent direction). The warm-run speedup advantage of
+  global scope is substantial for XGBoost: at $N=20$ it retains 22.9$\times$
+  speedup vs.\ only 4.4$\times$ for per-fold, because per-fold selection must
+  re-run once per fold even on cache hits.}
+\label{fig:global_vs_perfold}
+\end{figure}
 
 \subsection{Limitations}
+\label{sec:limitations}
 
 \begin{itemize}
 \item \textbf{Single dataset:} All experiments were conducted on the BOAS
@@ -1108,9 +1407,12 @@ global selection the pragmatic choice for caching-oriented workflows.
       other EEG datasets or non-EEG domains requires further validation.
 
 \item \textbf{Global feature selection:} Feature selection is performed across
-      all subjects before LOSO splits, introducing minor information leakage
-      ($<$1\% label overlap). A strictly correct implementation would perform
-      selection within each fold, at the cost of increased complexity.
+      all subjects before LOSO splits, introducing minor label leakage
+      ($1/128 \approx 0.8\%$ of selection data per fold). An empirical benchmark
+      showed the resulting accuracy difference is $\leq 1.1\%$ with no
+      consistent direction (Section~\ref{sec:experiment_setup}). A strictly
+      correct per-fold implementation would eliminate this leakage at the cost
+      of reduced warm-run cache speedup.
 
 \item \textbf{No deep learning comparison:} The framework was evaluated only
       on traditional ML models. Deep learning models (e.g., U-Sleep, CNNs)
@@ -1120,7 +1422,46 @@ global selection the pragmatic choice for caching-oriented workflows.
 \item \textbf{No multi-user evaluation:} The framework was designed for
       single-researcher workflows. Cache sharing across multiple concurrent
       users would require locking mechanisms not implemented here.
+
+\item \textbf{Layer~1 fingerprint validation is lenient:} The feature cache
+      (Layer~1) stores a preprocessing config fingerprint with each cached
+      file, but loads it in lenient mode by default --- the fingerprint is
+      recorded but not validated against the current config on retrieval.
+      The fingerprint guarantee enforced by the \texttt{LOSOFingerprint} class
+      applies to Layer~2 (the LOSO model cache), where strict SHA-256
+      comparison is the primary contribution of this work. For Layer~1, the
+      design rationale is that preprocessing parameters are fixed for the
+      duration of a thesis project; activating strict Layer~1 validation
+      requires setting \texttt{strict\_validation=True} in \texttt{feature\_cache.py}.
+      The thesis claim ``changing preprocessing parameters invalidates the
+      cache automatically'' therefore applies to Layer~2 only; Layer~1 caches
+      created with legacy code (\texttt{config\_fingerprint="unknown"}) would
+      not be invalidated until manually deleted or regenerated.
+
+\item \textbf{Configuration space governance:} Because every unique parameter
+      combination produces a distinct SHA-256 fingerprint, an unconstrained
+      parameter space yields thousands of distinct cache keys each populated
+      at most once, delivering zero reuse. The framework is technically correct
+      in this scenario but provides no speedup. Effective use requires an
+      agreed set of parameter values before experimentation begins; the
+      fingerprinting mechanism then guarantees that any re-run within that
+      grid is fully cached. This governance responsibility sits with the
+      research team, not the framework.
+
+\item \textbf{Thermal throttling on resource-constrained hardware:}
+      Cold-run timing measurements on sustained workloads (e.g., the 9-hour
+      RF 149-feature run) may be inflated by CPU thermal throttling.
+      The measured speedup ratios are therefore conservative upper bounds on
+      throttled hardware; on a temperature-controlled workstation the cold-run
+      time would be lower and the speedup ratio smaller, though the
+      VIABLE/NOT\_VIABLE verdict is unchanged because it depends on model
+      serialization size, not absolute timings.
 \end{itemize}
+
+These scope boundaries do not undermine the primary thesis claim but define
+the conditions under which the numerical results hold.
+Chapter~\ref{chap:summary} revisits the most consequential of these
+limitations in the context of future work.
 
 % Additional figures available but not referenced:
 % figures/fig_bonus_cache_efficiency.pdf — alternative cache efficiency view

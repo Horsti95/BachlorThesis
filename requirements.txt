@@ -13,7 +13,6 @@ pandas>=1.5.0                 # Annotation parsing, data manipulation
 # Machine Learning
 scikit-learn>=1.2.0           # Random Forest, metrics, preprocessing
 xgboost>=1.7.0                # Gradient boosting
-torch>=2.0.0                  # Neural networks (PyTorch)
 
 # Caching & Storage
 joblib>=1.2.0                 # Efficient serialization

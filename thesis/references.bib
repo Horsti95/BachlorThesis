@@ -1,3 +1,20 @@
+@inproceedings{chen2016xgboost,
+  title     = {{XGBoost}: A Scalable Tree Boosting System},
+  author    = {Chen, Tianqi and Guestrin, Carlos},
+  booktitle = {Proceedings of the 22nd {ACM} {SIGKDD} International Conference on Knowledge Discovery and Data Mining},
+  year      = {2016},
+  pages     = {785--794},
+  doi       = {10.1145/2939672.2939785},
+}
+
+@misc{zenml2024docs,
+  author       = {{ZenML GmbH}},
+  title        = {{ZenML} Documentation: Pipeline Caching},
+  howpublished = {\url{https://docs.zenml.io/}},
+  year         = {2024},
+  note         = {Accessed: 2026-04-17}
+}
+
 @manual{dvc_pipelines,
   title        = {Running Pipelines},
   author       = {{Iterative.ai}},
@@ -24,7 +41,48 @@
   institution = {AI Index Steering Committee, Stanford Institute for Human-Centered AI, Stanford University},
   year        = {2025},
   month       = {April},
-  url         = {https://aiindex.stanford.edu/report/}
+  url         = {https://aiindex.stanford.edu/report/},
+  note         = {Accessed: 2026-04-20}
+}
+
+@inproceedings{hirzel2024pipelines,
+  author    = {Hirzel, Martin and Kate, Kiran and Mandel, Louis and Shinnar, Avraham},
+  title     = {Training and Cross-Validating Machine Learning Pipelines with Limited Memory},
+  booktitle = {Proceedings of the Third International Conference on Automated Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {256},
+  pages     = {13/1--25},
+  year      = {2024},
+  publisher = {PMLR},
+  url       = {https://proceedings.mlr.press/v256/hirzel24a.html},
+  note         = {Accessed: 2026-04-20}
+}
+
+@article{essofi2024eeipu,
+  author        = {Essofi, Abdelmajid and Salahuddeen, Ridwan and Nwadike, Munachiso
+                   and Zhalieva, Elnura and Zhang, Kun and Xing, Eric
+                   and Neiswanger, Willie and Ho, Qirong},
+  title         = {Reducing Hyperparameter Tuning Costs in {ML}, Vision and Language
+                   Model Training Pipelines via Memoization-Awareness},
+  journal       = {arXiv preprint arXiv:2411.03731},
+  year          = {2024},
+  archivePrefix = {arXiv},
+  eprint        = {2411.03731},
+  url           = {https://arxiv.org/abs/2411.03731},
+  note         = {Accessed: 2026-04-20}
+}
+
+@inproceedings{sculley2015hidden,
+  author    = {Sculley, D. and Holt, Gary and Golovin, Daniel and Davydov, Eugene
+               and Phillips, Todd and Ebner, Dietmar and Chaudhary, Vinay
+               and Young, Michael and Crespo, Jean-Fran{\c{c}}ois and Dennison, Dan},
+  title     = {Hidden Technical Debt in Machine Learning Systems},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {28},
+  year      = {2015},
+  publisher = {Curran Associates, Inc.},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html},
+  note         = {Accessed: 2026-04-20}
 }
 
 @article{krishna2025cache,
@@ -35,7 +93,8 @@
   year      = {2025},
   doi       = {10.3389/frai.2025.1441250},
   url       = {https://www.frontiersin.org/articles/10.3389/frai.2025.1441250/full},
-  publisher = {Frontiers Media SA}
+  publisher = {Frontiers Media SA},
+  note         = {Accessed: 2026-04-20}
 }
 
 @article{schubotz2022caching,
@@ -47,6 +106,7 @@ YEAR={2022},
 URL={https://www.frontiersin.org/journals/research-metrics-and-analytics/articles/10.3389/frma.2022.861944},
 DOI={10.3389/frma.2022.861944},
 ISSN={2504-0537},
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -60,7 +120,8 @@ ISSN={2504-0537},
   year      = {2021},
   doi       = {10.1038/s41746-021-00440-5},
   url       = {https://doi.org/10.1038/s41746-021-00440-5},
-  publisher = {Nature Publishing Group}
+  publisher = {Nature Publishing Group},
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -79,7 +140,8 @@ ISSN={2504-0537},
   number={6},
   pages={1427--1453},
   year={1999},
-  url={https://www.cis.upenn.edu/~mkearns/papers/multi.pdf}
+  url={https://www.cis.upenn.edu/~mkearns/papers/multi.pdf},
+  note         = {Accessed: 2026-04-20}
 }
 
 @inproceedings{rahnama2020,
@@ -97,14 +159,11 @@ ISSN={2504-0537},
   number={1},
   pages={1778--1789},
   year={2025},
-  url={https://ijsra.net/sites/default/files/fulltext_pdf/IJSRA-2025-1159.pdf}
+  url={https://ijsra.net/sites/default/files/fulltext_pdf/IJSRA-2025-1159.pdf},
+  note         = {Accessed: 2026-04-20}
 }
 
-%CRITICAL: Nur als "Enabler-Vision" für Caching nutzen!
-%% STRATEGY: Dient als "Complexity-Benchmark". 
-% Rechtfertigt, warum einfaches Caching für Next-Gen-Modelle (Meta-Learning)
-% überlebenswichtig werden könnte, auch wenn wir hier "nur" XGBoost nutzen.
-%tendenz nicht nutzen
+% Strategy: use only as complexity motivation for caching; do not explain the architecture.
 
 @article{li2025metasth,
   author    = {Li, Jingyu and Zhang, Tiehua and Wang, Jinze and Zhang, Yi and Li, Yuhuan and Zhao, Yifan and Shen, Zhishu and Wu, Libing and Liu, Jiannan},
@@ -115,15 +174,13 @@ ISSN={2504-0537},
   url       = {https://doi.org/10.48550/arXiv.2505.17142},
   eprint    = {2505.17142},
   archivePrefix = {arXiv},
-  primaryClass = {cs.LG}
+  primaryClass = {cs.LG},
+  note         = {Accessed: 2026-04-20}
 }
 
 
-% CRITICAL: Proof of "Complexity Creep". 
-% Dieses Paper nutzt Adversarial Training + 10 Kanäle + 2D Graphs. 
-% Es dient als Beweis, dass moderne Forschung (2025) ohne Caching 
-% finanziell und zeitlich nicht mehr skalierbar ist.
-% NICHT die Architektur erklären, nur den Rechenaufwand betonen!
+% Proof of complexity creep: adversarial training + 10 channels + 2D graphs.
+% Cite only for computational cost, not for architecture details.
 @article{zhang2025adg,
 AUTHOR={Zhang, Pengwei  and Xiang, Sijia  and Hu, Kailei  and He, Jialing  and Chen, Jingxia },  
 TITLE={A sleep staging model based on adversarial domain generalized residual attention network},
@@ -133,7 +190,8 @@ YEAR={2025},
 URL={https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2025.1501511},
 DOI={10.3389/fnins.2025.1501511},
 ISSN={1662-453X},
-}}
+  note         = {Accessed: 2026-04-20}
+}
 
 @article{satapathy2024multimodal,
   author    = {Satapathy, Sushanta Kumar and Brahma, Biswajit and Panda, Baidyanath and others},
@@ -144,11 +202,12 @@ ISSN={1662-453X},
   year      = {2024},
   doi       = {10.1186/s12911-024-02522-2},
   url       = {https://bmcmedinformdecismak.biomedcentral.com/articles/10.1186/s12911-024-02522-2},
-  publisher = {BioMed Central}
+  publisher = {BioMed Central},
+  note         = {Accessed: 2026-04-20}
 }
 
 
-% IMPORTANT: Best argument for MODULAR CACHING. 
+% IMPORTANT: Best argument for MODULAR CACHING
 % They have 15 CNNs that aren't trained end-to-end. 
 % Use this to prove that "partial pipeline recovery" is a 
 % real-world requirement for 2024/2025 SOTA models.
@@ -159,7 +218,8 @@ ISSN={1662-453X},
   volume    = {14},
   pages     = {1234},
   year      = {2024},
-  publisher = {Nature Publishing Group}
+  publisher = {Nature Publishing Group},
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -173,7 +233,7 @@ ISSN={1662-453X},
   year    = {2026},
   doi     = {10.1016/j.compbiomed.2026.111560},
   url     = {https://doi.org/10.1016/j.compbiomed.2026.111560},
-  note    = {Primary reference for the Bitbrain Open Access Sleep (BOAS) dataset.}
+  note    = {Primary reference for the Bitbrain Open Access Sleep (BOAS) dataset. Accessed: 2026-04-20}
 }
 
 
@@ -182,13 +242,10 @@ ISSN={1662-453X},
   title        = {Bitbrain Open Access Sleep (BOAS) Dataset},
   year         = {2024},
   publisher    = {OpenNeuro},
-  howpublished = {\url{https://openneuro.org/datasets/ds005555}}
+  howpublished = {\url{https://openneuro.org/datasets/ds005555}},
+  note          = {Accessed: 2026-04-20}
 }
 
-
-% ========================================
-% MLOPS TOOLS & REPRODUCIBILITY
-% ========================================
 
 @inproceedings{zaharia2018mlflow,
   author    = {Zaharia, Matei and Chen, Andy and Ghodsi, Ali and others},
@@ -196,7 +253,8 @@ ISSN={1662-453X},
   booktitle = {Proceedings of the 2018 Spark + AI Summit},
   year      = {2018},
   publisher = {Databricks},
-  url       = {https://www.databricks.com/blog/2018/06/05/introducing-mlflow-an-open-source-machine-learning-platform.html}
+  url       = {https://www.databricks.com/blog/2018/06/05/introducing-mlflow-an-open-source-machine-learning-platform.html},
+  note         = {Accessed: 2026-04-20}
 }
 
 %reproduzierbarkeit "Reproduzierbarkeit erfordert mehr als nur Code; es braucht die gesamte Provenance (Herkunft) der Daten innerhalb der Pipeline."
@@ -215,7 +273,8 @@ ISSN={1662-453X},
   title     = {Reproducibility in Machine Learning-based Research: Overview, Barriers and Drivers},
   journal   = {arXiv preprint arXiv:2406.14325v3},
   year      = {2025},
-  url       = {https://arxiv.org/abs/2406.14325}
+  url       = {https://arxiv.org/abs/2406.14325},
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -225,8 +284,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   author       = {{Neptune Labs}},
   year         = {2026},
   url          = {https://docs.neptune.ai/transition-hub},
-  note         = {Service discontinued as of March 5, 2026, following acquisition by OpenAI},
-  note         = {Accessed: 2025-06-26},
+  note         = {Service discontinued as of March 5, 2026, following acquisition by OpenAI, Accessed: 2025-06-26},
   organization = {Neptune.ai Documentation},
 }
 
@@ -235,7 +293,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   title        = {Weights \& Biases Documentation},
   howpublished = {\url{https://docs.wandb.ai/}},
   year         = {2024},
-  note         = {Accessed: 2025-06-26}
+  note         = {Accessed: 2026-04-20}
 }
 
 @inproceedings{arbel2024mlxp,
@@ -247,7 +305,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   doi       = {10.1145/3641525.3663648},
   publisher = {Association for Computing Machinery},
   address   = {New York, NY, USA},
-  url       = {https://doi.org/10.1145/3641525.3663648}
+  url       = {https://doi.org/10.1145/3641525.3663648},
+  note         = {Accessed: 2026-04-20}
 }
 
 @techreport{AIIndex2023,
@@ -261,7 +320,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   year        = {2023},
   month       = {April},
   url         = {https://hai.stanford.edu/assets/files/hai_ai-index-report_2023.pdf},
-  note        = {Accessed: 2026-01-02}
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -270,7 +329,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   title     = {Reproducibility in Machine Learning-based Research: Overview, Barriers and Drivers},
   journal   = {arXiv preprint arXiv:2406.14325v1},
   year      = {2024},
-  url       = {https://arxiv.org/html/2406.14325v1}
+  url       = {https://arxiv.org/html/2406.14325v1},
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -281,7 +341,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   booktitle = {Proceedings of the 21st IEEE/ACM International Conference on Mining Software Repositories},
   year      = {2024},
   doi       = {arXiv:2403.12199},
-  url       = {https://doi.org/10.48550/arXiv.2403.12199}
+  url       = {https://doi.org/10.48550/arXiv.2403.12199},
+  note         = {Accessed: 2026-04-20}
 }
 
 % Bouthillier et al. - Variance in ML benchmarks (cited in Ch2 Reproducibility)
@@ -291,7 +352,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   journal   = {arXiv preprint arXiv:2103.03098},
   year      = {2021},
   url       = {https://arxiv.org/abs/2103.03098},
-  doi       = {10.48550/arXiv.2103.03098}
+  doi       = {10.48550/arXiv.2103.03098},
+  note         = {Accessed: 2026-04-20}
 }
 
 @manual{nvidia2024cudnn,
@@ -307,7 +369,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   title     = {Quantifying Inherent Randomness in Machine Learning Algorithms},
   journal   = {arXiv preprint arXiv:2206.12353},
   year      = {2022},
-  url       = {https://arxiv.org/abs/2206.12353}
+  url       = {https://arxiv.org/abs/2206.12353},
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -320,7 +383,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   title     = {CRISP-DM 1.0: Step-by-step data mining guide},
   institution = {SPSS, NCR, DaimlerChrysler},
   year      = {2000},
-  url       = {https://www.kde.cs.uni-kassel.de/wp-content/uploads/lehre/ws2012-13/kdd/files/CRISPWP-0800.pdf}
+  url       = {https://www.kde.cs.uni-kassel.de/wp-content/uploads/lehre/ws2012-13/kdd/files/CRISPWP-0800.pdf},
+  note         = {Accessed: 2026-04-20}
 }
 % CRISP-ML(Q) - Machine Learning specific extension
  % COMMENT: Erweitert CRISP-DM für ML mit Quality Assurance. Fügt ML-spezifische Phasen hinzu:
@@ -335,8 +399,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   year         = {2021},
   publisher    = {MDPI},
   doi          = {10.3390/make3020020},
-  url          = {https://www.mdpi.com/2504-4990/3/2/20}
-
+  url          = {https://www.mdpi.com/2504-4990/3/2/20},
+  note         = {Accessed: 2026-04-20}
 }
 
   % COMMENT: Umfassender MLOps-Überblick (LitReview+Tools+Interviews). Definiert Prinzipien,
@@ -351,8 +415,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   pages   = {31866--31879},
   year    = {2023},
   doi     = {10.1109/ACCESS.2023.3262138},
-  url={https://www.researchgate.net/publication/369566050_Machine_Learning_Operations_MLOps_Overview_Definition_and_Architecture}
-
+  url={https://www.researchgate.net/publication/369566050_Machine_Learning_Operations_MLOps_Overview_Definition_and_Architecture},
+  note         = {Accessed: 2026-04-20}
 }
 
 % Google MLOps Best Practices Guide
@@ -361,7 +425,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   title        = {{MLOps}: Continuous Delivery and Automation Pipelines in Machine Learning},
   howpublished = {\url{https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning}},
   year         = {2023},
-  note         = {Accessed: 2025-01-10}
+  note         = {Accessed: 2026-04-20}
 }
 
 
@@ -376,7 +440,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   publisher    = {Elsevier},
   doi          = {10.1016/j.procs.2021.01.199},
   note         = {CENTERIS 2020 - International Conference on ENTERprise Information Systems},
-  url           = {https://www.sciencedirect.com/science/article/pii/S1877050921002416}
+  url           = {https://www.sciencedirect.com/science/article/pii/S1877050921002416},
+  note         = {Accessed: 2026-04-20}
 }
 
 % EEG textbook reference (cited in Ch2 Section 2.5)
@@ -399,7 +464,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   volume    = {15},
   year      = {2021},
   doi       = {10.3389/fnins.2021.652058},
-  publisher = {Frontiers Media SA}
+  publisher = {Frontiers Media SA},
+  note         = {Accessed: 2026-04-20}
 }
 
 % AASM Scoring Manual (cited in Ch2 yellow box note)
@@ -408,7 +474,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   author={Berry, R.B. and Quan, S.F. and Abreu, A.R. and American Academy of Sleep Medicine and Bibbs, M.L. and DelRosso, L. and Harding, S.M. and Mao, M.M. and Plante, D.T. and Pressman, M.R. and others},
   url={https://books.google.at/books?id=XT3dzQEACAAJ},
   year={2020},
-  publisher={American Academy of Sleep Medicine}
+  publisher={American Academy of Sleep Medicine},
+  note         = {Accessed: 2026-04-20}
 }
 
 % vLLM PagedAttention (cited in Ch2 Related Caching Approaches)
@@ -418,7 +485,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   booktitle = {Proceedings of the 29th Symposium on Operating Systems Principles (SOSP)},
   year      = {2023},
   doi       = {10.1145/3600006.3613165},
-  publisher = {ACM}
+  publisher = {ACM},
+  note         = {Accessed: 2026-04-20}
 }
 
 % GATI learned caching (cited in Ch2 Related Caching Approaches)
@@ -428,17 +496,19 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   booktitle = {Proceedings of the IEEE International Conference on Big Data},
   year      = {2021},
   doi       = {10.1109/BigData52589.2021.9671642},
-  publisher = {IEEE}
+  publisher = {IEEE},
+  note         = {Accessed: 2026-04-20}
 }
 
 % ML textbook (cited in Ch2 Ensemble Methods)
 @book{hastie2009elements,
   author    = {Hastie, Trevor and Tibshirani, Robert and Friedman, Jerome},
   title     = {The Elements of Statistical Learning: Data Mining, Inference, and Prediction},
-  edition   = {2nd},
+  edition   = {2},
   publisher = {Springer},
   year      = {2009},
-  url       = {https://hastie.su.domains/ElemStatLearn/}
+  url       = {https://hastie.su.domains/ElemStatLearn/},
+  note      = {Relevant sections: Ch.~8 (Bagging), Ch.~9 (Tree Methods), Ch.~10 (Boosting), Ch.~15 (Random Forests), Ch.~16 (Ensemble Learning). Accessed: 2026-04-20}
 }
 
 % Random Forest primary source (cited in Ch2 Ensemble Methods)
@@ -450,7 +520,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   number  = {1},
   pages   = {5--32},
   year    = {2001},
-  doi     = {10.1023/A:1010933404324}
+  doi     = {10.1023/A:1010933404324},
+  note         = {Accessed: 2026-04-20}
 }
 
 % XRootD/XCache HEP data caching (cited in Ch2 Related Caching Approaches)
@@ -460,7 +531,48 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   booktitle = {Proceedings of the International Conference on Computational Science (ICCS)},
   year      = {2023},
   publisher = {Springer},
-  doi       = {10.1007/978-3-031-36027-5_36}
+  doi       = {10.1007/978-3-031-36027-5_36},
+  note         = {Accessed: 2026-04-20}
 }
 
+@misc{bakian2023xgboost,
+  author       = {Bakian Dogaheh, Shahla and Moradi, Mohammad Hassan},
+  title        = {Automatic sleep stage classification using physiological signals
+                  acquired by {Dreem} headband},
+  year         = {2023},
+  howpublished = {bioRxiv preprint},
+  doi          = {10.1101/2023.10.05.561041},
+  note         = {Preprint; not peer-reviewed. Accessed: 2026-04-27}
+}
 
+@inproceedings{kunjan2021loso,
+  author    = {Kunjan, Sajeev and Grummett, T. S. and Pope, K. J. and Powers, D. M. W.
+               and Fitzgibbon, S. P. and Bastiampillai, T. and Battersby, M. and Lewis, T. W.},
+  title     = {The Necessity of Leave One Subject Out ({LOSO}) Cross Validation
+               for {EEG} Disease Diagnosis},
+  booktitle = {Brain Informatics: 14th International Conference, {BI} 2021},
+  editor    = {Mahmud, Mufti and Kaiser, M. Shamim and Vassanelli, Stefano
+               and Dai, Qionghai and Zhong, Ning},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {12960},
+  pages     = {558--567},
+  publisher = {Springer Nature},
+  address   = {Switzerland},
+  year      = {2021},
+  doi       = {10.1007/978-3-030-86993-9_50},
+  note      = {Accessed: 2026-04-27}
+}
+
+@article{huang2023intersubject,
+  author  = {Huang, Gan and Zhao, Zhiheng and Zhang, Shaorong and Hu, Zhenxing
+             and Fan, Jiaming and Fu, Meisong and Chen, Jiale and Xiao, Yaqiong
+             and Wang, Jun and Dan, Guo},
+  title   = {Discrepancy between inter- and intra-subject variability in
+             {EEG}-based motor imagery brain-computer interface: Evidence from
+             multiple perspectives},
+  journal = {Frontiers in Neuroscience},
+  volume  = {17},
+  year    = {2023},
+  doi     = {10.3389/fnins.2023.1122661},
+  note    = {Accessed: 2026-04-27}
+}

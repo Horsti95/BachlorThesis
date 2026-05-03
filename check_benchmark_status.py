@@ -17,7 +17,7 @@ def check_status():
     # Check if benchmark results exist
     results_files = list(Path("results").glob("benchmark_results_*.json"))
     if results_files:
-        print("✅ BENCHMARK COMPLETE!")
+        print("BENCHMARK COMPLETE!")
         latest = sorted(results_files)[-1]
         print(f"Results saved: {latest}")
         print(f"File size: {latest.stat().st_size / 1024:.1f} KB")
@@ -27,10 +27,10 @@ def check_status():
     cache_dir = Path("results/loso_model_cache")
     if cache_dir.exists():
         joblib_count = len(list(cache_dir.glob("*.joblib")))
-        print(f"📊 Cached models: {joblib_count}")
+        print(f"Cached models: {joblib_count}")
         
         if joblib_count > 0:
-            print(f"✓ Training in progress (models being cached)")
+            print(f"Training in progress (models being cached)")
         else:
             print(f"⏳ Waiting for first model to cache...")
     

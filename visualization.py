@@ -840,4 +840,4 @@ if __name__ == "__main__":
     
     print(f"\nTest figures saved to {test_dir}")
     print("\n" + "=" * 60)
-    print("Visualization Module: ✓ All tests passed")
+    print("Visualization Module: All tests passed")

@@ -59,7 +59,7 @@ class RAMModelCache:
             except Exception as e:
                 logger.warning(f"Failed to load {cache_file}: {e}")
         
-        logger.info(f"✓ Loaded {len(self.models)} models into RAM in {self.load_time:.2f}s")
+        logger.info(f"Loaded {len(self.models)} models into RAM in {self.load_time:.2f}s")
     
     def get(self, cache_path_str: str) -> Optional[Any]:
         """Retrieve model from RAM."""
@@ -74,7 +74,7 @@ def benchmark_ssd_cache(n_folds: int = 10):
     """Benchmark reading models from SSD cache."""
     joblib_files = sorted(CACHE_DIR.glob("*.joblib"))[:n_folds]
     
-    logger.info(f"\n📊 SSD Cache Benchmark ({len(joblib_files)} folds)")
+    logger.info(f"\nSSD Cache Benchmark ({len(joblib_files)} folds)")
     logger.info("=" * 50)
     
     times = []
@@ -95,7 +95,7 @@ def benchmark_ssd_cache(n_folds: int = 10):
 
 def benchmark_ram_cache(n_folds: int = 10):
     """Benchmark reading models from RAM cache."""
-    logger.info(f"\n🚀 RAM Cache Benchmark ({n_folds} folds)")
+    logger.info(f"\nRAM Cache Benchmark ({n_folds} folds)")
     logger.info("=" * 50)
     
     # Preload phase
@@ -163,15 +163,15 @@ def main():
     
     # Verify cache exists
     if not CACHE_DIR.exists():
-        logger.error(f"❌ Cache directory not found: {CACHE_DIR}")
+        logger.error(f"Cache directory not found: {CACHE_DIR}")
         return
     
     joblib_files = sorted(CACHE_DIR.glob("*.joblib"))
     if not joblib_files:
-        logger.error(f"❌ No cached models found in {CACHE_DIR}")
+        logger.error(f"No cached models found in {CACHE_DIR}")
         return
     
-    logger.info(f"✓ Found {len(joblib_files)} cached models")
+    logger.info(f"Found {len(joblib_files)} cached models")
     
     # Run benchmarks
     ssd_avg, ssd_total = benchmark_ssd_cache(N_TEST_FOLDS)
@@ -181,7 +181,7 @@ def main():
     speedup, time_saved = extrapolate_to_full_training(ssd_avg, ram_avg, preload_time, N_TEST_FOLDS, 128)
     
     logger.info("\n" + "=" * 65)
-    logger.info("✅ Benchmark Complete")
+    logger.info("Benchmark Complete")
     logger.info("=" * 65)
 
 

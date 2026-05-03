@@ -79,10 +79,10 @@ def test_feature_fingerprint_uniqueness():
     print(f"Fingerprints are different: {fp1 != fp2}")
 
     if fp1 == fp2:
-        print("❌ FAILED: Same fingerprint for different feature sets!")
+        print("FAILED: Same fingerprint for different feature sets!")
         return False
     else:
-        print("✅ PASSED: Different feature sets produce different fingerprints")
+        print("PASSED: Different feature sets produce different fingerprints")
         return True
 
 
@@ -107,7 +107,7 @@ def test_model_pickling():
     if FNN_AVAILABLE:
         models_to_test.append(('fnn', FNNModel, {'epochs': 3, 'batch_size': 32}))
     else:
-        print("  ⚠ Skipping FNN test (PyTorch not available)")
+        print("  Skipping FNN test (PyTorch not available)")
 
     results = {}
 
@@ -123,16 +123,16 @@ def test_model_pickling():
 
                 # Special handling for FNN if PyTorch not available
                 if model_name == 'fnn' and not hasattr(model, '_torch_available'):
-                    print(f"    ⚠ SKIPPED: PyTorch not available")
+                    print(f"    SKIPPED: PyTorch not available")
                     results[model_name] = True  # Don't fail the test
                     continue
 
                 model.fit(X, y)
-                print(f"    ✓ Training successful")
+                print(f"    Training successful")
 
                 # Test prediction before caching
                 pred_before = model.predict(X)
-                print(f"    ✓ Prediction successful (before cache)")
+                print(f"    Prediction successful (before cache)")
 
                 # Cache the model
                 fingerprint = LOSOFingerprint.generate(
@@ -153,11 +153,11 @@ def test_model_pickling():
                 )
 
                 if not cache_success:
-                    print(f"    ❌ FAILED: Could not cache model")
+                    print(f"    FAILED: Could not cache model")
                     results[model_name] = False
                     continue
 
-                print(f"    ✓ Caching successful")
+                print(f"    Caching successful")
 
                 # Load from cache
                 if model_name == 'fnn':
@@ -176,34 +176,34 @@ def test_model_pickling():
                     )
 
                 if cached_model is None:
-                    print(f"    ❌ FAILED: Could not load cached model")
+                    print(f"    FAILED: Could not load cached model")
                     results[model_name] = False
                     continue
 
-                print(f"    ✓ Loading successful")
+                print(f"    Loading successful")
 
                 # Test prediction after caching
                 pred_after = cached_model.predict(X)
-                print(f"    ✓ Prediction successful (after cache)")
+                print(f"    Prediction successful (after cache)")
 
                 # Verify predictions match
                 if np.array_equal(pred_before, pred_after):
-                    print(f"    ✓ Predictions match (deterministic)")
+                    print(f"    Predictions match (deterministic)")
                 else:
-                    print(f"    ⚠ Predictions differ (may be acceptable for FNN)")
+                    print(f"    Predictions differ (may be acceptable for FNN)")
 
                 results[model_name] = True
-                print(f"  ✅ {model_name}: PASSED")
+                print(f"  {model_name}: PASSED")
 
             except Exception as e:
-                print(f"    ❌ FAILED: {e}")
+                print(f"    FAILED: {e}")
                 logger.exception(f"Error testing {model_name}")
                 results[model_name] = False
 
     # Summary
     print(f"\n  Summary:")
     for model_name, passed in results.items():
-        status = "✅ PASSED" if passed else "❌ FAILED"
+        status = "PASSED" if passed else "FAILED"
         print(f"    {model_name}: {status}")
 
     # Consider test passed if XGBoost and RF passed (FNN is optional)
@@ -247,7 +247,7 @@ def test_cache_hit_miss_logic():
         )
 
         cache.put(fp_37, 'Subject_1', model_37, 'random_forest', 10.0)
-        print(f"    ✓ Cached model with 37 features (fp: {fp_37[:16]}...)")
+        print(f"    Cached model with 37 features (fp: {fp_37[:16]}...)")
 
         # Scenario 2: Try to load with 33 features (should be MISS)
         print("\n  Scenario 2: Try to load with 33 features (should MISS)")
@@ -270,11 +270,11 @@ def test_cache_hit_miss_logic():
         cached = cache.get(fp_33, 'Subject_1', 'random_forest')
 
         if cached is None:
-            print(f"    ✅ PASSED: Cache MISS (correct - different features)")
+            print(f"    PASSED: Cache MISS (correct - different features)")
             print(f"    fp_33: {fp_33[:16]}... != fp_37: {fp_37[:16]}...")
             scenario_2_passed = True
         else:
-            print(f"    ❌ FAILED: Cache HIT (wrong - should have been MISS)")
+            print(f"    FAILED: Cache HIT (wrong - should have been MISS)")
             scenario_2_passed = False
 
         # Scenario 3: Try to load with same 37 features (should be HIT)
@@ -282,10 +282,10 @@ def test_cache_hit_miss_logic():
         cached = cache.get(fp_37, 'Subject_1', 'random_forest')
 
         if cached is not None:
-            print(f"    ✅ PASSED: Cache HIT (correct - same config)")
+            print(f"    PASSED: Cache HIT (correct - same config)")
             scenario_3_passed = True
         else:
-            print(f"    ❌ FAILED: Cache MISS (wrong - should have been HIT)")
+            print(f"    FAILED: Cache MISS (wrong - should have been HIT)")
             scenario_3_passed = False
 
         # Check cache metrics
@@ -321,7 +321,7 @@ def main():
 
     all_passed = True
     for test_name, passed in results.items():
-        status = "✅ PASSED" if passed else "❌ FAILED"
+        status = "PASSED" if passed else "FAILED"
         print(f"  {test_name}: {status}")
         if not passed:
             all_passed = False
@@ -332,7 +332,7 @@ def main():
         print("\n🎉 ALL TESTS PASSED - Bugs are fixed!")
         return 0
     else:
-        print("\n⚠️  SOME TESTS FAILED - Please review")
+        print("\n️  SOME TESTS FAILED - Please review")
         return 1
 
 
