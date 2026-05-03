@@ -1,0 +1,35 @@
+{
+  "config_id": "xgboost_corrNone_k50_anova_glo",
+  "config": {
+    "model_type": "xgboost",
+    "model_params": {},
+    "feature_selection": {
+      "correlation_threshold": null,
+      "top_k_features": 50,
+      "selection_method": "anova",
+      "scope": "global",
+      "random_state": 42
+    },
+    "random_state": 42,
+    "config_id": "xgboost_corrNone_k50_anova_glo"
+  },
+  "accuracy_mean": 0.8296479069078686,
+  "accuracy_std": 0.06655654955317473,
+  "kappa_mean": 0.6871139259363417,
+  "kappa_std": 0.1165726220089577,
+  "f1_macro_mean": 0.59649471958103,
+  "f1_macro_std": 0.08852872686847925,
+  "f1_per_class_mean": {
+    "Wake": 0.8380154239882458,
+    "N1": 0.13899807363428912,
+    "N2": 0.883240007172094,
+    "N3": 0.29748676573065747,
+    "REM": 0.6975873394154961
+  },
+  "total_train_time": 0.0,
+  "total_predict_time": 0.39492034912109375,
+  "meets_accuracy_target": "False",
+  "meets_kappa_target": "False",
+  "meets_f1_target": "False",
+  "n_folds": 128
+}

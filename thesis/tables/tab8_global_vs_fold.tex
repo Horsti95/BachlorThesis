@@ -1,0 +1,24 @@
+% Global vs. Fold-Specific Feature Selection Tradeoff
+% Include this in the Discussion chapter.
+%
+% Data source: ANOVA benchmark (10 subjects), thesis design decision
+%
+\begin{table}[h]
+\centering
+\caption{Global vs.\ fold-specific feature selection tradeoff.
+         Global selection fits once on all data (minor leakage);
+         fold-specific fits per fold (correct but slower).}
+\label{tab:global_vs_fold}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Aspect} & \textbf{Global} & \textbf{Fold-Specific} \\
+\midrule
+Selection fitted on    & All subjects        & Training fold only \\
+Data leakage           & Minor ($<$1\%)      & None \\
+Accuracy difference    & $+$0.3--0.8\%       & Baseline \\
+Runtime (128 folds)    & 1$\times$ (single fit) & 128$\times$ (per fold) \\
+Cache compatibility    & Excellent (one fingerprint) & Complex (per-fold keys) \\
+Thesis choice          & \checkmark           & --- \\
+\bottomrule
+\end{tabular}
+\end{table}

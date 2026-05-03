@@ -1,0 +1,202 @@
+================================================================================
+  SLEEP STAGE CLASSIFICATION PIPELINE — HIGH-LEVEL OVERVIEW
+================================================================================
+
+  Entry Point: run_experiment.py (Stages 1-2) + run_training.py (Stage 3)
+
+
+  STAGE 1: DATA LOADING & PREPROCESSING
+  ══════════════════════════════════════
+  Module: data_loader_boas.py + preprocessing.py
+
+  Raw EDF File (8h sleep, 256 Hz, 6 channels)
+       │
+       ▼
+  ┌─────────────────────────┐
+  │  data_loader_boas.py    │  Load .edf + parse events.txt
+  │  BOASDataLoader         │  Select 6 EEG channels (F3,F4,C3,C4,O1,O2)
+  └────────────┬────────────┘
+               ▼
+  ┌─────────────────────────┐
+  │  preprocessing.py       │  Bandpass filter: 0.5-40 Hz (FIR)
+  │  SignalPreprocessor     │  Notch filter: 50 Hz (power line)
+  │                         │  Downsample: 256 Hz → 128 Hz
+  └────────────┬────────────┘
+               ▼
+  ┌─────────────────────────┐
+  │  preprocessing.py       │  Cut signal into 30-second epochs
+  │  EpochExtractor         │  Map each epoch to a sleep stage label
+  │                         │  Filter: disconnections (stage=8)
+  └────────────┬────────────┘
+               ▼
+       ~950 epochs per subject
+       Shape: (n_epochs, 6, 3840)     6 channels × 3840 samples per epoch
+       Labels: [0=Wake, 1=N1, 2=N2, 3=N3, 4=REM]
+
+
+  STAGE 2: FEATURE EXTRACTION (CACHED)
+  ═════════════════════════════════════
+  Module: feature_extractor.py + feature_cache.py
+
+  Epochs (n_epochs, 6, 3840)
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  feature_cache.py — CHECK CACHE FIRST               │
+  │                                                     │
+  │  SHA-256 fingerprint of extraction config            │
+  │   ├─ HIT  → Load from .npz file (0.2s)             │
+  │   └─ MISS → Extract features below (25s)            │
+  └────────────┬────────────────────────────────────────┘
+               ▼ (on MISS only)
+  ┌─────────────────────────────────────────────────────┐
+  │  feature_extractor.py (parallel: 7 CPU cores)       │
+  │                                                     │
+  │  Per channel (×6):                                  │
+  │   ├─ Time-domain    (10): mean, std, var, min, max, │
+  │   │                       ptp, rms, skew, kurt, zcr │
+  │   ├─ Frequency-domain (9): delta, theta, alpha,     │
+  │   │                        sigma, beta, gamma power, │
+  │   │                        spectral_entropy,         │
+  │   │                        peak_freq, median_freq    │
+  │   └─ Complexity      (4): hjorth_mobility,           │
+  │                            hjorth_complexity,         │
+  │                            hurst, dfa                │
+  │  Global (×1):                                       │
+  │   ├─ Coherence (6): F3-F4, F3-C3, F3-C4,           │
+  │   │                 F4-C4, C3-C4, O1-O2             │
+  │   ├─ PLV      (3): F3-O1, F4-O2, C3-C4             │
+  │   └─ Entropy  (2): global_entropy, global_complexity │
+  │                                                     │
+  │  Total: (10+9+4) × 6 + 11 = 149 features           │
+  └────────────┬────────────────────────────────────────┘
+               ▼
+  ┌─────────────────────────┐
+  │  feature_cache.py       │  Save to .npz (compressed)
+  │  save_features_to_cache │  For next run: instant load
+  └────────────┬────────────┘
+               ▼
+       Features DataFrame: (n_epochs, 149)
+       + Labels array: (n_epochs,)
+       + Subject IDs: (n_epochs,)
+
+       Saved to: results/features_cache_global/
+
+
+  ═══════════════════════════════════════════════════════
+  END OF run_experiment.py — Features are now cached
+  START OF run_training.py — Load cached features, train
+  ═══════════════════════════════════════════════════════
+
+
+  STAGE 3: FEATURE SELECTION + MODEL TRAINING (CACHED)
+  ════════════════════════════════════════════════════════
+  Module: feature_selection.py + training.py + loso_cache.py
+
+  Cached Features (all subjects combined)
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  training.py — CONFIGURATION GRID                   │
+  │                                                     │
+  │  For each of 18 configurations:                     │
+  │   Models:       [XGBoost, Random Forest]    × 2     │
+  │   Correlation:  [0.75, 0.90, None]          × 3     │
+  │   Top-K:        [30, 50, None(=all)]        × 3     │
+  │                                        Total: 18    │
+  └────────────┬────────────────────────────────────────┘
+               ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  feature_selection.py — GLOBAL FEATURE SELECTION    │
+  │  (fit once on all training data, reuse per fold)    │
+  │                                                     │
+  │  Step 1: Correlation filter                         │
+  │   └─ Remove features with r > threshold             │
+  │      (keeps the one with higher variance)            │
+  │                                                     │
+  │  Step 2: ANOVA top-K selection                      │
+  │   └─ Rank by F-statistic, keep top K                │
+  │      (200× faster than Mutual Information)           │
+  └────────────┬────────────────────────────────────────┘
+               ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  cross_validation.py — LOSO CROSS-VALIDATION        │
+  │                                                     │
+  │  For each subject (128 folds):                      │
+  │   ├─ Train on 127 subjects                          │
+  │   └─ Test on 1 held-out subject                     │
+  │                                                     │
+  │  Per fold:                                          │
+  │       │                                             │
+  │       ▼                                             │
+  │  ┌──────────────────────────────────────────┐       │
+  │  │  loso_cache.py — CHECK MODEL CACHE       │       │
+  │  │                                          │       │
+  │  │  SHA-256 fingerprint includes:           │       │
+  │  │   ├─ Model type + hyperparameters        │       │
+  │  │   ├─ Feature selection config            │       │
+  │  │   ├─ Held-out subject ID  ← CRITICAL    │       │
+  │  │   └─ Code version                        │       │
+  │  │                                          │       │
+  │  │  HIT  → Load model from .joblib (fast)   │       │
+  │  │  MISS → Train model below (slow)         │       │
+  │  └──────────────┬───────────────────────────┘       │
+  │                 ▼ (on MISS only)                    │
+  │  ┌──────────────────────────────────────────┐       │
+  │  │  models.py — TRAIN MODEL                 │       │
+  │  │                                          │       │
+  │  │  XGBoostModel:                           │       │
+  │  │   └─ XGBClassifier (gradient boosting)   │       │
+  │  │                                          │       │
+  │  │  RandomForestModel:                      │       │
+  │  │   └─ RandomForestClassifier (ensemble)   │       │
+  │  └──────────────┬───────────────────────────┘       │
+  │                 ▼                                   │
+  │  ┌──────────────────────────────────────────┐       │
+  │  │  models.py — PREDICT + EVALUATE          │       │
+  │  │                                          │       │
+  │  │  Metrics per fold:                       │       │
+  │  │   ├─ Accuracy                            │       │
+  │  │   ├─ Cohen's Kappa                       │       │
+  │  │   ├─ F1 per class (Wake,N1,N2,N3,REM)   │       │
+  │  │   └─ F1 macro                            │       │
+  │  └──────────────────────────────────────────┘       │
+  └────────────┬────────────────────────────────────────┘
+               ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  evaluation.py — AGGREGATE ACROSS FOLDS             │
+  │                                                     │
+  │  Mean ± Std of all metrics across 128 folds         │
+  │  Check clinical targets:                            │
+  │   ├─ Accuracy  ≥ 85%                                │
+  │   ├─ Kappa     ≥ 0.75                               │
+  │   └─ F1 macro  ≥ 0.80                               │
+  └────────────┬────────────────────────────────────────┘
+               ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  leaderboard.py — RANK CONFIGURATIONS               │
+  │  output_formatter.py — DISPLAY RESULTS              │
+  │  cache_visualization.py — GENERATE FIGURES           │
+  │                                                     │
+  │  Output: results/training_<timestamp>/              │
+  │   ├─ experiment_results.json                        │
+  │   ├─ confusion_matrices/                            │
+  │   └─ figures/                                       │
+  └─────────────────────────────────────────────────────┘
+
+
+  ═══════════════════════════════════════════════════════
+  QUICK TEST COMMAND (all 18 configs, 3 subjects, ~10min)
+  ═══════════════════════════════════════════════════════
+
+  # Stage 1-2: Extract features (first time only)
+  python run_experiment.py --quick-test
+
+  # Stage 3: Train all 18 model+feature combinations
+  python run_training.py --quick --grid thesis
+
+
+  CACHING SUMMARY
+  ═══════════════
+  Layer 1 (Features):  224× speedup  │  53 min → 14 sec  │  feature_cache.py
+  Layer 2 (Models):    4.5× speedup  │  7.7s → 1.7s      │  loso_cache.py

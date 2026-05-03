@@ -1,0 +1,220 @@
+\chapter{Summary and Future Work}
+\label{chap:summary}
+
+
+% ============================================================================
+\section{Summary}
+% ============================================================================
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note:} 
+Lenght Goal 5 Pages currently  3.5
+\end{minipage}}
+\end{center}
+This thesis developed a fingerprint-based caching framework for
+Leave-One-Subject-Out (LOSO) cross-validation experiments. The core idea is
+simple: each experiment configuration is mapped to a deterministic SHA-256
+hash computed from the canonical JSON representation of the tracked experiment
+state---random seed, code version, model type and hyperparameters, feature
+configuration, and held-out subject identifier. The resulting fingerprint
+serves simultaneously as cache key, reproducibility identifier, and
+experiment label.
+
+The inclusion of the held-out subject ID in the fingerprint is the critical
+design decision that distinguishes this framework from generic pipeline
+caching. By encoding the LOSO fold identity in the cache key, the system
+prevents cross-fold contamination: a model trained with Subject~$S_i$ held
+out cannot be retrieved when Subject~$S_j$ is the test subject, because the
+fingerprints differ. This guarantee is enforced structurally, not by
+convention, eliminating a class of subtle caching bugs that could
+compromise scientific validity.
+
+The framework was validated through a sleep stage classification case study
+using the BOAS dataset (128 subjects, approximately 120{,}000 epochs of
+30-second EEG recordings across 6 channels). The experimental evaluation
+comprised 18 configurations (2 models $\times$ 3 correlation thresholds
+$\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
+2{,}304 model training operations.
+
+\textbf{Key findings:}
+
+\begin{enumerate}
+\item \textbf{Substantial speedups for cache-viable models.}
+      XGBoost achieved 122--498$\times$ speedup (average 208$\times$) with
+      compact cache sizes of approximately 185~MB. The best configuration
+      (all 149 features, no correlation filtering) reduced a 3{,}683-second
+      cold run to 7.4~seconds. Random Forest achieved 12--110$\times$
+      speedup but required approximately 18.5~GB of cache storage, making
+      it borderline viable.
+
+\item \textbf{Best classification accuracy of 85.5\%.}
+      XGBoost with all 149 features and no correlation filtering achieved
+      the highest LOSO accuracy (85.5\%, Cohen's $\kappa = 0.745$,
+      macro F1 = 0.690), demonstrating that the caching framework does not
+      compromise classification performance.
+
+\item \textbf{Clear model viability spectrum.}
+      A 15-model viability study identified 11 cache-viable models
+      (including all boosting methods and SVMs) and 4 non-viable models
+      (Random Forest, Extra Trees, KNN) whose large serialised
+      representations negate caching benefits. Viability verdicts were
+      consistent across two different hardware configurations.
+
+\item \textbf{Cache benefit scales with dataset size.}
+      SVM-RBF speedup increased from 9$\times$ at 10 subjects to
+      201$\times$ at 128 subjects. Training cost grows quadratically with
+      dataset size while cache loading cost remains constant, meaning
+      caching becomes \textit{more} valuable as datasets grow.
+
+\item \textbf{100\% reproducibility.}
+      All cached models produced bitwise-identical predictions to cold
+      retraining across all 18 configurations and 128 LOSO folds (verified
+      via \texttt{numpy.array\_equal()}).
+
+\item \textbf{ANOVA feature selection is strictly superior to Mutual
+      Information} for this feature set: 174$\times$ faster and 3.68
+      percentage points more accurate (84.26\% vs.\ 80.58\%).
+\end{enumerate}
+
+\subsection{Research Questions Revisited}
+
+The four research questions posed in Chapter~1 are answered as follows:
+
+\begin{itemize}
+\item \textbf{RQ1 (Efficiency):} The fingerprint-based caching framework
+      achieved a 100\% cache hit rate across all 2{,}304 warm-cache operations
+      (18 configurations $\times$ 128 LOSO folds). Median speedups were
+      178$\times$ for XGBoost and 17.7$\times$ for Random Forest, with peak
+      speedups of 498$\times$ and 110$\times$ respectively. The feature cache
+      (Layer~1) eliminated redundant feature extraction entirely across
+      experimental iterations.
+
+\item \textbf{RQ2 (Reproducibility):} SHA-256 fingerprinting ensures
+      reproducibility by construction: identical configurations produce
+      identical fingerprints, and cached models produce bitwise-identical
+      predictions to freshly trained models (verified via
+      \texttt{numpy.array\_equal()} across all 18 configurations). The
+      fingerprint simultaneously serves as cache key, reproducibility
+      identifier, and experiment label, unifying concerns that are typically
+      handled by separate tools.
+
+\item \textbf{RQ3 (Scalability):} Cache benefit increases with dataset
+      size. SVM-RBF speedup grew from 9$\times$ at 10 subjects to
+      201$\times$ at 128 subjects, because training cost grows with data size
+      while cache loading cost remains constant. This confirms that the
+      framework becomes more valuable as studies scale to larger cohorts.
+
+\item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists.
+      Of 15 evaluated model types, 11 are cache-viable (all boosting methods,
+      SVMs, logistic regression, decision trees). The 4 non-viable models
+      (Random Forest, Extra Trees, KNN) produce serialized representations
+      of 130--1{,}544~MB per fold, negating the loading speed advantage.
+      XGBoost caching requires $\sim$185~MB per 9-configuration run; Random
+      Forest requires $\sim$18.5~GB, making it borderline viable depending
+      on available storage and expected number of re-runs.
+\end{itemize}
+
+The contribution of this thesis is not a new MLOps platform, but a validated
+approach for extending existing fingerprinting techniques to
+cross-validation contexts. The framework demonstrates that simple SHA-256
+fingerprinting with explicit fold encoding provides substantial efficiency
+gains without requiring sophisticated infrastructure.
+
+
+% ============================================================================
+\section{Future Work}
+% ============================================================================
+
+Several directions could extend the framework developed in this thesis.
+
+\subsection{FNN Model Evaluation}
+
+A Feedforward Neural Network (input$\rightarrow$64$\rightarrow$32$\rightarrow$5)
+was implemented and verified on a small pilot (5 subjects, $\sim$78\% accuracy,
+4.2$\times$ speedup on re-runs) but excluded from the full 18-configuration
+experiment because PyTorch was not installed in the benchmark environment. With
+a dedicated GPU available, evaluating the FNN across all 18 configurations and
+128 LOSO folds would extend the viability analysis to deep learning models and
+test whether the fingerprint-based caching approach generalises to
+gradient-based optimisers with non-deterministic training dynamics.
+
+\subsection{Two-Tier RAM+Disk Caching}
+
+The current implementation uses a single-tier disk-based cache. For interactive
+applications---such as real-time sleep analysis dashboards where the same
+subjects are analysed repeatedly within minutes---an in-memory LRU (Least
+Recently Used) cache layer could reduce latency further by avoiding disk I/O
+entirely for recently accessed models. The two-tier lookup would check RAM
+first ($\sim$0.1~ms), fall back to SSD ($\sim$58~ms for XGBoost), and only
+retrain on a double miss. Preliminary testing during this thesis suggested
+that for the batch-oriented experimental workflow used here, disk I/O was
+not the dominant bottleneck, and in-memory caching did not yield significant
+additional speedup. However, for latency-sensitive production deployments
+with repeated access to the same models, a two-tier architecture could
+provide meaningful improvements.
+
+\subsection{Cross-Experiment Cache Reuse}
+
+Currently, each experiment maintains its own cache directory. A shared cache
+repository could enable reuse across experiments with compatible preprocessing
+parameters. For example, if two experiments use the same feature extraction
+pipeline but differ only in model hyperparameters, the feature cache (Layer~1)
+could be shared while the model cache (Layer~2) remains experiment-specific.
+This extension would require a cache registry that maps fingerprints to
+shared storage locations and enforces access control.
+
+\subsection{Integration with MLOps Tools}
+
+The fingerprint-based caching approach could be packaged as plugins for
+established MLOps platforms such as DVC, ZenML, or MLflow. A DVC plugin
+could extend the pipeline definition language to natively parameterise
+LOSO fold identifiers; a ZenML plugin could provide a custom materialiser
+that encodes held-out subject IDs in step cache keys. Such integrations
+would make fold-aware caching accessible without requiring a custom
+framework.
+
+\subsection{Cross-Domain Validation}
+
+The caching framework was validated on EEG sleep classification, but the
+underlying fingerprinting approach is domain-agnostic. Applying the framework
+to other domains with subject-level cross-validation---such as brain-computer
+interfaces, speech recognition with speaker-independent evaluation, or
+medical imaging with patient-level splits---would test the generalisability
+of the approach and identify domain-specific requirements not covered by the
+current implementation.
+
+\subsection{Scalability Challenges}
+
+Scaling the framework to larger configuration spaces (hundreds of
+hyperparameter combinations, dynamic subject subsets, multiple preprocessing
+variants) would introduce cache management challenges. The current
+implementation manages a tractable space of 18 configurations $\times$ 128
+folds. Extending to production environments with thousands of configurations
+would require selective caching policies that prioritise high-reuse,
+high-computation-cost artefacts, automatic cache eviction based on access
+frequency and storage budgets, and potentially hierarchical invalidation
+strategies where upstream changes (e.g., preprocessing code updates)
+automatically invalidate all downstream caches.
+
+\begin{center}
+\colorbox{yellow!20}{%
+\begin{minipage}{0.9\textwidth}
+\textbf{Working Draft Note --- Ideas to expand Ch5 to 5 pages:}
+\begin{itemize}
+\item Add a ``Lessons Learned'' subsection: practical deployment insights
+      (fingerprint debugging, the importance of including selected feature
+      names in the hash, partial cache reuse across sweeps, version control
+      as automatic invalidation).
+\item Add a ``Comparison with Existing Tools'' paragraph in Summary: briefly
+      contrast the thesis framework with DVC/ZenML/MLflow capabilities
+      (forward-reference to Table~3.1) and state what the thesis adds.
+\item Expand FNN Future Work: discuss expected challenges (GPU non-determinism,
+      large model serialization, epoch-level vs.\ fold-level caching for
+      neural networks).
+\item Add a closing paragraph connecting the thesis to broader reproducibility
+      initiatives (FAIR principles, open science).
+\end{itemize}
+\end{minipage}}
+\end{center}
