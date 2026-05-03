@@ -22,40 +22,19 @@ Date: December 2025
 """
 
 import logging
-import inspect
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
+import warnings
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-try:
-    import catboost  # noqa: F401
-    _CATBOOST_AVAILABLE = True
-except ImportError:
-    _CATBOOST_AVAILABLE = False
-
-try:
-    import lightgbm  # noqa: F401
-    _LIGHTGBM_AVAILABLE = True
-except ImportError:
-    _LIGHTGBM_AVAILABLE = False
-
 
 class BaseModel(ABC):
-    """Abstract base class for all sleep stage classification models.
-
-    Subclasses must implement fit, predict, and predict_proba.
-    """
-
+    """Abstract base class for all models."""
+    
     def __init__(self, params: Dict[str, Any], random_seed: int = 42):
-        """Initialize base model.
-
-        Args:
-            params: Model-specific hyperparameters.
-            random_seed: Random seed for reproducibility.
-        """
         self.params = params
         self.random_seed = random_seed
         self.model = None
@@ -63,43 +42,21 @@ class BaseModel(ABC):
     
     @abstractmethod
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'BaseModel':
-        """Fit the model to training data.
-
-        Args:
-            X: Training feature matrix (n_samples, n_features).
-            y: Target labels (n_samples,).
-
-        Returns:
-            Self for method chaining.
-        """
+        """Fit the model to training data."""
         pass
-
+    
     @abstractmethod
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Predict sleep stage labels for samples.
-
-        Args:
-            X: Feature matrix (n_samples, n_features).
-
-        Returns:
-            Predicted labels (n_samples,).
-        """
+        """Predict labels for samples."""
         pass
-
+    
     @abstractmethod
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Predict class probabilities for each sleep stage.
-
-        Args:
-            X: Feature matrix (n_samples, n_features).
-
-        Returns:
-            Probability matrix (n_samples, n_classes).
-        """
+        """Predict class probabilities."""
         pass
-
+    
     def get_params(self) -> Dict[str, Any]:
-        """Get a copy of the model's hyperparameters."""
+        """Get model parameters."""
         return self.params.copy()
 
 
@@ -117,12 +74,6 @@ class XGBoostModel(BaseModel):
     """
     
     def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
-        """Initialize XGBoost classifier with default or custom parameters.
-
-        Args:
-            params: Optional dict of XGBoost hyperparameters to override defaults.
-            random_seed: Random seed for reproducibility.
-        """
         default_params = {
             'max_depth': 6,
             'n_estimators': 200,
@@ -143,13 +94,13 @@ class XGBoostModel(BaseModel):
         try:
             import xgboost as xgb
             self.model = xgb.XGBClassifier(**self.params)
-            logger.debug("XGBoost model initialized")
+            logger.info("XGBoost model initialized")
         except ImportError:
             raise ImportError("XGBoost not installed. Run: pip install xgboost")
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'XGBoostModel':
-        """Train the XGBoost classifier on the provided data."""
-        logger.debug(f"Training XGBoost on {X.shape[0]} samples, {X.shape[1]} features")
+        """Fit XGBoost model."""
+        logger.info(f"Training XGBoost on {X.shape[0]} samples, {X.shape[1]} features")
         self.model.fit(X, y)
         self.is_fitted = True
         return self
@@ -167,11 +118,7 @@ class XGBoostModel(BaseModel):
         return self.model.predict_proba(X)
     
     def feature_importance(self) -> np.ndarray:
-        """Get feature importances from the trained XGBoost model.
-
-        Returns:
-            Array of importance scores, one per feature.
-        """
+        """Get feature importances."""
         if not self.is_fitted:
             raise RuntimeError("Model must be fitted first")
         return self.model.feature_importances_
@@ -191,12 +138,6 @@ class RandomForestModel(BaseModel):
     """
     
     def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
-        """Initialize Random Forest classifier with default or custom parameters.
-
-        Args:
-            params: Optional dict of RF hyperparameters to override defaults.
-            random_seed: Random seed for reproducibility.
-        """
         default_params = {
             'n_estimators': 200,
             'max_depth': None,  # No limit
@@ -216,13 +157,13 @@ class RandomForestModel(BaseModel):
         try:
             from sklearn.ensemble import RandomForestClassifier
             self.model = RandomForestClassifier(**self.params)
-            logger.debug("Random Forest model initialized")
+            logger.info("Random Forest model initialized")
         except ImportError:
             raise ImportError("scikit-learn not installed. Run: pip install scikit-learn")
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'RandomForestModel':
-        """Train the Random Forest classifier on the provided data."""
-        logger.debug(f"Training Random Forest on {X.shape[0]} samples, {X.shape[1]} features")
+        """Fit Random Forest model."""
+        logger.info(f"Training Random Forest on {X.shape[0]} samples, {X.shape[1]} features")
         self.model.fit(X, y)
         self.is_fitted = True
         return self
@@ -240,11 +181,7 @@ class RandomForestModel(BaseModel):
         return self.model.predict_proba(X)
     
     def feature_importance(self) -> np.ndarray:
-        """Get feature importances from the trained Random Forest model.
-
-        Returns:
-            Array of importance scores, one per feature.
-        """
+        """Get feature importances."""
         if not self.is_fitted:
             raise RuntimeError("Model must be fitted first")
         return self.model.feature_importances_
@@ -270,12 +207,6 @@ class FNNModel(BaseModel):
     """
     
     def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
-        """Initialize FNN model. Requires PyTorch.
-
-        Args:
-            params: Optional dict of hyperparameters (hidden_dims, dropout, lr, etc.).
-            random_seed: Random seed for reproducibility.
-        """
         default_params = {
             'hidden_dims': [256, 128, 64],
             'dropout': 0.3,
@@ -302,27 +233,20 @@ class FNNModel(BaseModel):
             logger.warning("PyTorch not installed. FNN model will not work.")
             return
         
-        # Set seeds for reproducibility (torch only, avoid global numpy seed)
+        # Set seeds for reproducibility
         torch.manual_seed(random_seed)
+        np.random.seed(random_seed)
         
         # Detect device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        logger.debug(f"FNN model initialized (device: {self.device})")
+        logger.info(f"FNN model initialized (device: {self.device})")
         
         self.model = None
         self.scaler = None
         self._n_features = None
     
     def _build_network(self, n_features: int, n_classes: int = 5):
-        """Build the feedforward neural network as nn.Sequential.
-
-        Args:
-            n_features: Number of input features.
-            n_classes: Number of output classes (default 5 sleep stages).
-
-        Returns:
-            nn.Sequential model with BatchNorm, ReLU, and Dropout layers.
-        """
+        """Build the neural network architecture."""
         import torch.nn as nn
         
         hidden_dims = self.params['hidden_dims']
@@ -346,11 +270,7 @@ class FNNModel(BaseModel):
         return nn.Sequential(*layers)
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'FNNModel':
-        """Train the FNN using PyTorch with early stopping.
-
-        Scales features with StandardScaler, then trains via Adam optimizer
-        with CrossEntropyLoss. Stops early if loss plateaus.
-        """
+        """Fit FNN model using PyTorch."""
         if not self._torch_available:
             raise ImportError("PyTorch not installed. Run: pip install torch")
         
@@ -359,7 +279,7 @@ class FNNModel(BaseModel):
         from torch.utils.data import DataLoader, TensorDataset
         from sklearn.preprocessing import StandardScaler
         
-        logger.debug(f"Training FNN on {X.shape[0]} samples, {X.shape[1]} features")
+        logger.info(f"Training FNN on {X.shape[0]} samples, {X.shape[1]} features")
         
         # Store feature count for later
         self._n_features = X.shape[1]
@@ -389,10 +309,15 @@ class FNNModel(BaseModel):
         )
         
         # Training loop
-        import copy
+        # TODO (post-thesis): The "early stopping" below tracks training loss,
+        # not validation loss, so it cannot detect overfitting — it only stops
+        # once training loss stops decreasing. To make `patience` meaningful,
+        # carve a 10-15% validation split off X/y here, evaluate val_loss each
+        # epoch, and drive the patience counter off val_loss. The FNN model is
+        # implemented but not evaluated in the thesis, so this is deferred.
+        # See ML audit 2026-04 for details.
         epochs = self.params['epochs']
         best_loss = float('inf')
-        best_state = None
         patience_counter = 0
         patience = self.params.get('early_stopping_patience', 5)
         
@@ -422,10 +347,9 @@ class FNNModel(BaseModel):
             # Update progress bar with loss
             pbar.set_postfix({'loss': f'{avg_loss:.4f}', 'best': f'{best_loss:.4f}'})
             
-            # Early stopping with best model checkpoint
+            # Early stopping
             if avg_loss < best_loss:
                 best_loss = avg_loss
-                best_state = copy.deepcopy(self.model.state_dict())
                 patience_counter = 0
             else:
                 patience_counter += 1
@@ -433,12 +357,9 @@ class FNNModel(BaseModel):
                     pbar.close()
                     logger.info(f"Early stopping at epoch {epoch+1}")
                     break
-
-        # Restore best model weights
-        if best_state is not None:
-            self.model.load_state_dict(best_state)
+        
         self.is_fitted = True
-        logger.info(f"FNN training complete (best loss: {best_loss:.4f})")
+        logger.info(f"FNN training complete (final loss: {best_loss:.4f})")
         return self
     
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -481,266 +402,12 @@ class FNNModel(BaseModel):
         return proba.cpu().numpy()
 
 
-class SklearnPipelineModel(BaseModel):
-    """Generic wrapper for sklearn-style estimators with optional scaling."""
-
-    ESTIMATOR_CLASS = None
-    DEFAULT_PARAMS: Dict[str, Any] = {}
-    USE_SCALER = False
-
-    def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
-        default_params = self.DEFAULT_PARAMS.copy()
-        if params:
-            default_params.update(params)
-
-        if self.ESTIMATOR_CLASS is None:
-            raise NotImplementedError("ESTIMATOR_CLASS must be set in subclasses")
-
-        try:
-            estimator_signature = inspect.signature(self.ESTIMATOR_CLASS.__init__)
-            if "random_state" in estimator_signature.parameters and "random_state" not in default_params:
-                default_params["random_state"] = random_seed
-        except (TypeError, ValueError):
-            pass
-
-        super().__init__(default_params, random_seed)
-
-        try:
-            if self.USE_SCALER:
-                from sklearn.pipeline import make_pipeline
-                from sklearn.preprocessing import StandardScaler
-                self.model = make_pipeline(StandardScaler(), self.ESTIMATOR_CLASS(**self.params))
-            else:
-                self.model = self.ESTIMATOR_CLASS(**self.params)
-        except ImportError as e:
-            raise ImportError(f"Required dependency for {self.__class__.__name__} is not installed: {e}")
-
-    def fit(self, X: np.ndarray, y: np.ndarray) -> 'SklearnPipelineModel':
-        self.model.fit(X, y)
-        self.is_fitted = True
-        return self
-
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        return self.model.predict(X)
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-
-        if hasattr(self.model, "predict_proba"):
-            return self.model.predict_proba(X)
-
-        if hasattr(self.model, "decision_function"):
-            scores = self.model.decision_function(X)
-            if scores.ndim == 1:
-                scores = np.vstack([-scores, scores]).T
-            scores = scores - np.max(scores, axis=1, keepdims=True)
-            exp_scores = np.exp(scores)
-            return exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
-
-        raise RuntimeError(f"{self.__class__.__name__} does not support probability predictions")
-
-
-class LinearSVMModel(SklearnPipelineModel):
-    from sklearn.svm import SVC as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'kernel': 'linear',
-        'C': 1.0,
-        'probability': True,
-        'class_weight': 'balanced',
-    }
-    USE_SCALER = True
-
-
-class RBFSVMModel(SklearnPipelineModel):
-    from sklearn.svm import SVC as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'kernel': 'rbf',
-        'C': 1.0,
-        'gamma': 'scale',
-        'probability': True,
-        'class_weight': 'balanced',
-    }
-    USE_SCALER = True
-
-
-class AdaBoostModel(SklearnPipelineModel):
-    from sklearn.ensemble import AdaBoostClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'n_estimators': 100,
-        'learning_rate': 1.0,
-    }
-
-
-class GradientBoostingModel(SklearnPipelineModel):
-    from sklearn.ensemble import GradientBoostingClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'n_estimators': 200,
-        'learning_rate': 0.1,
-        'max_depth': 3,
-    }
-
-
-class LogisticRegressionModel(SklearnPipelineModel):
-    from sklearn.linear_model import LogisticRegression as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'max_iter': 1000,
-        'solver': 'lbfgs',
-        'multi_class': 'auto',
-        'class_weight': 'balanced',
-    }
-    USE_SCALER = True
-
-
-class DecisionTreeModel(SklearnPipelineModel):
-    from sklearn.tree import DecisionTreeClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'class_weight': 'balanced',
-    }
-
-
-class RidgeClassifierModel(SklearnPipelineModel):
-    from sklearn.linear_model import RidgeClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'alpha': 1.0,
-        'class_weight': 'balanced',
-    }
-    USE_SCALER = True
-
-
-class NaiveBayesModel(SklearnPipelineModel):
-    from sklearn.naive_bayes import GaussianNB as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {}
-
-
-class ExtraTreesModel(SklearnPipelineModel):
-    from sklearn.ensemble import ExtraTreesClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'n_estimators': 200,
-        'max_depth': None,
-        'min_samples_split': 2,
-        'min_samples_leaf': 1,
-        'max_features': 'sqrt',
-        'class_weight': 'balanced',
-        'n_jobs': -1,
-    }
-
-
-class KNN5Model(SklearnPipelineModel):
-    from sklearn.neighbors import KNeighborsClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'n_neighbors': 5,
-        'weights': 'uniform',
-        'n_jobs': -1,
-    }
-    USE_SCALER = True
-
-
-class KNN10Model(SklearnPipelineModel):
-    from sklearn.neighbors import KNeighborsClassifier as ESTIMATOR_CLASS
-    DEFAULT_PARAMS = {
-        'n_neighbors': 10,
-        'weights': 'uniform',
-        'n_jobs': -1,
-    }
-    USE_SCALER = True
-
-
-class CatBoostModel(BaseModel):
-    """CatBoost classifier wrapper with a graceful import error if unavailable."""
-
-    def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
-        default_params = {
-            'iterations': 200,
-            'depth': 6,
-            'learning_rate': 0.1,
-            'loss_function': 'MultiClass',
-            'eval_metric': 'Accuracy',
-            'random_seed': random_seed,
-            'verbose': False,
-            'allow_writing_files': False,
-        }
-        if params:
-            default_params.update(params)
-
-        super().__init__(default_params, random_seed)
-
-        try:
-            from catboost import CatBoostClassifier
-            self.model = CatBoostClassifier(**self.params)
-        except ImportError as e:
-            raise ImportError("catboost is not installed. Run: pip install catboost") from e
-
-    def fit(self, X: np.ndarray, y: np.ndarray) -> 'CatBoostModel':
-        self.model.fit(X, y, verbose=False)
-        self.is_fitted = True
-        return self
-
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        preds = self.model.predict(X)
-        return np.asarray(preds).reshape(-1).astype(int)
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        return self.model.predict_proba(X)
-
-
-class LightGBMModel(BaseModel):
-    """LightGBM classifier wrapper with a graceful import error if unavailable."""
-
-    def __init__(self, params: Dict[str, Any] = None, random_seed: int = 42):
-        default_params = {
-            'n_estimators': 200,
-            'learning_rate': 0.1,
-            'num_leaves': 31,
-            'objective': 'multiclass',
-            'num_class': 5,
-            'random_state': random_seed,
-            'n_jobs': -1,
-            'verbosity': -1,
-        }
-        if params:
-            default_params.update(params)
-
-        super().__init__(default_params, random_seed)
-
-        try:
-            import lightgbm as lgb
-            self.model = lgb.LGBMClassifier(**self.params)
-        except ImportError as e:
-            raise ImportError("lightgbm is not installed. Run: pip install lightgbm") from e
-
-    def fit(self, X: np.ndarray, y: np.ndarray) -> 'LightGBMModel':
-        self.model.fit(X, y)
-        self.is_fitted = True
-        return self
-
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        return self.model.predict(X)
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        return self.model.predict_proba(X)
-
-
 def create_model(model_type: str, params: Dict[str, Any] = None, random_seed: int = 42) -> BaseModel:
     """
     Factory function to create models.
     
     Args:
-        model_type: Model name string such as 'xgboost', 'random_forest',
-            'svm_linear', 'svm_rbf', 'adaboost', 'gradient_boosting',
-            'logistic_regression', 'decision_tree', 'catboost',
-            'ridge_classifier', 'naive_bayes', 'lightgbm', 'knn_5',
-            'knn_10', 'extra_trees', or 'fnn'
+        model_type: 'xgboost', 'random_forest', or 'fnn'
         params: Model-specific parameters
         random_seed: Random seed for reproducibility
     
@@ -753,20 +420,7 @@ def create_model(model_type: str, params: Dict[str, Any] = None, random_seed: in
     models = {
         'xgboost': XGBoostModel,
         'random_forest': RandomForestModel,
-        'fnn': FNNModel,
-        'svm_linear': LinearSVMModel,
-        'svm_rbf': RBFSVMModel,
-        'adaboost': AdaBoostModel,
-        'gradient_boosting': GradientBoostingModel,
-        'logistic_regression': LogisticRegressionModel,
-        'decision_tree': DecisionTreeModel,
-        'catboost': CatBoostModel,
-        'ridge_classifier': RidgeClassifierModel,
-        'naive_bayes': NaiveBayesModel,
-        'lightgbm': LightGBMModel,
-        'knn_5': KNN5Model,
-        'knn_10': KNN10Model,
-        'extra_trees': ExtraTreesModel,
+        'fnn': FNNModel
     }
     
     if model_type not in models:
@@ -798,102 +452,6 @@ def get_model_info() -> Dict[str, Dict]:
             'description': 'Ensemble of decision trees',
             'deterministic': True,
             'notes': 'Robust baseline, good feature importance'
-        },
-        'svm_linear': {
-            'name': 'Linear SVM',
-            'class': LinearSVMModel,
-            'implemented': True,
-            'description': 'Support Vector Machine with linear kernel',
-            'deterministic': True,
-            'notes': 'Uses StandardScaler and probability=True'
-        },
-        'adaboost': {
-            'name': 'AdaBoost',
-            'class': AdaBoostModel,
-            'implemented': True,
-            'description': 'Boosted decision stumps / trees',
-            'deterministic': True,
-            'notes': 'Sklearn AdaBoostClassifier'
-        },
-        'gradient_boosting': {
-            'name': 'Gradient Boosting',
-            'class': GradientBoostingModel,
-            'implemented': True,
-            'description': 'Gradient boosting classifier',
-            'deterministic': True,
-            'notes': 'Sklearn GradientBoostingClassifier'
-        },
-        'logistic_regression': {
-            'name': 'Logistic Regression',
-            'class': LogisticRegressionModel,
-            'implemented': True,
-            'description': 'Multinomial logistic regression',
-            'deterministic': True,
-            'notes': 'Uses StandardScaler'
-        },
-        'decision_tree': {
-            'name': 'Decision Tree',
-            'class': DecisionTreeModel,
-            'implemented': True,
-            'description': 'Single decision tree classifier',
-            'deterministic': True,
-            'notes': 'Sklearn DecisionTreeClassifier'
-        },
-        'catboost': {
-            'name': 'CatBoost',
-            'class': CatBoostModel,
-            'implemented': _CATBOOST_AVAILABLE,
-            'description': 'CatBoost gradient boosting',
-            'deterministic': True,
-            'notes': 'Requires catboost package'
-        },
-        'ridge_classifier': {
-            'name': 'Ridge Classifier',
-            'class': RidgeClassifierModel,
-            'implemented': True,
-            'description': 'Linear classifier with L2 regularization',
-            'deterministic': True,
-            'notes': 'Uses StandardScaler'
-        },
-        'naive_bayes': {
-            'name': 'Naive Bayes',
-            'class': NaiveBayesModel,
-            'implemented': True,
-            'description': 'Gaussian Naive Bayes classifier',
-            'deterministic': True,
-            'notes': 'Fast probabilistic baseline'
-        },
-        'lightgbm': {
-            'name': 'LightGBM',
-            'class': LightGBMModel,
-            'implemented': _LIGHTGBM_AVAILABLE,
-            'description': 'LightGBM gradient boosting',
-            'deterministic': True,
-            'notes': 'Requires lightgbm package'
-        },
-        'knn_5': {
-            'name': 'KNN (k=5)',
-            'class': KNN5Model,
-            'implemented': True,
-            'description': 'K-nearest neighbors with k=5',
-            'deterministic': True,
-            'notes': 'Uses StandardScaler'
-        },
-        'knn_10': {
-            'name': 'KNN (k=10)',
-            'class': KNN10Model,
-            'implemented': True,
-            'description': 'K-nearest neighbors with k=10',
-            'deterministic': True,
-            'notes': 'Uses StandardScaler'
-        },
-        'extra_trees': {
-            'name': 'Extra Trees',
-            'class': ExtraTreesModel,
-            'implemented': True,
-            'description': 'Extremely randomized trees ensemble',
-            'deterministic': True,
-            'notes': 'Sklearn ExtraTreesClassifier'
         },
         'fnn': {
             'name': 'Feedforward Neural Network',
@@ -940,11 +498,12 @@ def evaluate_model(
         'f1_weighted': f1_score(y_true, y_pred, average='weighted'),
     }
     
-    # Per-class F1 — force all 5 classes to ensure correct index-to-name mapping
+    # Per-class F1
     class_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    f1_per_class = f1_score(y_true, y_pred, average=None, labels=[0, 1, 2, 3, 4], zero_division=0)
+    f1_per_class = f1_score(y_true, y_pred, average=None)
     for i, name in enumerate(class_names):
-        metrics[f'f1_{name}'] = f1_per_class[i]
+        if i < len(f1_per_class):
+            metrics[f'f1_{name}'] = f1_per_class[i]
     
     # Clinical target checks
     metrics['meets_accuracy_target'] = metrics['accuracy'] >= 0.85

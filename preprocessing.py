@@ -150,7 +150,7 @@ class SignalPreprocessor:
             logger.info(f"Already at target sampling rate: {current_sfreq} Hz")
             return raw
         
-        logger.info(f"Resampling: {current_sfreq} Hz -> {self.target_sfreq} Hz")
+        logger.info(f"Resampling: {current_sfreq} Hz → {self.target_sfreq} Hz")
         
         raw_resampled = raw.copy().resample(
             sfreq=self.target_sfreq,
@@ -300,16 +300,16 @@ class EpochExtractor:
     def validate_epoch_quality(
         self,
         epochs: np.ndarray,
-        max_amplitude: float = 1000e-6,  # 1000 µV in Volts (MNE default unit)
-        min_amplitude: float = 0.1e-6  # 0.1 µV in Volts (MNE default unit)
+        max_amplitude: float = 1000.0,  # µV - increased for BOAS data
+        min_amplitude: float = 0.1  # µV - decreased threshold
     ) -> np.ndarray:
         """
         Validate epoch quality based on amplitude criteria.
         
         Args:
             epochs: Epoch data (n_epochs, n_channels, n_samples)
-            max_amplitude: Maximum allowed amplitude in Volts (MNE default)
-            min_amplitude: Minimum required peak-to-peak amplitude in Volts
+            max_amplitude: Maximum allowed amplitude (µV)
+            min_amplitude: Minimum required amplitude (µV)
             
         Returns:
             Boolean mask (n_epochs,) - True = valid
@@ -327,11 +327,8 @@ class EpochExtractor:
                 valid_mask[i] = False
                 continue
             
-            # Check for flat signal (disconnection) - per-channel check
-            if epoch.ndim > 1:
-                peak_to_peak = (epoch.max(axis=1) - epoch.min(axis=1)).min()
-            else:
-                peak_to_peak = epoch.max() - epoch.min()
+            # Check for flat signal (disconnection)
+            peak_to_peak = epoch.max() - epoch.min()
             if peak_to_peak < min_amplitude:
                 logger.debug(f"Epoch {i} rejected: peak-to-peak {peak_to_peak:.2f} < {min_amplitude}")
                 valid_mask[i] = False

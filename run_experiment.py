@@ -16,7 +16,6 @@ Date: December 2025
 """
 
 import argparse
-import time
 from pathlib import Path
 import sys
 import logging
@@ -211,7 +210,7 @@ def create_config_from_args(args) -> ExperimentConfig:
 
 
 def print_experiment_summary(config: ExperimentConfig):
-    """Print full experiment configuration: data, preprocessing, features, model, and CV settings."""
+    """Print experiment configuration summary."""
     print("\n" + "="*60)
     print("EXPERIMENT CONFIGURATION")
     print("="*60)
@@ -234,7 +233,7 @@ def print_experiment_summary(config: ExperimentConfig):
     print(f"\nPreprocessing:")
     print(f"  Bandpass: {config.preprocessing.bandpass_low}-{config.preprocessing.bandpass_high} Hz")
     print(f"  Notch: {config.preprocessing.notch_frequency} Hz")
-    print(f"  Sampling: {config.preprocessing.original_sfreq} -> {config.preprocessing.target_sfreq} Hz")
+    print(f"  Sampling: {config.preprocessing.original_sfreq} → {config.preprocessing.target_sfreq} Hz")
     print(f"  Epoch duration: {config.preprocessing.epoch_duration} s")
     print(f"\nFeatures:")
     expected_features = config.data.get_expected_features()
@@ -249,12 +248,7 @@ def print_experiment_summary(config: ExperimentConfig):
 
 
 def main():
-    """Entry point: handle info commands, launch interactive or CLI mode, run Stage 1+2 pipeline."""
-    # Ensure UTF-8 output on Windows (avoids UnicodeEncodeError when piping)
-    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-
+    """Main entry point."""
     # Parse arguments
     args = parse_arguments()
     
@@ -323,16 +317,14 @@ def main():
              'model': config.model.model_type}
         )
         
-        # ============================================================
-        # Stage 1: Feature Extraction (with Layer 1 caching)
-        # ============================================================
+        # Create and run pipeline
         logger.info("Initializing pipeline...")
         pipeline = DataPipeline(config)
-
+        
         # Run
         save_intermediate = not args.no_save_intermediate
-        stats = pipeline.run(save_intermediate=save_intermediate)
-
+        stats = pipeline.run()
+        
         # Update leaderboard
         leaderboard.finalize_run(
             run,
@@ -340,133 +332,28 @@ def main():
             cache_misses=stats.get('cache_misses', 0),
             total_time=stats.get('elapsed_time_seconds', 0)
         )
-
-        # Print Stage 1 summary
+        
+        # Print results
         print("\n" + "="*60)
-        print("STAGE 1 COMPLETE: FEATURE EXTRACTION")
+        print("EXPERIMENT COMPLETE")
         print("="*60)
         print(f"Subjects processed: {stats['n_subjects_processed']}")
         print(f"Total epochs: {stats['n_total_epochs']}")
         print(f"Features extracted: {stats['n_features']}")
         print(f"Time elapsed: {stats['elapsed_time_seconds']:.1f} seconds")
-
+        print(f"               ({stats['elapsed_time_seconds']/60:.1f} minutes)")
+        
+        # Cache stats
         if 'cache_hits' in stats:
             total = stats.get('cache_hits', 0) + stats.get('cache_misses', 0)
             hit_rate = (stats['cache_hits'] / total * 100) if total > 0 else 0
-            print(f"Feature Cache: {stats.get('cache_hits', 0)} hits, "
-                  f"{stats.get('cache_misses', 0)} misses ({hit_rate:.1f}%)")
-        print("="*60)
-
-        # ============================================================
-        # Stage 2: Training with LOSO CV (with Layer 2 model caching)
-        # ============================================================
-        subjects = config.data.subjects or [str(i) for i in range(1, 129)]
-
-        print("\n" + "="*60)
-        print("STAGE 2: TRAINING WITH LOSO CROSS-VALIDATION")
-        print("="*60)
-
-        from run_training import load_cached_features
-        from training import TrainingPipeline, create_training_grid
-        from output_formatter import get_formatter, set_verbosity_from_args
-
-        # Load features from Layer 1 cache
-        load_start = time.time()
-        features_df, labels, subject_ids = load_cached_features(subjects)
-        load_time = time.time() - load_start
-        print(f"Features loaded from cache in {load_time:.1f}s")
-
-        # Build training grid from config
-        models = config.training_models or [config.model.model_type]
-        feature_configs = config.training_feature_configs or [(config.features.correlation_threshold, None)]
-
-        corr_thresholds = sorted(set(c for c, _ in feature_configs), key=lambda x: (x is None, x or 0))
-        top_k_list = sorted(set(k for _, k in feature_configs), key=lambda x: (x is None, x or 0))
-
-        configs_grid = create_training_grid(
-            models=models,
-            correlation_thresholds=corr_thresholds,
-            top_k_features=top_k_list,
-            random_state=config.model.random_seed,
-        )
-
-        import numpy as np
-        n_folds = len(np.unique(subject_ids))
-        print(f"Models: {models}")
-        print(f"Feature configs: {len(corr_thresholds)} corr x {len(top_k_list)} top_k")
-        print(f"Training grid: {len(configs_grid)} configs x {n_folds} LOSO folds "
-              f"= {len(configs_grid) * n_folds} model trainings")
-        print("="*60)
-
-        # Setup output and formatter
-        set_verbosity_from_args(verbose=False, quiet=False)
-        formatter = get_formatter()
-
-        output_dir = Path(stats['output_directory'])
-        training_dir = output_dir / "training"
-        training_dir.mkdir(parents=True, exist_ok=True)
-
-        training_pipeline = TrainingPipeline(
-            features_df=features_df,
-            labels=labels,
-            subject_ids=subject_ids,
-            output_dir=training_dir,
-            experiment_name=config.experiment_name,
-            formatter=formatter,
-            n_jobs=1,
-            enable_model_cache=True,
-        )
-
-        train_start = time.time()
-        results = training_pipeline.run_grid(configs_grid, save_intermediate=True)
-        train_time = time.time() - train_start
-
-        # Collect model cache stats
-        model_cache_stats = {}
-        if training_pipeline.model_cache is not None:
-            mc_stats = training_pipeline.model_cache.get_stats()
-            model_cache_stats = mc_stats.get('metrics', {})
-
-        # Update leaderboard with combined stats
-        total_time = stats.get('elapsed_time_seconds', 0) + train_time
-        leaderboard.finalize_run(
-            run,
-            cache_hits=stats.get('cache_hits', 0) + model_cache_stats.get('hits', 0),
-            cache_misses=stats.get('cache_misses', 0) + model_cache_stats.get('misses', 0),
-            total_time=total_time
-        )
-
-        # Print final summary
-        print("\n" + "="*60)
-        print("EXPERIMENT COMPLETE")
-        print("="*60)
-
-        # Find best result
-        best_result = None
-        best_acc = 0
-        for r in results:
-            if r.accuracy_mean > best_acc:
-                best_acc = r.accuracy_mean
-                best_result = r
-
-        print(f"\nStage 1 (Features):  {stats['elapsed_time_seconds']:.1f}s")
-        print(f"Stage 2 (Training):  {train_time:.1f}s ({train_time/60:.1f} min)")
-        print(f"Total:               {total_time:.1f}s ({total_time/60:.1f} min)")
-
-        print(f"\nFeature Cache (Layer 1): {stats.get('cache_hits', 0)} hits, "
-              f"{stats.get('cache_misses', 0)} misses")
-        print(f"Model Cache (Layer 2):   {model_cache_stats.get('hits', 0)} hits, "
-              f"{model_cache_stats.get('misses', 0)} misses")
-
-        if best_result:
-            print(f"\nBest Result: {best_result.config_id}")
-            print(f"  Accuracy: {best_result.accuracy_mean:.4f} +/- {best_result.accuracy_std:.4f}")
-            print(f"  Kappa:    {best_result.kappa_mean:.4f}")
-            print(f"  F1 Macro: {best_result.f1_macro_mean:.4f}")
-
+            print(f"\nCache Performance:")
+            print(f"  Hits: {stats.get('cache_hits', 0)} | Misses: {stats.get('cache_misses', 0)}")
+            print(f"  Hit Rate: {hit_rate:.1f}%")
+        
         print(f"\nResults saved to: {stats['output_directory']}")
         print("="*60 + "\n")
-
+        
         logger.info("Experiment completed successfully")
         
     except KeyboardInterrupt:

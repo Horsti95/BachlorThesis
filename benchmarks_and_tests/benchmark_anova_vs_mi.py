@@ -193,7 +193,7 @@ results = {
     "conclusion": {
         "speedup": f"{speedup:.0f}x",
         "accuracy_difference": f"{acc_diff:.2f}%",
-        "thesis_claim_validated": bool(speedup > 100 and acc_diff < 1.0)
+        "thesis_claim_validated": speedup > 100 and acc_diff < 1.0
     }
 }
 

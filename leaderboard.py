@@ -21,7 +21,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 import time
-from evaluation import CLINICAL_TARGETS, EXPECTED_CLASS_PERFORMANCE
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ class CacheEvent:
     features_loaded: int
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
 
@@ -75,7 +73,6 @@ class ExperimentRun:
         return (self.cache_hits / total) * 100
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary, including computed cache hit rate."""
         d = asdict(self)
         d['cache_hit_rate_percent'] = self.cache_hit_rate()
         return d
@@ -161,7 +158,6 @@ class CacheLeaderboard:
     """
     
     def __init__(self, leaderboard_path: str = "results/cache_leaderboard.json"):
-        """Initialize leaderboard, loading existing data from disk if available."""
         self.leaderboard_path = Path(leaderboard_path)
         self.leaderboard_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -278,13 +274,13 @@ class CacheLeaderboard:
             self.total_cache_misses += 1
     
     def record_experiment_run(self, run: ExperimentRun):
-        """Record a complete experiment run and persist to disk."""
+        """Record a complete experiment run."""
         self.runs.append(run)
         self.total_time_saved += run.time_saved
         self._save()
     
     def start_run(self, experiment_name: str, config_summary: Dict = None) -> ExperimentRun:
-        """Create a new ExperimentRun for tracking. Call finalize_run() when done."""
+        """Start tracking a new experiment run."""
         run = ExperimentRun(
             experiment_name=experiment_name,
             timestamp=datetime.now().isoformat(),
@@ -322,8 +318,9 @@ class CacheLeaderboard:
             total_subjects = cache_hits + cache_misses
             run.estimated_cold_time = total_subjects * self.timing_targets.cold_miss_target
         
-        # Note: global totals are already updated by record_cache_event() calls
-        # during the run, so we do NOT increment again here to avoid double-counting
+        # Update global totals
+        self.total_cache_hits += cache_hits
+        self.total_cache_misses += cache_misses
         
         self.record_experiment_run(run)
     
@@ -443,7 +440,21 @@ def format_time_estimate(estimate: Dict) -> str:
     return "\n".join(lines)
 
 
-# Clinical targets imported from evaluation.py (single source of truth)
+# Clinical targets
+CLINICAL_TARGETS = {
+    'accuracy': 0.85,
+    'kappa': 0.75,
+    'f1_macro': 0.80,
+    'note': 'Standard clinical thresholds for sleep staging'
+}
+
+EXPECTED_CLASS_PERFORMANCE = {
+    'Wake': {'f1_range': (0.70, 0.90), 'note': 'Generally good'},
+    'N1': {'f1_range': (0.20, 0.40), 'note': 'Expected poor - transitional stage'},
+    'N2': {'f1_range': (0.75, 0.90), 'note': 'Good - most common stage'},
+    'N3': {'f1_range': (0.70, 0.85), 'note': 'Good - distinct delta waves'},
+    'REM': {'f1_range': (0.65, 0.85), 'note': 'Moderate - can be confused with Wake'},
+}
 
 
 def print_clinical_targets():

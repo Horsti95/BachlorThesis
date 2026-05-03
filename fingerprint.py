@@ -28,13 +28,26 @@ Status: IMPLEMENTED
 import hashlib
 import json
 from typing import Dict, Any, Optional, List, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-# Default code version - update on releases or use git hash
+# Code version — manually bumped for the thesis run.
+#
+# Limitation (disclosed in Methodology §Fingerprint Generation):
+#   This string feeds the cache fingerprint, so two checkouts that share
+#   the same string but differ in source will silently reuse cached
+#   models. For the thesis the codebase is frozen during the experimental
+#   run, so a static literal is sufficient. For production / continued
+#   work, replace this with a runtime lookup such as:
+#       subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+#   (with a non-git fallback) or any equivalent build-time identifier
+#   from CI / a release pipeline. That ties the cache key to a real-
+#   world version anchor and invalidates caches automatically on every
+#   commit.
+# TODO (post-thesis): wire this to git SHA / build identifier.
 __version__ = "1.0.0"
 
 
@@ -274,14 +287,10 @@ class LOSOFingerprint:
         Returns:
             32-character hex string fingerprint
         """
-        model_name = config_dict.get('model_type') or config_dict.get('model_name')
-        if not model_name:
-            raise ValueError("config_dict must contain 'model_type' or 'model_name'")
-
         return cls.generate(
             random_seed=config_dict.get('random_seed', config_dict.get('random_state', 42)),
             code_version=config_dict.get('code_version', __version__),
-            model_name=model_name,
+            model_name=config_dict.get('model_type', config_dict.get('model_name', 'unknown')),
             model_params=config_dict.get('model_params', {}),
             feature_config=config_dict.get('feature_config', {}),
             held_out_subject=held_out_subject,

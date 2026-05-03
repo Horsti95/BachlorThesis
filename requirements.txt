@@ -17,18 +17,14 @@ torch>=2.0.0                  # Neural networks (PyTorch)
 
 # Caching & Storage
 joblib>=1.2.0                 # Efficient serialization
-# pickle5 is built into Python 3.8+, no separate install needed
 
 # Utilities
 pyyaml>=6.0                   # Configuration files
 tqdm>=4.65.0                  # Progress bars
-python-dateutil>=2.8.0        # Date handling
-questionary>=2.0.0            # Interactive CLI menus
 
 # Optional but Recommended
 matplotlib>=3.7.0             # Visualization
 seaborn>=0.12.0               # Statistical plotting
-jupyter>=1.0.0                # Interactive notebooks
 
 # Development Tools (optional)
 pytest>=7.3.0                 # Unit testing

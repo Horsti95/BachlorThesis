@@ -45,17 +45,25 @@ class FeatureSelectionConfig:
                                   'hybrid' (balanced, ANOVA -> MI two-stage)
                          Default: 'anova' for speed (benchmark validated)
         scope: Scope of feature selection.
-               Options: 'per_fold' (fit on each fold's training data - correct),
-                        'global' (fit once on all data - faster, minor leakage)
-               Default: 'global' for speed (benchmark validated: <1% accuracy diff)
+               Options: 'per_fold' (fit on each fold's training data — strict,
+                                    leakage-free, recommended for production MLOps),
+                        'global' (fit once on all data — faster, but the selector
+                                  sees held-out subjects' labels, introducing
+                                  supervised label leakage)
+               Default: 'global' for the thesis caching study (deliberate choice,
+                        documented in Methodology §Feature Selection Strategy).
+                        Set to 'per_fold' for strict, leakage-free LOSO CV.
         use_hybrid: DEPRECATED - use selection_method='hybrid' instead
         random_state: Random seed for reproducibility
     """
     correlation_threshold: Optional[float] = None
     top_k_features: Optional[int] = None
     selection_method: str = 'anova'  # 'anova', 'mi', 'hybrid' - ANOVA is ~200x faster
-    scope: str = 'global'  # 'per_fold', 'global' - global is faster with minimal leakage
-    use_hybrid: bool = True  # DEPRECATED - ignored, kept only for config file compat
+    scope: str = 'global'  # See class docstring above. 'global' introduces label
+                            # leakage from held-out folds; used here for the caching
+                            # study with prior approval. 'per_fold' is the strict
+                            # MLOps default. See Methodology §Feature Selection.
+    use_hybrid: bool = True  # DEPRECATED - kept for backward compatibility
     random_state: int = 42
     
     def __post_init__(self):
@@ -96,7 +104,7 @@ class FeatureSelectionConfig:
             'top_k_features': self.top_k_features,
             'selection_method': self.selection_method,
             'scope': self.scope,
-            # 'use_hybrid' omitted - deprecated field, excluded from serialization
+            'use_hybrid': self.use_hybrid,  # deprecated
             'random_state': self.random_state
         }
 
@@ -134,39 +142,40 @@ class CorrelationFilter:
         Returns:
             Self for method chaining
         """
-        logger.debug(f"Fitting CorrelationFilter with threshold={self.threshold}")
-
+        logger.info(f"Fitting CorrelationFilter with threshold={self.threshold}")
+        
         # Compute correlation matrix
         self.correlation_matrix_ = X.corr().abs()
-
+        
         # Get upper triangle (avoid duplicates)
         upper_tri = self.correlation_matrix_.where(
             np.triu(np.ones(self.correlation_matrix_.shape), k=1).astype(bool)
         )
-
+        
         # Find features with correlation above threshold
         features_to_remove = set()
         highly_correlated_pairs = []
-
+        
         for col in upper_tri.columns:
             correlated_features = upper_tri.index[upper_tri[col] > self.threshold].tolist()
-
+            
             for corr_feature in correlated_features:
                 corr_value = self.correlation_matrix_.loc[corr_feature, col]
                 highly_correlated_pairs.append((corr_feature, col, corr_value))
-
+                
                 # Remove the one with lower variance
                 if X[corr_feature].var() < X[col].var():
                     features_to_remove.add(corr_feature)
                 else:
                     features_to_remove.add(col)
-
+        
         self.features_to_remove_ = list(features_to_remove)
         self.is_fitted_ = True
-
+        
         n_removed = len(self.features_to_remove_)
         n_pairs = len(highly_correlated_pairs)
-        logger.debug(f"Found {n_pairs} highly correlated pairs, removing {n_removed} features")
+        logger.info(f"Found {n_pairs} highly correlated pairs")
+        logger.info(f"Will remove {n_removed} features: {self.features_to_remove_[:5]}...")
         
         return self
     
@@ -236,12 +245,15 @@ class TopKSelector:
         Returns:
             Self for method chaining
         """
-        logger.debug(f"Fitting TopKSelector with k={self.k}")
+        logger.info(f"Fitting TopKSelector with k={self.k}")
         
         # Ensure k doesn't exceed available features
         actual_k = min(self.k, X.shape[1])
         if actual_k < self.k:
             logger.warning(f"Requested k={self.k} but only {X.shape[1]} features available. Using k={actual_k}")
+            # Print to console as well for visibility
+            print(f"\n[!] WARNING: Requested k={self.k} features but only {X.shape[1]} available after correlation filter.")
+            print(f"    Using all {actual_k} features instead.\n")
         
         # Create selector with mutual information scorer
         # Note: mutual_info_classif uses random_state internally
@@ -262,14 +274,14 @@ class TopKSelector:
         
         # Log top features
         sorted_features = sorted(self.feature_scores_.items(), key=lambda x: x[1], reverse=True)
-        logger.debug(f"Top 5 features by MI: {sorted_features[:5]}")
-
+        logger.info(f"Top 5 features by MI: {sorted_features[:5]}")
+        
         return self
-
+    
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Select top-K features.
-
+        
         Args:
             X: Feature DataFrame
             
@@ -347,7 +359,7 @@ class ANOVATopKSelector:
             Self for method chaining
         """
         start_time = time.time()
-        logger.debug(f"Fitting ANOVATopKSelector with k={self.k}")
+        logger.info(f"Fitting ANOVATopKSelector with k={self.k}")
         
         # Ensure k doesn't exceed available features
         actual_k = min(self.k, X.shape[1])
@@ -371,8 +383,8 @@ class ANOVATopKSelector:
         
         # Log top features
         sorted_features = sorted(self.feature_scores_.items(), key=lambda x: x[1], reverse=True)
-        logger.debug(f"ANOVA selection complete in {self.selection_time_:.2f}s")
-        logger.debug(f"Top 5 features by F-score: {sorted_features[:5]}")
+        logger.info(f"ANOVA selection complete in {self.selection_time_:.2f}s")
+        logger.info(f"Top 5 features by F-score: {sorted_features[:5]}")
         
         return self
     
@@ -482,7 +494,7 @@ class HybridTopKSelector:
         actual_intermediate_k = min(intermediate_k, X.shape[1])
         actual_final_k = min(self.k, actual_intermediate_k)
         
-        logger.debug(f"Fitting HybridTopKSelector: {X.shape[1]} -> {actual_intermediate_k} -> {actual_final_k} features")
+        logger.info(f"Fitting HybridTopKSelector: {X.shape[1]} -> {actual_intermediate_k} -> {actual_final_k} features")
         
         # ========== STAGE 1: Fast ANOVA F-test ==========
         stage1_start = time.time()
@@ -499,7 +511,7 @@ class HybridTopKSelector:
         X_intermediate = X[self.stage1_features_]
         
         self.stage1_time_ = time.time() - stage1_start
-        logger.debug(f"Stage 1 (f_classif): {X.shape[1]} -> {len(self.stage1_features_)} features in {self.stage1_time_:.2f}s")
+        logger.info(f"Stage 1 (f_classif): {X.shape[1]} -> {len(self.stage1_features_)} features in {self.stage1_time_:.2f}s")
         
         # ========== STAGE 2: Precise MI on reduced set ==========
         stage2_start = time.time()
@@ -518,13 +530,13 @@ class HybridTopKSelector:
         self.stage2_time_ = time.time() - stage2_start
         total_time = time.time() - start_total
         
-        logger.debug(f"Stage 2 (MI): {len(self.stage1_features_)} -> {len(self.selected_features_)} features in {self.stage2_time_:.2f}s")
-        logger.debug(f"Hybrid selection complete: {total_time:.2f}s total")
+        logger.info(f"Stage 2 (MI): {len(self.stage1_features_)} -> {len(self.selected_features_)} features in {self.stage2_time_:.2f}s")
+        logger.info(f"Hybrid selection complete: {total_time:.2f}s total")
         
         # Log top features
         sorted_features = sorted(self.feature_scores_.items(), key=lambda x: x[1], reverse=True)
-        logger.debug(f"Top 5 features by MI: {sorted_features[:5]}")
-
+        logger.info(f"Top 5 features by MI: {sorted_features[:5]}")
+        
         self.is_fitted_ = True
         return self
     
@@ -585,14 +597,19 @@ class FeatureSelectionPipeline:
     - 'mi': SLOWEST (~4300s), uses Mutual Information, ~0.803 accuracy  
     - 'hybrid': BALANCED, uses F-test → MI two-stage
     
-    RECOMMENDATION: Use 'anova' + 'global' scope (validated by benchmark)
-    
+    RECOMMENDATION (this thesis): Use 'anova' + 'global' scope. Note that
+    'global' scope refits the selector on the full dataset and therefore sees
+    held-out subjects' labels, which is supervised label leakage. This is a
+    deliberate methodological choice for the caching study and is disclosed
+    in Methodology §Feature Selection Strategy. For strict, leakage-free LOSO
+    CV use scope='per_fold'.
+
     Usage:
         config = FeatureSelectionConfig(
-            correlation_threshold=0.95, 
+            correlation_threshold=0.95,
             top_k_features=50,
             selection_method='anova',  # FAST
-            scope='global'             # Minor leakage, big speedup
+            scope='global'             # See note above re: label leakage.
         )
         pipeline = FeatureSelectionPipeline(config)
         X_train_selected = pipeline.fit_transform(X_train, y_train)
@@ -613,7 +630,8 @@ class FeatureSelectionPipeline:
         self.anova_selector_: Optional[ANOVATopKSelector] = None
         self.top_k_selector_: Optional[TopKSelector] = None
         self.hybrid_selector_: Optional[HybridTopKSelector] = None
-        
+
+
         # Statistics
         self.n_features_input_: int = 0
         self.n_features_after_corr_: int = 0
@@ -626,7 +644,7 @@ class FeatureSelectionPipeline:
         
         method_str = f" ({self._selection_method.upper()})"
         scope_str = f" [scope={config.scope}]"
-        logger.debug(f"Initialized FeatureSelectionPipeline: {config.get_config_id()}{method_str}{scope_str}")
+        logger.info(f"Initialized FeatureSelectionPipeline: {config.get_config_id()}{method_str}{scope_str}")
     
     def fit(self, X: pd.DataFrame, y: np.ndarray) -> 'FeatureSelectionPipeline':
         """
@@ -642,8 +660,8 @@ class FeatureSelectionPipeline:
         start_time = time.time()
         self.n_features_input_ = X.shape[1]
         self.feature_names_input_ = list(X.columns)  # Store input feature names
-        logger.debug(f"Fitting FeatureSelectionPipeline on {X.shape[0]} samples, {X.shape[1]} features")
-        logger.debug(f"  Method: {self._selection_method}, Scope: {self.config.scope}")
+        logger.info(f"Fitting FeatureSelectionPipeline on {X.shape[0]} samples, {X.shape[1]} features")
+        logger.info(f"  Method: {self._selection_method}, Scope: {self.config.scope}")
         
         X_current = X.copy()
         
@@ -653,11 +671,11 @@ class FeatureSelectionPipeline:
             X_current = self.correlation_filter_.fit_transform(X_current)
             self.n_features_after_corr_ = X_current.shape[1]
             self.feature_names_after_corr_ = list(X_current.columns)  # Store names for kAll
-            logger.debug(f"After correlation filter: {X_current.shape[1]} features")
+            logger.info(f"After correlation filter: {X_current.shape[1]} features")
         else:
             self.n_features_after_corr_ = X_current.shape[1]
             self.feature_names_after_corr_ = list(X_current.columns)  # All features
-            logger.debug("Correlation filtering: SKIPPED (threshold=None)")
+            logger.info("Correlation filtering: SKIPPED (threshold=None)")
         
         # Step 2: Top-K selection (if configured)
         if self.config.top_k_features is not None:
@@ -668,7 +686,7 @@ class FeatureSelectionPipeline:
                     random_state=self.config.random_state
                 )
                 self.anova_selector_.fit(X_current, y)
-                logger.debug(f"Top-K selection (ANOVA): selected {min(self.config.top_k_features, X_current.shape[1])} features")
+                logger.info(f"Top-K selection (ANOVA): selected {min(self.config.top_k_features, X_current.shape[1])} features")
             elif self._selection_method == 'hybrid':
                 # Use fast hybrid f_classif -> MI selection
                 self.hybrid_selector_ = HybridTopKSelector(
@@ -676,7 +694,7 @@ class FeatureSelectionPipeline:
                     random_state=self.config.random_state
                 )
                 self.hybrid_selector_.fit(X_current, y)
-                logger.debug(f"Top-K selection (HYBRID): selected {min(self.config.top_k_features, X_current.shape[1])} features")
+                logger.info(f"Top-K selection (HYBRID): selected {min(self.config.top_k_features, X_current.shape[1])} features")
             elif self._selection_method == 'mi':
                 # Use pure MI (SLOWEST but captures all non-linear relationships)
                 self.top_k_selector_ = TopKSelector(
@@ -684,15 +702,15 @@ class FeatureSelectionPipeline:
                     random_state=self.config.random_state
                 )
                 self.top_k_selector_.fit(X_current, y)
-                logger.debug(f"Top-K selection (MI): selected {min(self.config.top_k_features, X_current.shape[1])} features")
+                logger.info(f"Top-K selection (MI): selected {min(self.config.top_k_features, X_current.shape[1])} features")
         else:
-            logger.debug("Top-K selection: SKIPPED (top_k=None)")
+            logger.info("Top-K selection: SKIPPED (top_k=None)")
         
         self.n_features_output_ = self._count_output_features(X_current)
         self.selection_time_ = time.time() - start_time
         self.is_fitted_ = True
         
-        logger.debug(f"Feature selection summary: {self.n_features_input_} -> {self.n_features_output_} in {self.selection_time_:.2f}s")
+        logger.info(f"Feature selection summary: {self.n_features_input_} -> {self.n_features_output_} in {self.selection_time_:.2f}s")
         return self
     
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -725,11 +743,8 @@ class FeatureSelectionPipeline:
         return X_current
     
     def fit_transform(self, X: pd.DataFrame, y: np.ndarray) -> pd.DataFrame:
-        """Fit and transform in one step (avoids redundant re-transform)."""
+        """Fit and transform in one step."""
         self.fit(X, y)
-        # Apply transform to the already-fitted data
-        # This re-applies the filter chain, but the selectors just do column drops
-        # which is cheap. The expensive part (correlation matrix, ANOVA) was in fit().
         return self.transform(X)
     
     def _count_output_features(self, X_after_corr: pd.DataFrame) -> int:
@@ -815,8 +830,10 @@ def create_feature_selection_grid(
     Args:
         selection_method: 'anova' (fast), 'mi' (slow), 'hybrid' (balanced)
                          Default: 'anova' (benchmark validated: 200× faster)
-        scope: 'global' (fast, minor leakage) or 'per_fold' (correct, slower)
-               Default: 'global' (benchmark validated: <1% accuracy diff)
+        scope: 'global' (fast; selector sees held-out labels — supervised
+                          leakage; disclosed in thesis Methodology) or
+                'per_fold' (strict, leakage-free, slower).
+               Default: 'global' for the thesis caching study.
     
     Returns:
         List of FeatureSelectionConfig objects

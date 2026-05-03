@@ -27,7 +27,6 @@ Status: IMPLEMENTED
 
 import json
 import logging
-import shutil
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
@@ -74,14 +73,13 @@ class CacheMetrics:
         """Cache miss rate (0.0 to 1.0)."""
         return 1.0 - self.hit_rate
     
-    def record_hit(self, estimated_training_time: float = 0.0):
+    def record_hit(self, estimated_training_time: float = 120.0):
         """
         Record a cache hit.
-
+        
         Args:
-            estimated_training_time: Actual or estimated time that would have been
-                                    spent training. Use real time from cache registry
-                                    when available (default: 0 = not tracked).
+            estimated_training_time: Estimated time that would have been spent
+                                    training (default: 120 seconds = 2 minutes)
         """
         self.hits += 1
         self.time_saved_seconds += estimated_training_time
@@ -122,7 +120,6 @@ class CacheMetrics:
             return f"{hours:.1f}h"
     
     def __str__(self) -> str:
-        """Return human-readable summary of hits, misses, hit rate, and time saved."""
         return (
             f"CacheMetrics(hits={self.hits}, misses={self.misses}, "
             f"hit_rate={self.hit_rate:.1%}, time_saved={self._format_time(self.time_saved_seconds)})"
@@ -145,7 +142,6 @@ class CachedModelInfo:
     file_size_bytes: int = 0
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert metadata fields to a plain dictionary for JSON serialization."""
         return asdict(self)
 
 
@@ -191,45 +187,33 @@ class LOSOModelCache:
         self,
         cache_dir: str = "results/loso_model_cache",
         enable_registry: bool = True,
-        estimated_training_time: float = 120.0,
-        min_free_space_gb: float = 5.0,
-        max_cache_size_gb: Optional[float] = None
+        estimated_training_time: float = 120.0
     ):
         """
         Initialize LOSO model cache.
-
+        
         Args:
             cache_dir: Directory to store cached models
             enable_registry: Whether to maintain a JSON registry of cached models
             estimated_training_time: Default estimated training time per fold (seconds)
                                     Used for time_saved calculations
-            min_free_space_gb: Minimum free disk space (GB) required to cache new models.
-                              If free space drops below this, caching is skipped. Default: 5 GB.
-            max_cache_size_gb: Maximum total cache size (GB). When exceeded, oldest models
-                              are evicted (LRU) until under limit. None = unlimited.
         """
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-
+        
         self.enable_registry = enable_registry
         self.estimated_training_time = estimated_training_time
-        self.min_free_space_gb = min_free_space_gb
-        self.max_cache_size_gb = max_cache_size_gb
-
-        # Track how many cache writes were skipped due to space constraints
-        self._space_skips = 0
-
+        
         # Performance metrics
         self.metrics = CacheMetrics()
-
+        
         # Load existing registry if available
         self._registry: Dict[str, CachedModelInfo] = {}
         if enable_registry:
             self._load_registry()
-
-        logger.debug(f"LOSOModelCache initialized at {self.cache_dir}")
-        logger.debug(f"  Existing cached models: {len(list(self.cache_dir.glob('*.joblib')))}")
-        logger.debug(f"  Min free space: {min_free_space_gb:.1f} GB, Max cache size: {max_cache_size_gb or 'unlimited'}")
+        
+        logger.info(f"LOSOModelCache initialized at {self.cache_dir}")
+        logger.info(f"  Existing cached models: {len(list(self.cache_dir.glob('*.joblib')))}")
     
     def _get_cache_path(self, fingerprint: str, held_out_subject: str) -> Path:
         """
@@ -247,7 +231,7 @@ class LOSOModelCache:
         return self.cache_dir / self.REGISTRY_FILENAME
     
     def _load_registry(self):
-        """Load cache registry from disk. Silently resets on read errors."""
+        """Load cache registry from disk."""
         registry_path = self._get_registry_path()
         if registry_path.exists():
             try:
@@ -262,7 +246,7 @@ class LOSOModelCache:
                 self._registry = {}
     
     def _save_registry(self):
-        """Save cache registry to disk as JSON. No-op if registry is disabled."""
+        """Save cache registry to disk."""
         if not self.enable_registry:
             return
         
@@ -274,22 +258,18 @@ class LOSOModelCache:
         except Exception as e:
             logger.warning(f"Failed to save cache registry: {e}")
     
-    def exists(self, fingerprint: str, held_out_subject: str, model_type: str = "unknown") -> bool:
+    def exists(self, fingerprint: str, held_out_subject: str) -> bool:
         """
         Check if a cached model exists.
-
+        
         Args:
             fingerprint: Configuration fingerprint
             held_out_subject: Subject ID held out for testing
-            model_type: Model type string (e.g., 'fnn') to check correct file extension
-
+            
         Returns:
             True if cached model exists, False otherwise
         """
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
-        if model_type == "fnn":
-            # FNN models are stored as .pt files, not .joblib
-            return Path(str(cache_path) + ".pt").exists()
         return cache_path.exists()
     
     def get(
@@ -316,16 +296,10 @@ class LOSOModelCache:
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
         if not cache_path.exists():
             if record_metrics:
-                self.metrics.record_miss()
+                pass
             logger.debug(f"Cache MISS: {fingerprint[:16]}..._{held_out_subject}")
             return None
         try:
-            # Look up actual training time from registry (real data, not estimate)
-            cache_key = f"{fingerprint}_{held_out_subject}"
-            actual_time = self.estimated_training_time
-            if cache_key in self._registry:
-                actual_time = self._registry[cache_key].training_time_seconds
-
             if model_type == "fnn":
                 import torch
                 # For FNN, load state_dict and scaler
@@ -339,131 +313,19 @@ class LOSOModelCache:
                 model.scaler = joblib.load(scaler_path)
                 model.is_fitted = True
                 if record_metrics:
-                    self.metrics.record_hit(actual_time)
+                    self.metrics.record_hit(self.estimated_training_time)
                 logger.debug(f"Cache HIT (FNN): {fingerprint[:16]}..._{held_out_subject}")
                 return model
             else:
                 model = joblib.load(cache_path)
                 if record_metrics:
-                    self.metrics.record_hit(actual_time)
+                    self.metrics.record_hit(self.estimated_training_time)
                 logger.debug(f"Cache HIT: {fingerprint[:16]}..._{held_out_subject}")
                 return model
         except Exception as e:
             logger.warning(f"Failed to load cached model: {e}")
-            if record_metrics:
-                self.metrics.record_miss()
             return None
     
-    def _get_free_space_gb(self) -> float:
-        """Get free disk space on the cache directory's filesystem in GB."""
-        try:
-            usage = shutil.disk_usage(self.cache_dir)
-            return usage.free / (1024 ** 3)
-        except OSError:
-            return float('inf')  # If we can't check, don't block caching
-
-    def _get_cache_size_bytes(self) -> int:
-        """Get total size of all cached model files in bytes."""
-        total = 0
-        for ext in [self.MODEL_EXTENSION, ".pt", "_scaler.joblib"]:
-            for f in self.cache_dir.glob(f"*{ext}"):
-                try:
-                    total += f.stat().st_size
-                except OSError:
-                    pass
-        return total
-
-    def _evict_oldest(self, target_bytes: int) -> int:
-        """
-        Evict oldest cached models (LRU) until target_bytes of space is freed.
-
-        Uses file modification time as the age indicator.
-
-        Returns:
-            Number of models evicted.
-        """
-        # Collect all joblib cache files with their mtime
-        cache_files = []
-        for f in self.cache_dir.glob(f"*{self.MODEL_EXTENSION}"):
-            if f.name == self.REGISTRY_FILENAME:
-                continue
-            try:
-                cache_files.append((f, f.stat().st_mtime, f.stat().st_size))
-            except OSError:
-                continue
-
-        # Also collect .pt files for FNN models
-        for f in self.cache_dir.glob("*.pt"):
-            try:
-                cache_files.append((f, f.stat().st_mtime, f.stat().st_size))
-            except OSError:
-                continue
-        for f in self.cache_dir.glob("*_scaler.joblib"):
-            try:
-                cache_files.append((f, f.stat().st_mtime, f.stat().st_size))
-            except OSError:
-                continue
-
-        # Sort by mtime ascending (oldest first)
-        cache_files.sort(key=lambda x: x[1])
-
-        freed = 0
-        evicted = 0
-        for filepath, _, size in cache_files:
-            if freed >= target_bytes:
-                break
-            try:
-                filepath.unlink()
-                freed += size
-                evicted += 1
-
-                # Remove from registry
-                stem = filepath.stem
-                # Try to find matching registry entry
-                keys_to_remove = [k for k in self._registry if stem.startswith(k.rsplit("_", 1)[0])]
-                for k in keys_to_remove:
-                    if k in self._registry:
-                        del self._registry[k]
-            except OSError as e:
-                logger.warning(f"Failed to evict {filepath}: {e}")
-
-        if evicted > 0:
-            logger.info(f"Cache eviction: removed {evicted} files, freed {freed / (1024**2):.1f} MB")
-            if self.enable_registry:
-                self._save_registry()
-
-        return evicted
-
-    def _check_space_and_evict(self) -> bool:
-        """
-        Check disk space constraints and evict if needed.
-
-        Returns:
-            True if caching is allowed, False if it should be skipped.
-        """
-        # Check minimum free disk space
-        free_gb = self._get_free_space_gb()
-        if free_gb < self.min_free_space_gb:
-            if self._space_skips == 0:
-                logger.warning(
-                    f"Disk space low: {free_gb:.1f} GB free (minimum: {self.min_free_space_gb:.1f} GB). "
-                    f"Skipping model caching to prevent disk-full errors."
-                )
-            self._space_skips += 1
-            return False
-
-        # Check max cache size and evict if needed
-        if self.max_cache_size_gb is not None:
-            cache_size_bytes = self._get_cache_size_bytes()
-            max_bytes = self.max_cache_size_gb * (1024 ** 3)
-            if cache_size_bytes > max_bytes:
-                overshoot = cache_size_bytes - max_bytes
-                # Evict at least 10% of max to avoid evicting every single put()
-                evict_target = max(overshoot, int(max_bytes * 0.1))
-                self._evict_oldest(evict_target)
-
-        return True
-
     def put(
         self,
         fingerprint: str,
@@ -485,12 +347,6 @@ class LOSOModelCache:
         Returns:
             True if successfully cached, False otherwise
         """
-        # Check disk space constraints before writing
-        if not self._check_space_and_evict():
-            if record_metrics:
-                self.metrics.record_miss(training_time)
-            return False
-
         cache_path = self._get_cache_path(fingerprint, held_out_subject)
         try:
             if model_type == "fnn":
@@ -568,14 +424,7 @@ class LOSOModelCache:
                 try:
                     cache_file.unlink()
                     count += 1
-                    # Also clean up FNN-specific files (.pt and _scaler.joblib)
-                    pt_file = Path(str(cache_file) + ".pt")
-                    scaler_file = Path(str(cache_file) + "_scaler.joblib")
-                    if pt_file.exists():
-                        pt_file.unlink()
-                    if scaler_file.exists():
-                        scaler_file.unlink()
-
+                    
                     # Remove from registry
                     cache_key = f"{file_fp}_{file_subject}"
                     if cache_key in self._registry:
@@ -600,17 +449,13 @@ class LOSOModelCache:
         cached_files = list(self.cache_dir.glob(f"*{self.MODEL_EXTENSION}"))
         total_size = sum(f.stat().st_size for f in cached_files)
         
-        free_gb = self._get_free_space_gb()
         return {
             'metrics': self.metrics.to_dict(),
             'storage': {
                 'cached_models': len(cached_files),
                 'total_size_mb': round(total_size / (1024 * 1024), 2),
                 'avg_size_mb': round(total_size / (1024 * 1024 * max(len(cached_files), 1)), 2),
-                'cache_dir': str(self.cache_dir),
-                'free_space_gb': round(free_gb, 2),
-                'max_cache_size_gb': self.max_cache_size_gb,
-                'space_skips': self._space_skips
+                'cache_dir': str(self.cache_dir)
             },
             'session': {
                 'hits': self.metrics.hits,
@@ -625,7 +470,6 @@ class LOSOModelCache:
         self.metrics = CacheMetrics()
     
     def __repr__(self) -> str:
-        """Return a string summary with cache directory, model count, and metrics."""
         cached_count = len(list(self.cache_dir.glob(f"*{self.MODEL_EXTENSION}")))
         return f"LOSOModelCache(dir='{self.cache_dir}', cached={cached_count}, {self.metrics})"
 

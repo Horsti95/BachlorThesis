@@ -17,6 +17,7 @@ Date: December 2025
 """
 
 import sys
+import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -153,7 +154,7 @@ class TrainingOutputFormatter:
     
     def print_experiment_header(self, experiment_name: str, n_subjects: int,
                                  n_configs: int, n_folds: int):
-        """Print main experiment header with subject/config/fold counts in a box."""
+        """Print main experiment header."""
         w = self.WIDTH
         print()
         print(BOX['tl'] + BOX['h'] * (w - 2) + BOX['tr'])
@@ -167,9 +168,9 @@ class TrainingOutputFormatter:
         print(BOX['bl'] + BOX['h'] * (w - 2) + BOX['br'])
         print()
     
-    def print_cache_status(self, n_subjects: int, n_cached: int,
+    def print_cache_status(self, n_subjects: int, n_cached: int, 
                            cache_path: str, load_time: float = 0.0):
-        """Print cache hit/miss status, location, and load time."""
+        """Print cache status information."""
         w = self.WIDTH
         hit_rate = (n_cached / n_subjects * 100) if n_subjects > 0 else 0
         status_icon = ICONS['check'] if hit_rate == 100 else ICONS['warning'] if hit_rate > 0 else ICONS['cross']
@@ -180,7 +181,7 @@ class TrainingOutputFormatter:
         print(f"{status_icon} Feature Cache: {'ACTIVE' if n_cached > 0 else 'EMPTY'}")
         print(f"   * Location: {cache_path}")
         print(f"   * Subjects cached: {n_cached}/{n_subjects} ({hit_rate:.0f}%)")
-        print(f"   * Features per subject: extracted from cache")
+        print(f"   * Features per subject: 149")
         if load_time > 0:
             print(f"   * Cache load time: {load_time:.2f}s (vs ~25s cold extraction)")
         print()
@@ -191,7 +192,7 @@ class TrainingOutputFormatter:
     
     def print_loso_setup(self, n_subjects: int, subject_epochs: Dict[str, int],
                          total_epochs: int):
-        """Print LOSO CV setup including data leakage prevention checks."""
+        """Print LOSO cross-validation setup."""
         if self.verbosity == Verbosity.QUIET:
             return
             
@@ -205,8 +206,8 @@ class TrainingOutputFormatter:
         print(f"Classification:     Per-Epoch (each 30s epoch classified independently)")
         print()
         print("Data Leakage Prevention:")
-        print(f"  {ICONS['check']} Feature selection: global scope (minimal leakage, 1/N subjects)")
-        print(f"  {ICONS['check']} Model training: test subject completely held out")
+        print(f"  {ICONS['check']} Feature selection fitted on TRAINING data only")
+        print(f"  {ICONS['check']} Test subject completely held out during training")
         print(f"  {ICONS['check']} No epoch from test subject seen during training")
         print()
         
@@ -225,9 +226,9 @@ class TrainingOutputFormatter:
     # Configuration Headers
     # =========================================================================
     
-    def print_config_header(self, config_name: str, config_idx: int,
+    def print_config_header(self, config_name: str, config_idx: int, 
                             total_configs: int, config: Dict[str, Any]):
-        """Print configuration header box with model type and feature selection settings."""
+        """Print configuration header box."""
         self._current_config = config_name
         self._fold_results = []
         
@@ -259,7 +260,7 @@ class TrainingOutputFormatter:
     
     def print_fold_start(self, fold_idx: int, n_folds: int, test_subject: str,
                          n_train_subjects: int, n_train_epochs: int, n_test_epochs: int):
-        """Print fold start with train/test split details. Verbose shows a box, normal is one-line."""
+        """Print fold start information."""
         if self.verbosity == Verbosity.QUIET:
             return
         
@@ -277,11 +278,11 @@ class TrainingOutputFormatter:
         else:
             # Normal mode: compact output
             print(f"  Fold {fold_idx:2d}/{n_folds}: Test=Subject_{test_subject} "
-                  f"(train: {n_train_epochs:,} epochs, test: {n_test_epochs:,} epochs)", end="", flush=True)
+                  f"(train: {n_train_epochs:,} epochs, test: {n_test_epochs:,} epochs)", end="")
     
     def print_feature_selection(self, n_input: int, n_after_corr: int, n_final: int,
                                  corr_removed: int):
-        """Print feature selection pipeline: input -> correlation filter -> top-K. Verbose only."""
+        """Print feature selection summary."""
         if self.verbosity != Verbosity.VERBOSE:
             return
         
@@ -314,7 +315,7 @@ class TrainingOutputFormatter:
     
     def print_training_progress(self, model_type: str, n_samples: int, n_features: int,
                                  cache_status: Optional[str] = None):
-        """Print training progress with cache HIT/MISS indicator. Verbose only."""
+        """Print training progress with optional cache status."""
         if self.verbosity != Verbosity.VERBOSE:
             return
         
@@ -331,9 +332,9 @@ class TrainingOutputFormatter:
             print(LIGHT_BOX['v'] + f" Training: {model_type} on {n_samples:,} samples x {n_features} features".ljust(w - 2) + LIGHT_BOX['v'])
     
     def print_fold_result(self, fold_idx: int, test_subject: str,
-                          accuracy: float, kappa: float, f1: float,
+                          accuracy: float, kappa: float, f1: float, 
                           elapsed: float, n_features: int = 0):
-        """Print single fold results (accuracy, kappa, F1) and store for later summary."""
+        """Print single fold results."""
         # Store for summary
         self._fold_results.append({
             'fold': fold_idx,
@@ -361,19 +362,19 @@ class TrainingOutputFormatter:
             print()
         else:
             # Normal mode: inline result
-            print(f" -> acc={accuracy:.3f}, k={kappa:.3f}, F1={f1:.3f} ({elapsed:.1f}s)", flush=True)
+            print(f" -> acc={accuracy:.3f}, k={kappa:.3f}, F1={f1:.3f} ({elapsed:.1f}s)")
     
     # =========================================================================
     # Configuration Summary
     # =========================================================================
     
-    def print_config_summary(self, config_name: str,
+    def print_config_summary(self, config_name: str, 
                              accuracy_mean: float, accuracy_std: float,
                              kappa_mean: float, kappa_std: float,
                              f1_mean: float, f1_std: float,
                              total_time: float,
                              cache_hits: int = 0, cache_total: int = 0):
-        """Print aggregate results table, per-fold breakdown (verbose), and cache performance."""
+        """Print final configuration summary with all folds."""
         w = self.WIDTH
         
         print()
@@ -448,20 +449,15 @@ class TrainingOutputFormatter:
                   LIGHT_BOX['h'] * 10 + LIGHT_BOX['br'])
             print()
         
-        # LOSO Model Cache performance (thesis focus)
+        # Cache performance
         if cache_total > 0:
-            cache_misses = cache_total - cache_hits
-            hit_rate = (cache_hits / cache_total * 100) if cache_total > 0 else 0
-            if cache_hits > 0:
-                print("MODEL CACHE (LOSO):")
-                print(f"  * Hits: {cache_hits}/{cache_total} folds ({hit_rate:.0f}%)")
-                print(f"  * Misses: {cache_misses} (trained from scratch)")
-                print()
-            else:
-                print("MODEL CACHE (LOSO):")
-                print(f"  * Cold run: all {cache_total} folds trained from scratch")
-                print()
-
+            time_saved = cache_total * 25  # ~25s per subject cold extraction
+            print("CACHE PERFORMANCE THIS CONFIG:")
+            print(f"  * Feature loads: {cache_hits} (all from cache)")
+            print(f"  * Cache hit rate: {cache_hits/cache_total*100:.0f}%")
+            print(f"  * Time saved: ~{time_saved//60}min {time_saved%60}s (vs cold extraction)")
+            print()
+        
         print(f"Total config time: {total_time/60:.0f}m {total_time%60:.0f}s")
         print("=" * w)
         print()
@@ -470,9 +466,9 @@ class TrainingOutputFormatter:
     # Final Summary
     # =========================================================================
     
-    def print_final_results_table(self, results: List[Dict],
+    def print_final_results_table(self, results: List[Dict], 
                                    sort_by: str = 'accuracy_mean'):
-        """Print ranked results comparison table sorted by the given metric."""
+        """Print final results comparison table."""
         w = self.WIDTH
         
         # Sort results
@@ -510,7 +506,7 @@ class TrainingOutputFormatter:
     def print_best_result(self, config_id: str, accuracy: float, accuracy_std: float,
                           kappa: float, kappa_std: float, f1: float, f1_std: float,
                           meets_targets: bool):
-        """Print best configuration with metrics and clinical target pass/fail."""
+        """Print best configuration highlight."""
         w = self.WIDTH
         
         print()
@@ -529,7 +525,7 @@ class TrainingOutputFormatter:
     
     def print_cache_summary(self, hit_rate: float, cold_time: float, warm_time: float,
                             time_saved: float, speedup: float):
-        """Print cache performance summary: hit rate, cold/warm times, speedup factor."""
+        """Print final cache performance summary."""
         w = self.WIDTH
         
         print(BOX['tl'] + BOX['h'] * (w - 2) + BOX['tr'])

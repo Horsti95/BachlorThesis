@@ -80,7 +80,6 @@ class ClassMetrics:
     expected_range: Tuple[float, float] = (0.0, 1.0)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert class metrics to a serializable dictionary."""
         return {
             'class_name': self.class_name,
             'precision': self.precision,
@@ -156,7 +155,6 @@ class AggregatedEvaluation:
     config_id: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert aggregated evaluation to a serializable dictionary."""
         return {
             'accuracy_mean': self.accuracy_mean,
             'accuracy_std': self.accuracy_std,
@@ -279,15 +277,15 @@ def aggregate_evaluations(
     
     result = AggregatedEvaluation(
         accuracy_mean=np.mean(accuracies),
-        accuracy_std=np.std(accuracies, ddof=1) if len(accuracies) > 1 else 0.0,
+        accuracy_std=np.std(accuracies, ddof=1),
         kappa_mean=np.mean(kappas),
-        kappa_std=np.std(kappas, ddof=1) if len(kappas) > 1 else 0.0,
+        kappa_std=np.std(kappas, ddof=1),
         f1_macro_mean=np.mean(f1_macros),
-        f1_macro_std=np.std(f1_macros, ddof=1) if len(f1_macros) > 1 else 0.0,
+        f1_macro_std=np.std(f1_macros, ddof=1),
         n_evaluations=len(evaluations),
         config_id=config_id,
     )
-    
+
     # Per-class F1 aggregation
     for class_name in CLASS_NAMES:
         f1_scores = [
@@ -297,7 +295,7 @@ def aggregate_evaluations(
         ]
         if f1_scores:
             result.class_f1_means[class_name] = np.mean(f1_scores)
-            result.class_f1_stds[class_name] = np.std(f1_scores)
+            result.class_f1_stds[class_name] = np.std(f1_scores, ddof=1)
     
     return result
 

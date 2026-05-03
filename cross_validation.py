@@ -303,10 +303,10 @@ class StratifiedGroupKFold:
         
         # Sort subjects by mean label for stratified splitting
         sorted_subjects = sorted(subjects, key=lambda s: subject_labels[s])
-
+        
         # Assign subjects to folds in round-robin fashion
-        # Note: NOT shuffling after sort, as that would defeat stratification.
-        # The sorted round-robin ensures each fold gets a mix of class distributions.
+        np.random.seed(self.random_state)
+        np.random.shuffle(sorted_subjects)  # Shuffle within strata
         
         fold_assignments = {}
         for i, subj in enumerate(sorted_subjects):
@@ -327,7 +327,7 @@ class StratifiedGroupKFold:
                 fold_id=fold_id,
                 train_indices=train_idx,
                 test_indices=test_idx,
-                test_subject=','.join(map(str, test_subj_list[:3])) + ('...' if len(test_subj_list) > 3 else '')  # Summary
+                test_subject=','.join(map(str, test_subj_list[:3])) + '...'  # Summary
             )
             
             logger.debug(

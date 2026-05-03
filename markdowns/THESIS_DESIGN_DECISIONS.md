@@ -479,112 +479,6 @@ Model Variants (3):
 
 ---
 
-## 13. Feature Selection Method: ANOVA F-classif
-
-### Decision: Use ANOVA F-test as sole feature selection method
-
-**Rationale:**
-Feature selection serves the caching pipeline, not classification optimization. Wrapper-based methods (SFS, RFE) and multivariate approaches were benchmarked but deliberately excluded: at 2–323s per fit, they would negate the caching speedup they are meant to support.
-
-**Benchmark Results (11 methods, 195 features, 914 samples, top-K=30):**
-
-| Method | Runtime | Category |
-|--------|---------|----------|
-| Variance (unsupervised) | 0.003s | Filter |
-| Chi-squared | 0.008s | Filter |
-| **ANOVA F-classif** | **0.016s** | **Filter (chosen)** |
-| Kruskal-H | 0.24s | Filter |
-| Hybrid (ANOVA+MI) | 0.63s | Hybrid |
-| Random Forest importance | 1.33s | Embedded |
-| RFE (LogReg) | 1.96s | Wrapper |
-| Mutual Information | 2.00s | Filter |
-| XGBoost importance | 9.05s | Embedded |
-| L1 LogReg (OVR) | 18.5s | Embedded |
-| SFS Forward (LogReg) | 323.1s | Wrapper |
-
-**Key finding:** All supervised methods select similar O1/O2 occipital features in top-10. The choice of method barely affects which features get selected — but runtime differs by 20,000x.
-
-**Data:** `results/viability_benchmarks/feature_selection_methods/`
-
----
-
-## 14. Thesis Focus: Caching, Not Classification
-
-### Decision: Sleep staging pipeline is the evaluation testbed, not the contribution
-
-**Framing:**
-The classification pipeline follows established methodology (AASM standards, LOSO cross-validation, standard EEG features). This work contributes a two-tier fingerprint-based caching layer that wraps around any such pipeline.
-
-**Recommended thesis balance:**
-
-| Section | Sleep Lab / EEG | Caching (contribution) |
-|---------|:-:|:-:|
-| Background/Related Work | 30% | 70% |
-| Methodology | 20% | 80% |
-| Results | 20% | 80% |
-| Discussion | 10% | 90% |
-
-**Caching background should cover:**
-- Why ML experiments are iterative (hyperparameter tuning, feature exploration)
-- Existing approaches (MLflow, DVC, joblib.Memory) and their limitations
-- Why fingerprint-based invalidation beats timestamp/manual versioning
-- LOSO as particularly cache-friendly (128 independent folds, same config)
-
-**Sleep lab background should cover (briefly):**
-- AASM sleep staging standard (5 classes)
-- BOAS dataset (128 subjects, 6 EEG channels)
-- LOSO cross-validation rationale
-- Feature extraction overview (149 features)
-
----
-
-## 15. Cache Viability Across Models
-
-### Decision: Demonstrate caching is model-dependent, propose MB/s-saved metric
-
-**Finding:** Cache viability depends on model serialization size relative to training time saved. The MB/s-saved metric (cache_size / time_saved) provides a universal threshold:
-
-| Verdict | MB/s-saved | Models |
-|---------|-----------|--------|
-| VIABLE | < 0.5 | SVM, AdaBoost, Gradient Boosting, XGBoost, LogReg, Decision Tree, CatBoost, Naive Bayes, Ridge, SVM-RBF |
-| BORDERLINE | 0.5–2.0 | LightGBM |
-| NOT VIABLE | > 2.0 | Random Forest (30.5 MB/fold), Extra Trees (71.6 MB), KNN (26.0 MB) |
-
-**Validation:**
-- Consistent across hardware (old laptop vs 5090 desktop)
-- Consistent across scale (30 subjects vs 128 subjects)
-- Consistent across feature counts (top-K 10/30/50/149)
-
-**Data:** `results/viability_benchmarks/`
-
----
-
-## 16. Experimental Results: Cold vs Warm Speedup
-
-### Core thesis result: 14–21x speedup with fingerprint-based caching
-
-**5090 Desktop — 18 configs, 128 LOSO folds, 2304 total models:**
-
-| Metric | Cold | Warm (SSD cached) |
-|--------|------|-------------------|
-| Total time | 15.9 hours | 45.7 minutes |
-| Overall speedup | — | 21x |
-| Time saved | — | 15.1 hours |
-| Cache hit rate | 0% | 100% |
-
-**By model type:**
-
-| Model | Cold total | Avg cold s/fold | Warm s/fold |
-|-------|-----------|----------------|-------------|
-| XGBoost (9 configs) | 4.1h | 12.9s | ~0.15s |
-| Random Forest (9 configs) | 11.7h | 36.7s | ~2.1s |
-
-**Note:** 15/18 cold configs from 5090, 3 RF corrNone from old laptop. Clean same-machine comparison for 15 configs: 10.6h cold → 45.7m warm = 14x speedup.
-
-**Data:** `results/training_*/training_results/result_*.json`
-
----
-
 ## Summary
 
 These design decisions collectively support the thesis's core argument:
@@ -595,7 +489,7 @@ Every decision—from downsampling to 128 Hz to including held-out subjects in f
 
 ---
 
-**Document Version:** 2.0  
-**Last Updated:** April 9, 2026  
+**Document Version:** 1.0  
+**Last Updated:** December 22, 2025  
 **Author:** Lennart Gorzel  
 **Supervisor:** Prof. Himanshu Buckchash
