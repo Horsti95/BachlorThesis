@@ -36,3 +36,15 @@ Inter-Channel    & 11 & Coherence (6 pairs), Phase Locking Value (3 pairs),
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{Global vs.\ Per-Fold Feature Selection: Pilot Results}
+\label{sec:appendix_global_vs_fold}
+
+The choice to use global ANOVA feature selection rather than per-fold is
+discussed in Section~\ref{sec:discussion_scope}. The full pilot comparison
+across $N \in \{3,5,10,20\}$ subjects (XGBoost and Random Forest, top-$k=50$,
+three correlation thresholds each) is given in
+Table~\ref{tab:global_vs_fold}. The maximum tested $N$ was 20, limited by
+the cost of re-running per-fold selection at larger sample counts.
+
+\input{tables/tab8_global_vs_fold}
