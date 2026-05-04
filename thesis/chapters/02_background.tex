@@ -41,8 +41,8 @@ see Section~\ref{sec:data}), giving classifiers little signal to learn the stage
 
 \item \textbf{REM:} low-amplitude, mixed-frequency EEG that is spectrally 
 similar to wakefulness. Polysomnography distinguishes REM from Wake using 
-two non-EEG channels --- electrooculography (rapid eye movements) and 
-electromyography (skeletal muscle atonia)~\cite{berry2017aasm} --- but the 
+two non-EEG channels, electrooculography (rapid eye movements) and 
+electromyography (skeletal muscle atonia)~\cite{berry2017aasm}, but the 
 EEG-only feature pipeline used in this thesis does not include EOG or EMG. 
 The classifier therefore identifies REM from EEG alone, relying on subtler 
 spectral and inter-channel features rather than the canonical eye-movement / 
@@ -57,7 +57,7 @@ standard~\cite{niedermeyer2011}, which uses a two-character label
 per electrode: the letter denotes the cortical region (F frontal, 
 C central, O occipital) and the digit denotes the hemisphere (odd numbers 
 left, even numbers right). The six channels used in this thesis, 
-F3, F4, C3, C4, O1, O2 --- give bilateral coverage of frontal, sensorimotor, 
+F3, F4, C3, C4, O1, O2, give bilateral coverage of frontal, sensorimotor, 
 and visual cortices. In the caching framework, the channel list and the 
 30-second epoch length are immutable preprocessing parameters and enter 
 the SHA-256 fingerprint as such.
@@ -101,7 +101,7 @@ Beta and Gamma boundaries differ slightly from conventional ranges
 \toprule
 \textbf{Band} & \textbf{Range (Hz)} & \textbf{Sleep Stage Association} \\
 \midrule
-Delta    & 0.5--4.0   & Predominant in N3 (deep sleep); indicates sleep pressure \\
+Delta  & 0.5--4.0   & Predominant in N3 (deep sleep); indicates sleep pressure \\
 Theta    & 4.0--8.0   & Associated with N1 and REM; drowsiness marker \\
 Alpha    & 8.0--13.0  & Relaxed wakefulness; key marker for Stage W \\
 Sigma    & 12.0--16.0 & Sleep spindles; definitive marker for N2 sleep \\
@@ -255,7 +255,7 @@ necessary for any EEG-based machine learning study~\cite{kunjan2021loso}.
 The computational cost is proportional to the cohort size: with $N = 128$
 subjects, a single experimental configuration requires 128 separate model
 training runs. Each run produces a distinct trained model valid only for
-evaluating its specific held-out subject --- a model trained with subject
+evaluating its specific held-out subject,   a model trained with subject
 $S_i$ excluded cannot be reused to evaluate subject $S_j$, because the
 training population differs. This fold-specificity is what makes LOSO the
 primary driver of the caching framework: without persistent, fold-aware
@@ -272,8 +272,8 @@ actually changed.
 ML research is iterative by construction. A typical project cycles through 
 preprocessing tweaks, feature-set redefinitions, hyperparameter sweeps, and 
 architecture variants, with each cycle re-running the same long computations 
-against slightly different inputs. The cumulative cost --- in compute hours, 
-energy, and developer time --- is dominated not by any single training run 
+against slightly different inputs. The cumulative cost,   in compute hours, 
+energy, and developer time,   is dominated not by any single training run 
 but by the dozens of repetitions a project accumulates while converging on 
 a workable design~\cite{schmidt2024sustainableml}. Standardised lifecycle 
 models such as CRISP-DM~\cite{wirth2000crispdm} formalise this iteration as 
@@ -341,7 +341,7 @@ memory, and time resources. Several factors drive this resource consumption:
 
 While caching can help, traditional research in cache management---such as the ML-aided hardware strategies surveyed by Krishna (2025)---focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artefacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
 
-Caching shifts the bottleneck from computation time to storage space --- a
+Caching shifts the bottleneck from computation time to storage space,   a
 trade-off whose viability depends on the serialised model size, the expected
 number of re-runs, and available storage capacity. For compact models re-run
 frequently, caching is clearly beneficial; for very large models run only
@@ -360,7 +360,7 @@ fingerprint-based LOSO caching approach developed in this thesis.
 
 As established in Section~\ref{sec:loso_background}, LOSO cross-validation
 is necessary for EEG-based ML to avoid inflated generalisation estimates.
-Its computational cost --- 128 training runs per configuration --- makes it
+Its computational cost,   128 training runs per configuration,   makes it
 the primary driver of the caching framework: 2{,}304 required training
 operations provide a high-volume workload where deterministic fingerprinting
 delivers maximum efficiency gains.
@@ -369,7 +369,7 @@ delivers maximum efficiency gains.
 \colorbox{yellow!20}{\begin{minipage}{0.9\textwidth}
 \textbf{Note:} A prior version of this section cited Kearns \& Ron (1999)
 to justify LOSO. That paper establishes PAC-learning generalisation bounds
-for leave-one-out estimators --- a theoretical computer science result,
+for leave-one-out estimators,   a theoretical computer science result,
 not an EEG workflow recommendation. The justification above replaces it
 with the direct reference to Section~\ref{sec:loso_background} where LOSO
 is properly motivated via EEG inter-subject variability (Kunjan et al.).
