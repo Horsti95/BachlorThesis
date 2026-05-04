@@ -184,10 +184,12 @@ trees trained under different conditions.
 
 \subsection{Bagging: Random Forest}
 
-Random Forest~\cite{breiman2001random} trains each tree on a bootstrap
-sample of the training data and restricts each split to a random subset
-of features. The final prediction is the majority vote across all trees,
-reducing variance without substantially increasing bias.
+Random Forest~\cite{breiman2001randomforest} fits an ensemble of decision trees in 
+which each tree sees a bootstrap-resampled training set and, at every split, 
+considers only a randomly drawn subset of the candidate features. Aggregating 
+over many such weakly correlated trees by majority vote stabilises the prediction 
+surface; the variance reduction this provides is the main reason ensemble methods 
+outperform a single deep tree on noisy, high-dimensional inputs like EEG features.
 
 Random Forest typically achieves strong out-of-the-box performance on
 tabular data but produces large serialized model files (600--1{,}544~MB
@@ -256,22 +258,18 @@ actually changed.
 \label{sec:mlresearch}
 \label{sec:comp_efficiency}
 
-ML experimentation is inherently iterative: researchers explore model
-architectures, hyperparameters, and preprocessing configurations across many
-runs, frequently repeating computations when only a subset of parameters
-changes. A single experiment may require hours or days of computation, and
-the cumulative cost of redundant retraining translates into substantial GPU
-hours and researcher time~\cite{schubotz2022caching}.
-
-Standardised process models describe this iteration. CRISP-DM~\cite{crispdm2000}
-defines a cyclic workflow (Business Understanding $\to$ Data Understanding
-$\to$ Data Preparation $\to$ Modelling $\to$ Evaluation $\to$ Deployment)
-that practitioners revisit repeatedly as findings emerge. Each cycle back
-to the Modelling phase can trigger full retraining if intermediate artefacts
-are not persisted. The fingerprint-based caching framework developed in this
-thesis operates precisely at this transition: by memoising trained models
-under a cryptographic key, it collapses repeated Modelling cycles from
-hours to seconds without changing the workflow structure.
+ML research is iterative by construction. A typical project cycles through 
+preprocessing tweaks, feature-set redefinitions, hyperparameter sweeps, and 
+architecture variants, with each cycle re-running the same long computations 
+against slightly different inputs. The cumulative cost --- in compute hours, 
+energy, and developer time --- is dominated not by any single training run 
+but by the dozens of repetitions a project accumulates while converging on 
+a workable design~\cite{schmidt2024sustainableml}. Standardised lifecycle 
+models such as CRISP-DM~\cite{wirth2000crispdm} formalise this iteration as 
+an explicit cycle that returns repeatedly to the modelling phase. Each return 
+triggers full retraining unless intermediate artefacts are persisted across cycles, 
+which is exactly the gap the fingerprint-based framework in this thesis fills, 
+by memoising trained models under a cryptographic key so that re-running the modelling phase becomes a cache lookup rather than a recomputation.
 
 Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
 support experiment tracking by recording parameters, metrics, implementation
