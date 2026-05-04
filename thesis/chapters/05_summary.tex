@@ -165,11 +165,11 @@ trained on overlapping data are silently returned as fold-specific results.
 No test catches this failure without inspecting individual fold compositions.
 
 \textbf{Third, budget for the cold run on slower hardware.}
-The full 18-configuration cold run required approximately 78 hours on a
-standard desktop (PC1) versus 22 hours on a high-end workstation (RTX 5090).
-On resource-constrained hardware, a staged approach---running configurations
-in batches across sessions---is practical because the framework guarantees
-that completed folds are never recomputed between sessions.
+The full 18-configuration cold run required approximately 78 hours on the
+HP ProBook used in this thesis. On resource-constrained hardware, a staged
+approach---running configurations in batches across sessions---is practical
+because the framework guarantees that completed folds are never recomputed
+between sessions.
 
 \subsection{Limitations and Scope}
 

@@ -81,17 +81,19 @@ def fig1_speedup_bar(show: bool):
     xgb = pd.read_csv(XGB_CSV)
     rf = pd.read_csv(RF_CSV)
 
-    # Aggregate per model type
+    # Per-model summary: totals for the cold/warm bars, and median per-config
+    # speedup for the annotation (consistent with the median values reported
+    # in tab:xgb_cache_results and tab:rf_cache_results).
     data = {
         "XGBoost\n(9 configs)": {
             "cold_h": xgb["cold_total_s"].sum() / 3600,
             "warm_min": xgb["warm_total_s"].sum() / 60,
-            "speedup": xgb["cold_total_s"].sum() / xgb["warm_total_s"].sum(),
+            "speedup": (xgb["cold_total_s"] / xgb["warm_total_s"]).median(),
         },
         "Random Forest\n(9 configs)": {
             "cold_h": rf["cold_total_s"].sum() / 3600,
             "warm_min": rf["warm_total_s"].sum() / 60,
-            "speedup": rf["cold_total_s"].sum() / rf["warm_total_s"].sum(),
+            "speedup": (rf["cold_total_s"] / rf["warm_total_s"]).median(),
         },
     }
 
@@ -119,7 +121,7 @@ def fig1_speedup_bar(show: bool):
     for i, lbl in enumerate(labels):
         sp = data[lbl]["speedup"]
         ax.annotate(
-            f"{sp:.0f}×\nspeedup",
+            f"{sp:.1f}×\nmedian speedup",
             xy=(x[i] - w / 2, cold_vals[i]),
             xytext=(0, 10),
             textcoords="offset points",
