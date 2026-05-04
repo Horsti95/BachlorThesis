@@ -24,9 +24,12 @@ thesis:
 \item \textbf{Wake (W):} Low-amplitude, high-frequency EEG; alpha waves
       (8--13~Hz) predominate during relaxed wakefulness.
 
-\item \textbf{N1 (Light Sleep):} Mixed-frequency, low-amplitude activity.
-      The most difficult stage to classify automatically due to its
-      transitional nature (typically 1--5 minutes).
+\item \textbf{N1 (Light Sleep):} mixed-frequency, low-amplitude EEG that is 
+the most difficult stage to classify automatically. The difficulty has two 
+compounding sources: N1 epochs are spectrally similar to both adjacent stages 
+(Wake and N2), so even human scorers disagree on N1 boundaries~\cite{rosenberg2013aasm}; 
+and N1 is severely underrepresented in real datasets (3.7\% of all epochs in BOAS, 
+see Section~\ref{sec:data}), giving classifiers little signal to learn the stage's transitional pattern.
 
 \item \textbf{N2 (Sleep):} Comprises 45--55\% of total sleep time. Defined
       by sleep spindles (Sigma band, see Table~\ref{tab:eeg_bands}) and
@@ -36,20 +39,28 @@ thesis:
       (0.5--4~Hz, $\geq$20\% of epoch). Most prevalent in the first third
       of the night.
 
-\item \textbf{REM:} Mixed-frequency low-amplitude EEG similar to wakefulness,
-      with rapid eye movements and skeletal muscle atonia.
+\item \textbf{REM:} low-amplitude, mixed-frequency EEG that is spectrally 
+similar to wakefulness. Polysomnography distinguishes REM from Wake using 
+two non-EEG channels --- electrooculography (rapid eye movements) and 
+electromyography (skeletal muscle atonia)~\cite{berry2017aasm} --- but the 
+EEG-only feature pipeline used in this thesis does not include EOG or EMG. 
+The classifier therefore identifies REM from EEG alone, relying on subtler 
+spectral and inter-channel features rather than the canonical eye-movement / 
+muscle-tone markers. This adds intrinsic difficulty to REM classification 
+beyond what AASM scoring tools experience.
 \end{itemize}
 
 \subsection{EEG Acquisition and the Need for Automation}
 
-The raw input data consists of 6-channel EEG signals recorded via the
-international 10-20 electrode placement system~\cite{niedermeyer2011}.
-Labels indicate brain region (F=frontal, C=central, O=occipital) and
-hemisphere (odd=left, even=right). This thesis uses channels F3, F4, C3,
-C4, O1, O2, providing bilateral coverage of frontal, sensorimotor, and
-visual cortices. In the context of the caching architecture, these channel
-identifiers and the 30-second epoch duration are treated as immutable
-metadata in the SHA-256 fingerprint.
+Electrodes are positioned according to the international 10–20 
+standard~\cite{niedermeyer2011}, which uses a two-character label 
+per electrode: the letter denotes the cortical region (F frontal, 
+C central, O occipital) and the digit denotes the hemisphere (odd numbers 
+left, even numbers right). The six channels used in this thesis, 
+F3, F4, C3, C4, O1, O2 --- give bilateral coverage of frontal, sensorimotor, 
+and visual cortices. In the caching framework, the channel list and the 
+30-second epoch length are immutable preprocessing parameters and enter 
+the SHA-256 fingerprint as such.
 
 Manual sleep scoring by certified technologists requires approximately
 1.5--2 hours per recording. For large cohorts such as the BOAS dataset
