@@ -464,65 +464,10 @@ directory is deleted entirely, triggering full recomputation on the next run.
 Both strategies are available; the benchmark uses version bumping for
 controlled invalidation tests and purging for full cold-start baselines.
 
-\subsection{Verification and Invalidation Testing}
-\label{sec:verification}
-
-Prior to the full 18-configuration benchmark, the caching system was verified
-on a 3-subject, 12-configuration reduced grid (24 cache operations total).
-Three tests were run:
-
-\textbf{Cold/warm correctness:} An empty cache produced 24 misses;
-an identical re-run retrieved all 24 cached models (100\% hit rate).
-Cached models produced bitwise-identical predictions to freshly trained
-models (\texttt{numpy.array\_equal()}), and accuracy / F1 / Cohen's $\kappa$
-matched to floating-point precision ($<10^{-10}$). All 12 configurations
-generated distinct SHA-256 fingerprints (zero collisions).
-
-\textbf{Incremental sweep expansion:} Table~\ref{tab:incremental_sweep}
-shows that expanding the grid in three steps reuses all previously cached
-configurations automatically, without manual cache management.
-
-\begin{table}[htbp]
-\centering
-\caption[Incremental sweep test: partial cache reuse]{Incremental sweep test: cache hit/miss pattern as the experiment
-grid grows.}
-\label{tab:incremental_sweep}
-\begin{tabular}{llccc}
-\toprule
-\textbf{Step} & \textbf{Grid} & \textbf{Operations} & \textbf{Hits} & \textbf{Misses} \\
-\midrule
-1 & XGB $\times$ [0.90] $\times$ [30, 50] & 6 & 0 & 6 \\
-2 & XGB $\times$ [0.90] $\times$ [30, 50, None] & 9 & 6 & 3 \\
-3 & [XGB, RF] $\times$ [0.90] $\times$ [30, 50, None] & 18 & 9 & 9 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{Invalidation correctness:} Table~\ref{tab:invalidation} confirms
-that each of three deliberate parameter changes produces a new fingerprint
-and forces a cache miss.
-\label{sec:invalidation}
-
-\begin{table}[htbp]
-\centering
-\caption[Cache invalidation tests]{Cache invalidation: each parameter change produces a distinct
-SHA-256 fingerprint and forces retraining.}
-\label{tab:invalidation}
-\begin{tabular}{llll}
-\toprule
-\textbf{Change} & \textbf{Parameter} & \textbf{Fingerprint} & \textbf{Result} \\
-\midrule
-Hyperparameter & \texttt{max\_depth}: 6 $\to$ 8 & Different & Cache miss \checkmark \\
-Feature selection & top-K: 30 $\to$ 50 & Different & Cache miss \checkmark \\
-Held-out subject & sub-1 $\to$ sub-2 & Different & Separate entry \checkmark \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-All three tests passed. The third test confirms no cross-fold contamination:
-models for sub-1 and sub-2 are stored under distinct keys. These results
-justified proceeding to the full 2{,}304-operation experiment
-(Section~\ref{sec:results_caching}).
+% Verification subsection inlined here previously; the dedicated
+% Cache Verification Testing section (Section~\ref{sec:verification})
+% now carries the full description, including the two tables moved
+% into that section.
 
 \section{Experimental Setup}
 \label{sec:experiment_setup}
@@ -756,6 +701,27 @@ grid (3 subjects $\times$ 8 configurations = 24 cache operations):
 
 The cold run produced 24 cache misses (0\% hit rate), as expected for an empty cache. The subsequent warm re-run correctly retrieved all 24 cached models (100\% hit rate, 0 misses). Speedup measurements are reported separately in the full-scale evaluation (Section~\ref{sec:results_caching}).
 
+Incremental expansion of the experimental grid was also tested.
+Table~\ref{tab:incremental_sweep} shows that three successive grid
+expansions reuse all previously cached configurations automatically, with
+no manual cache management.
+
+\begin{table}[htbp]
+\centering
+\caption[Incremental sweep test: partial cache reuse]{Incremental sweep test: cache hit/miss pattern as the experiment
+grid grows.}
+\label{tab:incremental_sweep}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Step} & \textbf{Grid} & \textbf{Operations} & \textbf{Hits} & \textbf{Misses} \\
+\midrule
+1 & XGB $\times$ [0.90] $\times$ [30, 50] & 6 & 0 & 6 \\
+2 & XGB $\times$ [0.90] $\times$ [30, 50, None] & 9 & 6 & 3 \\
+3 & [XGB, RF] $\times$ [0.90] $\times$ [30, 50, None] & 18 & 9 & 9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Correctness Validation}
 
 Beyond hit/miss behaviour, the verification suite programmatically validated
@@ -795,6 +761,25 @@ a cache miss (i.e., retrained from scratch) in each case:
       model parameters produced different fingerprints and separate cache entries,
       confirming that no cross-fold contamination occurs.
 \end{itemize}
+
+Table~\ref{tab:invalidation} summarises the three deliberate parameter
+changes tested.
+
+\begin{table}[htbp]
+\centering
+\caption[Cache invalidation tests]{Cache invalidation: each parameter change produces a distinct
+SHA-256 fingerprint and forces retraining.}
+\label{tab:invalidation}
+\begin{tabular}{llll}
+\toprule
+\textbf{Change} & \textbf{Parameter} & \textbf{Fingerprint} & \textbf{Result} \\
+\midrule
+Hyperparameter & \texttt{max\_depth}: 6 $\to$ 8 & Different & Cache miss \checkmark \\
+Feature selection & top-K: 30 $\to$ 50 & Different & Cache miss \checkmark \\
+Held-out subject & sub-1 $\to$ sub-2 & Different & Separate entry \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 In each test, the fingerprint difference was verified programmatically by
 comparing the SHA-256 hashes before and after the parameter modification.
