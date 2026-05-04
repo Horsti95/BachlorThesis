@@ -10,7 +10,7 @@ This thesis developed a fingerprint-based caching framework for
 Leave-One-Subject-Out (LOSO) cross-validation experiments. The core idea is
 simple: each experiment configuration is mapped to a deterministic SHA-256
 hash computed from the canonical JSON representation of the tracked experiment
-state---random seed, code version, model type and hyperparameters, feature
+state, random seed, code version, model type and hyperparameters, feature
 configuration, and held-out subject identifier. The resulting fingerprint
 serves simultaneously as cache key, reproducibility identifier, and
 experiment label.
@@ -35,44 +35,44 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
 
 \begin{enumerate}
 \item \textbf{Substantial speedups for cache-viable models.}
-      XGBoost achieved 37.5--202$\times$ speedup (median 54$\times$) with
-      compact cache sizes of approximately 185~MB. The best configuration
-      (all 149 features, no correlation filtering) reduced a 3{,}816-second
-      cold run to 18.9~seconds. Random Forest achieved 11--23.5$\times$
-      speedup but required approximately 18.5~GB of cache storage, making
-      it borderline viable.
+ XGBoost achieved 37.5--202$\times$ speedup (median 54$\times$) with
+ compact cache sizes of approximately 185~MB. The best configuration
+ (all 149 features, no correlation filtering) reduced a 3{,}816-second
+ cold run to 18.9~seconds. Random Forest achieved 11--23.5$\times$
+ speedup but required approximately 18.5~GB of cache storage, making
+ it borderline viable.
 
 \item \textbf{Best classification accuracy of 85.5\%.}
-      XGBoost with all 149 features and no correlation filtering achieved
-      the highest LOSO accuracy (85.5\%, Cohen's $\kappa = 0.737$,
-      macro F1 = 0.636), demonstrating that the caching framework does not
-      compromise classification performance.
+ XGBoost with all 149 features and no correlation filtering achieved
+ the highest LOSO accuracy (85.5\%, Cohen's $\kappa = 0.737$,
+ macro F1 = 0.636), demonstrating that the caching framework does not
+ compromise classification performance.
 
 \item \textbf{Clear model viability spectrum.}
-      A 15-model viability study identified 11 cache-viable models
-      (including all boosting methods and SVMs) and 4 non-viable model
-      types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) whose
-      large serialised representations negate caching benefits. Viability
-      verdicts were confirmed using two complementary metrics: $\eta$
-      (seconds of training saved per MB stored, an absolute measure) and
-      $\rho$ (speedup factor per MB, a relative measure). Both metrics
-      agree on all 15 model types, with a near-decade gap between the
-      viable cluster ($\eta \approx 4$--$5{,}000$~s/MB) and the non-viable
-      cluster ($\eta \approx 0$--$0.4$~s/MB). Verdicts were consistent
-      across two hardware configurations; absolute speedup ratios were not,
-      since faster CPUs compress cold training time without proportionally
-      reducing I/O-bound warm load time.
+ A 15-model viability study identified 11 cache-viable models
+ (including all boosting methods and SVMs) and 4 non-viable model
+ types (Random Forest, Extra Trees, KNN $k=5$, KNN $k=10$) whose
+ large serialised representations negate caching benefits. Viability
+ verdicts were confirmed using two complementary metrics: $\eta$
+ (seconds of training saved per MB stored, an absolute measure) and
+ $\rho$ (speedup factor per MB, a relative measure). Both metrics
+ agree on all 15 model types, with a near-decade gap between the
+ viable cluster ($\eta \approx 4$--$5{,}000$~s/MB) and the non-viable
+ cluster ($\eta \approx 0$--$0.4$~s/MB). Verdicts were consistent
+ across two hardware configurations; absolute speedup ratios were not,
+ since faster CPUs compress cold training time without proportionally
+ reducing I/O-bound warm load time.
 
 \item \textbf{Cache benefit scales with dataset size.}
-      SVM-RBF speedup increased from 9$\times$ at 10 subjects to
-      201$\times$ at 128 subjects. Training cost grows quadratically with
-      dataset size while cache loading cost remains constant, meaning
-      caching becomes more valuable as datasets grow.
+ SVM-RBF speedup increased from 9$\times$ at 10 subjects to
+ 201$\times$ at 128 subjects. Training cost grows quadratically with
+ dataset size while cache loading cost remains constant, meaning
+ caching becomes more valuable as datasets grow.
 
 \item \textbf{100\% reproducibility.}
-      All cached models produced bitwise-identical predictions to cold
-      retraining across all 18 configurations and 128 LOSO folds (verified
-      via \texttt{numpy.array\_equal()}).
+ All cached models produced bitwise-identical predictions to cold
+ retraining across all 18 configurations and 128 LOSO folds (verified
+ via \texttt{numpy.array\_equal()}).
 \end{enumerate}
 
 \subsection{Research Questions Revisited}
@@ -82,53 +82,53 @@ answer is affirmative, the nuance matters as much as the confirmation.
 
 \begin{itemize}
 \item \textbf{RQ1 (Efficiency):} Confirmed, but efficiency is model-dependent.
-      The framework delivers order-of-magnitude speedups for compact models
-      (XGBoost median 54$\times$, peak 202$\times$) and the persistent
-      Layer~1 feature store eliminates redundant extraction entirely. However,
-      the speedup ratio is not a fixed property of the framework --- it
-      reflects the ratio of training time to serialization size, and depends
-      on hardware: ranges from $\sim$9.5$\times$ (RF on a fast desktop) to
-      over 18{,}000$\times$ for the most compact boosting models at scale.
-      Efficiency is the framework's primary claim; it is real, but the
-      magnitude depends on model choice and hardware speed.
+ The framework delivers order-of-magnitude speedups for compact models
+ (XGBoost median 54$\times$, peak 202$\times$) and the persistent
+ Layer~1 feature store eliminates redundant extraction entirely. However,
+ the speedup ratio is not a fixed property of the framework, it
+ reflects the ratio of training time to serialization size, and depends
+ on hardware: ranges from $\sim$9.5$\times$ (RF on a fast desktop) to
+ over 18{,}000$\times$ for the most compact boosting models at scale.
+ Efficiency is the framework's primary claim; it is real, but the
+ magnitude depends on model choice and hardware speed.
 
 \item \textbf{RQ2 (Reproducibility):} Confirmed unconditionally for
-      deterministic estimators. Identical configurations produce identical
-      SHA-256 fingerprints, and cached models produce bitwise-identical
-      predictions across all 18 configurations and 128 LOSO folds. The
-      key design insight --- encoding the held-out subject ID in the cache
-      key --- enforces fold isolation structurally rather than by convention,
-      eliminating a class of subtle scientific validity bugs without any
-      performance cost.
+ deterministic estimators. Identical configurations produce identical
+ SHA-256 fingerprints, and cached models produce bitwise-identical
+ predictions across all 18 configurations and 128 LOSO folds. The
+ key design insight, encoding the held-out subject ID in the cache
+ key, enforces fold isolation structurally rather than by convention,
+ eliminating a class of subtle scientific validity bugs without any
+ performance cost.
 
 \item \textbf{RQ3 (Scalability):} Confirmed directionally. Cache benefit
-      increases with dataset size for models whose training complexity scales
-      super-linearly (SVM-RBF: 9$\times$ at 10 subjects to 201$\times$ at 128
-      subjects). For linearly-scaling models the speedup is approximately
-      stable but already high (SVM-Linear: $\sim$2{,}000$\times$ across all
-      scales). The implication is that caching becomes \textit{more} valuable
-      as studies grow, not less. A second counterintuitive result from
-      cross-machine comparison: caching also becomes more valuable on
-      \textit{slower} hardware. Cache load time is I/O-bound and approximately
-      constant across machines, while cold training time is CPU-bound and
-      scales with hardware speed. A researcher on a standard laptop who trains
-      $3\times$ slower than a high-end workstation observes speedup ratios
-      $\sim$$3\times$ larger --- the framework delivers its greatest gains
-      precisely where compute resources are most constrained.
+ increases with dataset size for models whose training complexity scales
+ super-linearly (SVM-RBF: 9$\times$ at 10 subjects to 201$\times$ at 128
+ subjects). For linearly-scaling models the speedup is approximately
+ stable but already high (SVM-Linear: $\sim$2{,}000$\times$ across all
+ scales). The implication is that caching becomes \textit{more} valuable
+ as studies grow, not less. A second counterintuitive result from
+ cross-machine comparison: caching also becomes more valuable on
+ \textit{slower} hardware. Cache load time is I/O-bound and approximately
+ constant across machines, while cold training time is CPU-bound and
+ scales with hardware speed. A researcher on a standard laptop who trains
+ $3\times$ slower than a high-end workstation observes speedup ratios
+ $\sim$$3\times$ larger, the framework delivers its greatest gains
+ precisely where compute resources are most constrained.
 
 \item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists, but
-      the VIABLE/NOT\_VIABLE boundary is not universal --- it depends on the
-      available hardware and how many re-runs are planned. 11 of 15 evaluated
-      model types are unambiguously viable regardless of context. The 4
-      not-viable types (Random Forest, Extra Trees, KNN) fail because their
-      serialized representations (130--1{,}544~MB per fold) make loading
-      approach retraining time. This conclusion is robust: it holds under
-      both the absolute efficiency metric $\eta$ (s/MB) and the relative
-      metric $\rho$ ($\times$/MB), with a near-decade gap separating the
-      two clusters on both scales. Random Forest occupies a borderline zone:
-      at 11.6$\times$ median speedup and 18.5~GB per run, one re-run saves
-      up to $\sim$2~hours per configuration at substantial storage cost ---
-      worthwhile for some workflows, not others.
+ the VIABLE/NOT\_VIABLE boundary is not universal, it depends on the
+ available hardware and how many re-runs are planned. 11 of 15 evaluated
+ model types are unambiguously viable regardless of context. The 4
+ not-viable types (Random Forest, Extra Trees, KNN) fail because their
+ serialized representations (130--1{,}544~MB per fold) make loading
+ approach retraining time. This conclusion is robust: it holds under
+ both the absolute efficiency metric $\eta$ (s/MB) and the relative
+ metric $\rho$ ($\times$/MB), with a near-decade gap separating the
+ two clusters on both scales. Random Forest occupies a borderline zone:
+ at 11.6$\times$ median speedup and 18.5~GB per run, one re-run saves
+ up to $\sim$2~hours per configuration at substantial storage cost, 
+ worthwhile for some workflows, not others.
 \end{itemize}
 
 The contribution of this thesis is not a new MLOps platform, but a validated
@@ -137,7 +137,7 @@ All findings reported here are conditional: speedup ratios depend on hardware,
 viability verdicts depend on the threshold a researcher sets, and accuracy
 results are specific to the BOAS EEG dataset and the 149-feature pipeline.
 What the framework provides is not a universal answer but a \textit{methodology
-for arriving at the answer} for a given experimental context --- the fingerprint
+for arriving at the answer} for a given experimental context, the fingerprint
 mechanism, the viability measurement approach, and the two-layer cache design
 are transferable; the specific numbers are not.
 
@@ -167,7 +167,7 @@ No test catches this failure without inspecting individual fold compositions.
 \textbf{Third, budget for the cold run on slower hardware.}
 The full 18-configuration cold run required approximately 78 hours on the
 HP ProBook used in this thesis. On resource-constrained hardware, a staged
-approach---running configurations in batches across sessions---is practical
+approach, running configurations in batches across sessions, is practical
 because the framework guarantees that completed folds are never recomputed
 between sessions.
 
@@ -185,9 +185,9 @@ empirically measured accuracy impact was $\leq 1.1\%$, which is within
 inter-run variability for this dataset but represents a methodological bound
 on the accuracy estimates reported.
 
-These limitations do not undermine the primary thesis claim --- that
+These limitations do not undermine the primary thesis claim, that
 fingerprint-based LOSO caching is a viable, correct, and reproducible approach
---- but they define the conditions under which the specific numerical results
+, but they define the conditions under which the specific numerical results
 hold. A full enumeration of limitations, including Layer~1 lenient validation,
 configuration space governance, and thermal throttling effects on cold-run
 timings, is provided in Section~\ref{sec:limitations}.
@@ -215,11 +215,11 @@ Because \texttt{f\_classif} is fully deterministic, the selected feature list
 can be stored under its own fingerprint:
 %
 \begin{equation*}
-  k_{\text{sel}} = \text{SHA-256}\!\left(
-    \textit{dataset\_version} \;\Vert\; \textit{code\_version} \;\Vert\;
-    \textit{corr} \;\Vert\; \textit{top\_k} \;\Vert\;
-    \textit{held\_out\_subject}
-  \right)
+ k_{\text{sel}} = \text{SHA-256}\!\left(
+ \textit{dataset\_version} \;\Vert\; \textit{code\_version} \;\Vert\;
+ \textit{corr} \;\Vert\; \textit{top\_k} \;\Vert\;
+ \textit{held\_out\_subject}
+ \right)
 \end{equation*}
 %
 On a warm run the registry is queried first (${\sim}1$~ms), restoring
@@ -231,8 +231,8 @@ changes. Neither variant was implemented in this thesis.
 \subsection{Cross-Domain Validation and MLOps Integration}
 
 The fingerprinting approach is domain-agnostic. Applying it to other domains
-with subject-level cross-validation --- brain-computer interfaces,
-speaker-independent speech recognition, patient-level medical imaging ---
+with subject-level cross-validation, brain-computer interfaces,
+speaker-independent speech recognition, patient-level medical imaging, 
 would test generalisability and surface requirements not covered by the current
 implementation. On the tooling side, the framework could be packaged as
 plugins for DVC, ZenML, or MLflow, encoding held-out subject IDs in step
@@ -247,7 +247,7 @@ model families are worth caching under LOSO, at what storage cost, and under
 what conditions the benefit scales. A natural master-level extension would
 build a \textit{viability knowledge base} generalising these verdicts across
 domains, model families, and dataset scales. At the PhD level, that knowledge
-base could power an \textit{intelligent caching orchestrator} --- a system
+base could power an \textit{intelligent caching orchestrator}, a system
 that accepts a researcher's experimental plan and automatically configures a
 caching strategy before the first run begins, making fold-aware caching a
 zero-configuration tool rather than a framework a researcher must design
