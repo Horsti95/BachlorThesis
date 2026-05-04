@@ -35,7 +35,7 @@ content-addressable storage can accelerate data-science experiments while
 maintaining FAIR~(Findable, Accessible, Interoperable, Reusable)
 principles~\cite{schubotz2022caching}. Their work establishes that
 fingerprint-based artefact reuse is a sound engineering pattern for
-reproducible research --- a foundation this thesis extends to the LOSO
+reproducible research , a foundation this thesis extends to the LOSO
 cross-validation setting.
 
 Two recent papers extend ML pipeline caching to AutoML and hyperparameter
@@ -61,14 +61,14 @@ by definition for each held-out subject.
 Taken together, these papers confirm that memoization is a validated
 acceleration technique for ML pipelines and hyperparameter search.
 Neither work, however, provides a validated pattern for fold-aware caching in
-LOSO scenarios. Adjacent caching paradigms---LLM inference caching
+LOSO scenarios. Adjacent caching paradigms, LLM inference caching
 (KV-cache management~\cite{kwon2023pagedattention}), layer-skipping for deep
 networks~\cite{balasubramanian2021accelerating}, and petabyte-scale HEP data
-distribution~\cite{sim2023xcache}---address different problem structures and
+distribution~\cite{sim2023xcache}, address different problem structures and
 make no claim about cross-validation fold integrity. The challenge of encoding
-held-out subject identity into a deterministic cache key --- and validating
+held-out subject identity into a deterministic cache key, and validating
 cache integrity against fold assignments to prevent silent cross-subject
-contamination --- remains unaddressed in the cited literature. This thesis
+contamination, remains unaddressed in the cited literature. This thesis
 fills that gap with a reference implementation and empirical benchmarks on a
 128-subject dataset.
 
@@ -77,8 +77,8 @@ fills that gap with a reference implementation and empirical benchmarks on a
 \section{Commercial MLOps Tools}
 \label{sec:related_commercial}
 % ============================================================================
-Commercial MLOps platforms---MLflow, DVC, ZenML, and experiment-tracking tools
-such as Weights \& Biases---provide general pipeline caching and experiment
+Commercial MLOps platforms, MLflow, DVC, ZenML, and experiment-tracking tools
+such as Weights \& Biases, provide general pipeline caching and experiment
 management infrastructure. A structural limitation common to these tools
 emerges from their design focus. As Kreuzberger et al.\ observe, workflow
 orchestration tools such as Airflow, Kubeflow, and AWS SageMaker are optimised
@@ -95,35 +95,35 @@ check that prevents redundant training before it begins.
 
 \begin{itemize}
 \item \textbf{MLflow:} Provides experiment tracking, model registry, and
-      artifact logging~\cite{zaharia2018mlflow}. While pipeline caching is
-      available through extension modules, standard MLflow workflows are
-      not documented to encode fold assignments in cache keys, requiring
-      custom implementation for LOSO scenarios.
+ artifact logging~\cite{zaharia2018mlflow}. While pipeline caching is
+ available through extension modules, standard MLflow workflows are
+ not documented to encode fold assignments in cache keys, requiring
+ custom implementation for LOSO scenarios.
 
 \item \textbf{DVC:} Uses MD5 hashes of pipeline inputs and code to enable
-      pipeline stage reuse~\cite{dvc_pipelines}. DVC's key covers code and
-      data files but carries no fold-identity component. A cache hit therefore
-      cannot distinguish a model trained on subjects 1--127 from one trained on
-      subjects 2--128 --- the silent collision this thesis prevents by embedding
-      the held-out subject identifier directly in the SHA-256 fingerprint.
+ pipeline stage reuse~\cite{dvc_pipelines}. DVC's key covers code and
+ data files but carries no fold-identity component. A cache hit therefore
+ cannot distinguish a model trained on subjects 1--127 from one trained on
+ subjects 2--128, the silent collision this thesis prevents by embedding
+ the held-out subject identifier directly in the SHA-256 fingerprint.
 
 \item \textbf{ZenML:} Implements step-level SHA-256 caching with automatic
-      invalidation when inputs or code change. However, ZenML does not natively
-      encode held-out subject identifiers: users must implement custom
-      materializers to parameterise fold assignments, and the resulting keys
-      provide no integrity guarantee that training and evaluation sets are
-      correctly separated across cache hits.
+ invalidation when inputs or code change. However, ZenML does not natively
+ encode held-out subject identifiers: users must implement custom
+ materializers to parameterise fold assignments, and the resulting keys
+ provide no integrity guarantee that training and evaluation sets are
+ correctly separated across cache hits.
 
 \item \textbf{Neptune AI and Weights \& Biases:} These platforms excel at
-      metric visualisation and experiment logging~\cite{wandb2024docs}, but
-      function as observation layers rather than computational caches.
-      Proprietary, cloud-hosted metadata stores introduce vendor dependency
-      that can threaten long-term experiment reproducibility: the
-      discontinuation of Neptune.ai services in 2026~\cite{neptune2026shutdown}
-      illustrates that experiment records held in third-party platforms may
-      become inaccessible when the provider exits the market. This motivates
-      the independent, self-hosted framework proposed in this thesis, where
-      all cached artefacts reside on researcher-controlled storage.
+ metric visualisation and experiment logging~\cite{wandb2024docs}, but
+ function as observation layers rather than computational caches.
+ Proprietary, cloud-hosted metadata stores introduce vendor dependency
+ that can threaten long-term experiment reproducibility: the
+ discontinuation of Neptune.ai services in 2026~\cite{neptune2026shutdown}
+ illustrates that experiment records held in third-party platforms may
+ become inaccessible when the provider exits the market. This motivates
+ the independent, self-hosted framework proposed in this thesis, where
+ all cached artefacts reside on researcher-controlled storage.
 \end{itemize}
 
 The limitations identified across academic work and commercial platforms converge
@@ -149,10 +149,10 @@ that are cached. Verified against official documentation as of April~2026.}
 \toprule
 \textbf{Tool} & \textbf{Strategy} & \textbf{Fingerprinting} & \textbf{Artefacts} & \textbf{LOSO Support} \\
 \midrule
-MLflow        & Step-level (opt.) & Parameter hashing          & Model only        & Manual \\
-DVC           & Pipeline stage    & MD5 (code + inputs)        & Stage outputs     & Manual \\
-ZenML         & Step-level        & SHA-256 (inputs+code+env)  & Step outputs      & Custom \\
-Neptune/W\&B  & None (tracking)   & N/A                        & None              & N/A \\
+MLflow & Step-level (opt.) & Parameter hashing & Model only & Manual \\
+DVC & Pipeline stage & MD5 (code + inputs) & Stage outputs & Manual \\
+ZenML & Step-level & SHA-256 (inputs+code+env) & Step outputs & Custom \\
+Neptune/W\&B & None (tracking) & N/A & None & N/A \\
 \textbf{This thesis} & \textbf{Hierarchical} & \textbf{SHA-256 + subject ID} & \textbf{Features + Models} & \textbf{Native} \\
 \bottomrule
 \end{tabular}
