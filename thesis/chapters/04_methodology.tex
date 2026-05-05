@@ -224,19 +224,36 @@ completes in under one minute ($227\times$ speedup).
 \section{Caching Framework Implementation}
 \label{sec:caching}
 
-Figure~\ref{fig:pipeline_architecture} shows the end-to-end pipeline from
-raw EEG recordings to evaluation results. The two orange blocks mark the
-two cache layers; green bypass arrows show the warm-run paths that skip
-redundant computation when cached artefacts exist.
+Figure~\ref{fig:pipeline_architecture} depicts the experimental loop that
+exercises the caching framework. The grey region is the per-fold LOSO loop,
+executed 128 times per configuration; the dashed return arrow at the top is
+the outer sweep over the 18 experimental combinations of model, correlation
+threshold, and top-$K$ feature count. The diagram begins at
+\textit{Feature Data}, which is the output of the Layer~1 feature store
+described above in Section~\ref{sec:features}; Layer~1 is
+upstream of the loop, configuration-independent, and therefore not part of
+the cache-hit/miss decision. The \textit{Model Cache (Layer~2)} block in the
+centre is the fingerprint-keyed cache where the speedup is realised.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_pipeline_overview.pdf}
-\caption[End-to-end pipeline overview]{End-to-end fingerprint-based caching
-pipeline. Blue blocks: data and signal processing. Orange: two-tier cache
-(Layer~1 feature store, Layer~2 model cache). Pink: LOSO split and
-fingerprint generation. Green arrows indicate warm-run bypass paths;
-the full warm run completes in $\sim$7~s versus $\sim$25~min cold.}
+\caption[Caching framework: LOSO experiment loop]{Caching framework
+schematic. \textbf{Inner loop} (grey region, executed 128 times per
+configuration): the configuration is hashed in \textit{Generate
+Fingerprint}; \textit{Cache Hit?} (diamond) queries the
+\textit{Model Cache (Layer~2)}; on miss, \textit{Train Model} runs and the
+trained model is saved (dashed arrow) before \textit{Evaluate Model}
+produces fold metrics. The dashed ``Next Fold'' arrow returns to
+fingerprint generation for the next held-out subject. \textbf{Outer loop}:
+once all 128 folds complete, \textit{Aggregate LOSO Metrics} closes the
+configuration, and the dashed return to \textit{Select Model and Feature
+Strategy} repeats the inner loop for each of the 18 experimental
+combinations. Colour coding: orange = control or state (input, diamond,
+cache); blue = deterministic processing steps; grey background = LOSO fold
+scope; solid arrows = forward execution; dashed = iteration or cache I/O.
+The Layer~1 feature store, source of \textit{Feature Data}, is upstream of
+the loop and not depicted.}
 \label{fig:pipeline_architecture}
 \end{figure}
 
