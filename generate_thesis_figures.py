@@ -78,22 +78,26 @@ def _fix_table(latex: str) -> str:
 def fig1_speedup_bar(show: bool):
     import matplotlib.pyplot as plt
 
-    xgb = pd.read_csv(XGB_CSV)
-    rf = pd.read_csv(RF_CSV)
+    # Values taken directly from tab:xgb_cache_results and tab:rf_cache_results
+    # (HP ProBook benchmark, 128 LOSO folds, 9 configurations each).
+    xgb_cold_s = np.array([1053.4, 1447.4, 1440.3, 964.1, 1453.8, 2223.6, 1003.6, 1385.9, 3816.1])
+    xgb_warm_s = np.array([26.4, 27.2, 26.6, 25.7, 26.4, 28.2, 21.1, 21.2, 18.9])
+    rf_cold_s  = np.array([4341.3, 4638.0, 4648.3, 4342.7, 5794.2, 6315.9, 4567.2, 5602.4, 7962.4])
+    rf_warm_s  = np.array([391.8, 402.8, 401.3, 392.2, 375.3, 359.0, 415.6, 356.7, 339.4])
 
     # Per-model summary: totals for the cold/warm bars, and median per-config
     # speedup for the annotation (consistent with the median values reported
     # in tab:xgb_cache_results and tab:rf_cache_results).
     data = {
         "XGBoost\n(9 configs)": {
-            "cold_h": xgb["cold_total_s"].sum() / 3600,
-            "warm_min": xgb["warm_total_s"].sum() / 60,
-            "speedup": (xgb["cold_total_s"] / xgb["warm_total_s"]).median(),
+            "cold_h": xgb_cold_s.sum() / 3600,
+            "warm_min": xgb_warm_s.sum() / 60,
+            "speedup": np.median(xgb_cold_s / xgb_warm_s),
         },
         "Random Forest\n(9 configs)": {
-            "cold_h": rf["cold_total_s"].sum() / 3600,
-            "warm_min": rf["warm_total_s"].sum() / 60,
-            "speedup": (rf["cold_total_s"] / rf["warm_total_s"]).median(),
+            "cold_h": rf_cold_s.sum() / 3600,
+            "warm_min": rf_warm_s.sum() / 60,
+            "speedup": np.median(rf_cold_s / rf_warm_s),
         },
     }
 

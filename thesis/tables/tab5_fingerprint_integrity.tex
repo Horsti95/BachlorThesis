@@ -1,18 +1,15 @@
 \begin{table}[htbp]
 \centering
-\caption[Fingerprint integrity: parameter changes produce unique hashes]{Fingerprint
-integrity: changing any parameter produces a unique SHA-256 hash. Hashes are
-truncated to the first 16 hex characters for display only --- comparison
-uses the full 256-bit digest.}
+\caption{Fingerprint integrity: changing any parameter produces a unique SHA-256 hash.}
 \label{tab:fingerprint_integrity}
-\begin{tabular}{lllllr}
+\begin{tabular}{llllll}
 \toprule
-Model & Corr & Top-K & Subject & Fingerprint (16 hex) & Changed \\
+Model & Corr & Top-K & Subject & Fingerprint (first 32 hex) & Changed \\
 \midrule
-XGBoost       & None & 149 & sub-001 & \texttt{9205699b55a5fd75} & --- \\
-XGBoost       & None & 149 & sub-002 & \texttt{4e3e06dcd45841d9} & subject \\
-XGBoost       & 0.90 &  50 & sub-001 & \texttt{49e60f13a9a1e317} & corr + top-k \\
-Random Forest & None & 149 & sub-001 & \texttt{beeda602d75a8463} & model \\
+XGBoost & None & 149 & sub-001 & 9205699b55a5fd755672c3ea50c2ee60 & --- \\
+XGBoost & None & 149 & sub-002 & 4e3e06dcd45841d9a756dbb4b63a7986 & subject \\
+XGBoost & 0.90 & 50 & sub-001 & 49e60f13a9a1e3172c8e3c4949fdf15d & corr + top-k \\
+Random Forest & None & 149 & sub-001 & beeda602d75a8463f3d24fcb332dd01e & model \\
 \bottomrule
 \end{tabular}
 \end{table}
