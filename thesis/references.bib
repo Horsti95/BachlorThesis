@@ -5,6 +5,8 @@
   year      = {2016},
   pages     = {785--794},
   doi       = {10.1145/2939672.2939785},
+  url       = {https://dl.acm.org/doi/10.1145/2939672.2939785},
+  note      = {Accessed: 2026-05-05}
 }
 
 @misc{zenml2024docs,
@@ -25,14 +27,16 @@
 }
 
 @article{iyengar2024cross,
-  title         = {Is Cross-Validation the Gold Standard to Evaluate Model Performance?},
   author        = {Iyengar, Garud and Lam, Henry and Wang, Tianyu},
-  journal       = {arXiv preprint arXiv:2407.02754},
+  title         = {Is {Cross-Validation} the Gold Standard to Evaluate Model Performance?},
+  journal       = {arXiv preprint arXiv:2407.02754v2},
   year          = {2024},
-  url           = {https://arxiv.org/abs/2407.02754},
+  eprint        = {2407.02754},
   archivePrefix = {arXiv},
   primaryClass  = {math.ST},
-  note          = {Accessed: 2026-04-17}
+  doi           = {10.48550/arXiv.2407.02754},
+  url           = {https://doi.org/10.48550/arXiv.2407.02754},
+  note          = {[Online]. Accessed: April 17, 2026}
 }
 
 @techreport{AIIndex2025,
@@ -129,7 +133,9 @@ ISSN={2504-0537},
   title={A machine learning approach to taking {EEG}-based brain-computer interfaces out of the lab},
   author={Jayaram, Vinay},
   year={2018},
-  school={Eberhard-Karls-Universit{\"a}t T{\"u}bingen}
+  school={Eberhard-Karls-Universit{\"a}t T{\"u}bingen},
+  url   = {https://publikationen.uni-tuebingen.de/xmlui/handle/10900/85130},
+  note         = {Accessed: 2026-04-20}  
 }
 
 @article{kearns1999,
@@ -148,7 +154,9 @@ ISSN={2504-0537},
   title={Error bounds in estimating the out-of-sample prediction error using leave-one-out cross validation in high-dimensions},
   author={Rahnama Rad, Kamiar and Zhou, Wenda and Maleki, Arian},
   booktitle={AISTATS},
-  year={2020}
+  year={2020},
+  url={https://arxiv.org/abs/2003.01770},
+  note         = {Accessed: 2026-04-20}
 }
 
 @article{siddiqui2025,
@@ -264,7 +272,9 @@ ISSN={1662-453X},
   booktitle = {Provenance Week 2020},
   year      = {2020},
   eprint    = {2006.12117},
-  archivePrefix = {arXiv}
+  archivePrefix = {arXiv},
+  url={https://arxiv.org/abs/2006.12117},
+   note         = {Accessed: 2026-04-20}
 }
 
 %"Semmelrock et al. (2025) identifizieren technische Barrieren und mangelnde Transparenz als Hauptgründe für die Krise im ML-Bereich."
@@ -453,51 +463,55 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   publisher = {Lippincott Williams \& Wilkins},
   address   = {Philadelphia, PA},
   isbn      = {978-0-7817-8942-4},
+  url = {https://www.researchgate.net/publication/271130306_Niedermeyer's_Electroencephalography_Basic_Principles_Clinical_Applications_and_Related_Fields_6th_ed}
 }
+c
 
-
-% EEG frequency bands / functional connectivity in sleep staging (cited in Ch2 Section 2.5)
-@article{huang2021eeg,
+@inproceedings{huang2013fuzzy,
   author    = {Huang, Chih-Sheng and Lin, Chin-Lin and Yang, Wen-Yen and Ko, Li-Wei and Liu, Shu-Yuan and Lin, Chin-Teng},
-  title     = {Applying the Fuzzy {C}-Means Based Dimension-Reduction to Improve the Sleep Staging Classification},
-  journal   = {Frontiers in Neuroscience},
-  volume    = {15},
-  year      = {2021},
-  doi       = {10.3389/fnins.2021.652058},
-  publisher = {Frontiers Media SA},
-  note         = {Accessed: 2026-04-20}
-}
-
-% AASM Scoring Manual (cited in Ch2 yellow box note)
-@manual{berry2017aasm,
-  title={The AASM Manual for the Scoring of Sleep and Associated Events: Rules, Terminology and Technical Specifications},
-  author={Berry, R.B. and Quan, S.F. and Abreu, A.R. and American Academy of Sleep Medicine and Bibbs, M.L. and DelRosso, L. and Harding, S.M. and Mao, M.M. and Plante, D.T. and Pressman, M.R. and others},
-  url={https://books.google.at/books?id=XT3dzQEACAAJ},
-  year={2020},
-  publisher={American Academy of Sleep Medicine},
-  note         = {Accessed: 2026-04-20}
-}
-
-% vLLM PagedAttention (cited in Ch2 Related Caching Approaches)
-@inproceedings{kwon2023pagedattention,
-  author    = {Kwon, Woosuk and Li, Zhuohan and Zhuang, Siyuan and Sheng, Ying and Zheng, Lianmin and Yu, Cody Hao and Gonzalez, Joseph E. and Zhang, Hao and Stoica, Ion},
-  title     = {Efficient Memory Management for Large Language Model Serving with {PagedAttention}},
-  booktitle = {Proceedings of the 29th Symposium on Operating Systems Principles (SOSP)},
-  year      = {2023},
-  doi       = {10.1145/3600006.3613165},
-  publisher = {ACM},
-  note         = {Accessed: 2026-04-20}
-}
-
-% GATI learned caching (cited in Ch2 Related Caching Approaches)
-@inproceedings{balasubramanian2021accelerating,
-  author    = {Balasubramanian, Muthu and Palanisamy, Balaji and Kannan, Rajgopal},
-  title     = {Accelerating Deep Learning Inference via Learned Caches},
-  booktitle = {Proceedings of the IEEE International Conference on Big Data},
-  year      = {2021},
-  doi       = {10.1109/BigData52589.2021.9671642},
+  title     = {Applying the fuzzy {C}-means based dimension reduction to improve the sleep classification system},
+  booktitle = {2013 {IEEE} International Conference on Fuzzy Systems ({FUZZ-IEEE})},
+  year      = {2013},
+  pages     = {1--5},
+  doi       = {10.1109/FUZZ-IEEE.2013.6622495},
+  url       = {https://ieeexplore.ieee.org/document/6622495},
+  address   = {Hyderabad, India},
   publisher = {IEEE},
+  url= {https://ieeexplore.ieee.org/document/6622495},
+  note      = {[Online]. Accessed: May 5, 2026}
+}
+
+
+
+@inproceedings{kwon2023pagedattention,
+author = {Kwon, Woosuk and Li, Zhuohan and Zhuang, Siyuan and Sheng, Ying and Zheng, Lianmin and Yu, Cody Hao and Gonzalez, Joseph and Zhang, Hao and Stoica, Ion},
+title = {Efficient Memory Management for Large Language Model Serving with PagedAttention},
+year = {2023},
+isbn = {9798400702297},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3600006.3613165},
+doi = {10.1145/3600006.3613165},
+abstract = {High throughput serving of large language models (LLMs) requires batching sufficiently many requests at a time. However, existing systems struggle because the key-value cache (KV cache) memory for each request is huge and grows and shrinks dynamically. When managed inefficiently, this memory can be significantly wasted by fragmentation and redundant duplication, limiting the batch size. To address this problem, we propose PagedAttention, an attention algorithm inspired by the classical virtual memory and paging techniques in operating systems. On top of it, we build vLLM, an LLM serving system that achieves (1) near-zero waste in KV cache memory and (2) flexible sharing of KV cache within and across requests to further reduce memory usage. Our evaluations show that vLLM improves the throughput of popular LLMs by 2--4\texttimes{} with the same level of latency compared to the state-of-the-art systems, such as FasterTransformer and Orca. The improvement is more pronounced with longer sequences, larger models, and more complex decoding algorithms. vLLM's source code is publicly available at https://github.com/vllm-project/vllm.},
+booktitle = {Proceedings of the 29th Symposium on Operating Systems Principles},
+pages = {611–626},
+numpages = {16},
+location = {Koblenz, Germany},
+series = {SOSP '23},
   note         = {Accessed: 2026-04-20}
+}
+
+@inproceedings{balasubramanian2021gati,
+  author        = {Balasubramanian, Arjun and Kumar, Adarsh and Liu, Yuhan and Cao, Han and Venkataraman, Shivaram and Akella, Aditya},
+  title         = {Accelerating Deep Learning Inference via Learned Caches},
+  booktitle     = {arXiv preprint arXiv:2101.07344},
+  year          = {2021},
+  eprint        = {2101.07344},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  doi           = {10.48550/arXiv.2101.07344},
+  url           = {https://doi.org/10.48550/arXiv.2101.07344},
+  note          = {[Online]. Accessed: April 20, 2026}
 }
 
 % ML textbook (cited in Ch2 Ensemble Methods)
@@ -511,18 +525,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   note      = {Relevant sections: Ch.~8 (Bagging), Ch.~9 (Tree Methods), Ch.~10 (Boosting), Ch.~15 (Random Forests), Ch.~16 (Ensemble Learning). Accessed: 2026-04-20}
 }
 
-% Random Forest primary source (cited in Ch2 Ensemble Methods)
-@article{breiman2001random,
-  author  = {Breiman, Leo},
-  title   = {Random Forests},
-  journal = {Machine Learning},
-  volume  = {45},
-  number  = {1},
-  pages   = {5--32},
-  year    = {2001},
-  doi     = {10.1023/A:1010933404324},
-  note         = {Accessed: 2026-04-20}
-}
+
 
 % XRootD/XCache HEP data caching (cited in Ch2 Related Caching Approaches)
 @inproceedings{sim2023xcache,
@@ -542,7 +545,8 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   year         = {2023},
   howpublished = {bioRxiv preprint},
   doi          = {10.1101/2023.10.05.561041},
-  note         = {Preprint; not peer-reviewed. Accessed: 2026-04-27}
+  note         = {Preprint; not peer-reviewed. Accessed: 2026-05-05},
+  url = {https://www.biorxiv.org/content/10.1101/2023.10.05.561041v1},
 }
 
 @inproceedings{kunjan2021loso,
@@ -560,6 +564,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   address   = {Switzerland},
   year      = {2021},
   doi       = {10.1007/978-3-030-86993-9_50},
+  url = {https://dl.acm.org/doi/10.1007/978-3-030-86993-9_50},
   note      = {Accessed: 2026-04-27}
 }
 
@@ -594,7 +599,7 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
 }
 
 % Random Forest primary source (cited in Ch2 Ensemble Methods)
-@article{breiman2001randomforest,
+@article{breiman2001random,
   author  = {Breiman, Leo},
   title   = {Random Forests},
   journal = {Machine Learning},
@@ -603,5 +608,17 @@ title        = {Neptune.ai Service Transition and Shutdown Notice},
   pages   = {5--32},
   year    = {2001},
   doi     = {10.1023/A:1010933404324},
+  url = {https://link.springer.com/article/10.1023/A:1010933404324},
   note         = {Accessed: 2026-04-20}
+}
+
+
+@manual{berry2020aasm,
+  title        = {The {AASM} Manual for the Scoring of Sleep and Associated Events: Rules, Terminology and Technical Specifications (Version 3)},
+  author       = {Berry, Richard B. and Brooks, Rita and Gamaldo, Charlene E. and others},
+  organization = {American Academy of Sleep Medicine},
+  address      = {Darien, IL},
+  year         = {2023},
+  url          = {https://aasm.org/clinical-resources/scoring-manual/},
+  note         = {Online; accessed 20 April 2026}
 }
