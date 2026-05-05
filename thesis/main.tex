@@ -28,6 +28,9 @@
 \usepackage{tcolorbox}
 \usepackage{algorithmic}
 \usepackage{algorithm}
+\usepackage{xurl}
+\usepackage{microtype}
+\usepackage{tabularx}
 
 % ---- Colored TODO/Note boxes for thesis review ----
 \newtcolorbox{todobox}[1][]{colback=red!8, colframe=red!70!black, fonttitle=\bfseries, title=TODO, #1}
@@ -71,28 +74,21 @@ The contributions of this thesis are: (1) a fingerprint-based LOSO model caching
     Finally, I would like to thank my family and friends for their support and encouragement during the writing of this thesis.
 
     \vspace{1cm}
-    \section*{AI Usage Disclosure (per FHR-5-0044)}
-    In accordance with the IMC examination regulations, the following
-    AI-assisted tools were used during preparation of this thesis. The
-    research design, methodology, experimental decisions, results
-    interpretation, and scientific argumentation are entirely the
-    author's. AI tools were used as language and engineering aids:
-    translating, polishing, and at times drafting prose from
-    author-supplied notes; generating boilerplate code; and assisting
-    with refactoring and document formatting. All AI-produced text was
-    reviewed, corrected where necessary, and accepted by the author as
-    their own scientific position. Original notes, prompts, and
-    intermediate drafts are available upon request.
+\section*{AI Usage Disclosure (per FHR-5-0044)}
+    In accordance with examination regulations, this thesis employed AI-assisted tools for linguistic refinement, technical execution, and structural support. The author maintains sole intellectual responsibility for the research design, the selection of methodologies, and the interpretation of findings. 
+
+    AI tools were used to synthesize author-provided notes and to assist in the comparative presentation of methodological options based on author-provided considerations, however, all final scientific decisions, such as the selection of ANOVA over Mutual Information following empirical evaluation—were made exclusively by the author. No AI-generated output was adopted without manual verification, and the final document reflects the author’s original scientific position. AI tools did not autonomously generate research hypotheses, results, or conclusions. Original notes, prompts, and intermediate drafts are available for review.
 
     \vspace{0.3cm}
-    \begin{tabular}{|p{0.18\textwidth}|p{0.27\textwidth}|p{0.25\textwidth}|p{0.20\textwidth}|}
+    \noindent
+    \begin{tabular}{|p{0.18\textwidth}|p{0.28\textwidth}|p{0.28\textwidth}|p{0.14\textwidth}|}
         \hline
-        \textbf{Tool} & \textbf{How?} & \textbf{Why?} & \textbf{Where?} \\ \hline
-        DeepL & Translation and linguistic polishing of self-written German drafts into English & Grammar and fluency improvement of author-written text & All chapters \\ \hline
-        GitHub Copilot & Code completion suggestions during implementation & Accelerating routine coding tasks (boilerplate, syntax) & Python caching framework (Ch.~4) \\ \hline
-        Claude (Anthropic) & Code refactoring and debugging; structural reviews of chapter outlines; converting author-written notes and bullet points into academic prose under explicit author guidance and review & Identifying bugs in caching logic, restructuring existing code, and accelerating prose drafting on author-supplied content & Python pipeline code (Ch.~4); thesis prose (Ch.~1--5) \\ \hline
-        Claude Code (Anthropic CLI agent) & Iterative editing of \LaTeX{} source: structural reorganisation, plagiarism rewrites under author direction, figure-regeneration scripts, citation/cross-reference cleanup & Reducing mechanical effort of large-scale restructuring while keeping content decisions with the author & Thesis source (Ch.~2--5, appendices) \\ \hline
-        Gemini (Google) & \LaTeX{} template debugging and formatting assistance & Resolving compilation errors in document formatting & Document template \\ \hline
+        \textbf{Tool} & \textbf{Application} & \textbf{Purpose} & \textbf{Scope} \\ \hline
+        Perplexity & Preliminary search and retrieval assistance for literature. & Facilitating initial source discovery and abstract-level orientation. & Research phase \\ \hline
+        DeepL & Linguistic transfer and stylistic refinement of author-written drafts. & Ensuring grammatical precision and maintaining a consistent academic register. & All chapters \\ \hline
+        GitHub Copilot & Syntactic assistance and boilerplate code completion. & Streamlining the technical implementation of author-defined logic. & Chapter 4 \\ \hline
+        Claude Ecosystem (Anthropic) & \textbf{Chat:} Assistance in organizing author-provided argument structure, formalizing research notes into prose. \newline \textbf{CLI:} Automated generation of \LaTeX{} figure environments and data visualization scripts. & Enhancing document flow and reducing manual formatting overhead while maintaining authorial control over data representation. & Prose (Ch.~1--5); Figures/Code (Ch.~4) \\ \hline
+        Gemini (Google) & Troubleshooting \LaTeX{} template configurations and environment debugging. & Resolving technical compilation errors in the document framework. & Document template \\ \hline
     \end{tabular}
 \end{acknowledgements}
 
