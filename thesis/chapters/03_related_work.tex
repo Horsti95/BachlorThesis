@@ -145,17 +145,23 @@ existing tools relevant to this thesis.
 keys or require manual configuration. \emph{Artefacts}: pipeline stages
 that are cached. Verified against official documentation as of April~2026.}
 \label{tab:related_works_comparison}
-\begin{tabular}{@{}lp{2.4cm}p{3.0cm}p{2.4cm}p{2.4cm}@{}}
+% Define a custom column type for ragged-right X columns to fix weird linebreaks
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\begin{tabularx}{\textwidth}{@{}l L L L L @{}}
 \toprule
 \textbf{Tool} & \textbf{Strategy} & \textbf{Fingerprinting} & \textbf{Artefacts} & \textbf{LOSO Support} \\
 \midrule
 MLflow & Step-level (opt.) & Parameter hashing & Model only & Manual \\
+\addlinespace[1ex]
 DVC & Pipeline stage & MD5 (code + inputs) & Stage outputs & Manual \\
+\addlinespace[1ex]
 ZenML & Step-level & SHA-256 (inputs+code+env) & Step outputs & Custom \\
+\addlinespace[1ex]
 Neptune/W\&B & None (tracking) & N/A & None & N/A \\
+\midrule
 \textbf{This thesis} & \textbf{Hierarchical} & \textbf{SHA-256 + subject ID} & \textbf{Features + Models} & \textbf{Native} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 The core gap is the lack of validated, documented patterns for fold-aware
