@@ -68,7 +68,7 @@ $\times$ 3 feature counts) with 128-fold LOSO cross-validation, totalling
 \item \textbf{100\% reproducibility.}
  All cached models produced bitwise-identical predictions to cold
  retraining across all 18 configurations and 128 LOSO folds (verified
- via \texttt{numpy.array\_equal()}).
+ via \path{numpy.array\_equal()}).
 \end{enumerate}
 
 \subsection{Research Questions Revisited}
@@ -113,7 +113,8 @@ answer is affirmative, the nuance matters as much as the confirmation.
  precisely where compute resources are most constrained.
 
 \item \textbf{RQ4 (Trade-offs):} A clear model viability spectrum exists, but
- the VIABLE/NOT\_VIABLE boundary is not universal, it depends on the
+ the VIABLE\allowbreak/\allowbreak NOT\allowbreak\_\allowbreak VIABLE 
+ boundary is not universal, it depends on the
  available hardware and how many re-runs are planned. 11 of 15 evaluated
  model types are unambiguously viable regardless of context. The 4
  not-viable types (Random Forest, Extra Trees, KNN) fail because their
