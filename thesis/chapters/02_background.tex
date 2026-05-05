@@ -31,13 +31,16 @@ compounding sources: N1 epochs are spectrally similar to both adjacent stages
 and N1 is severely underrepresented in real datasets (3.7\% of all epochs in BOAS, 
 see Section~\ref{sec:data}), giving classifiers little signal to learn the stage's transitional pattern.
 
-\item \textbf{N2 (Sleep):} Comprises 45--55\% of total sleep time. Defined
-      by sleep spindles (Sigma band, see Table~\ref{tab:eeg_bands}) and
-      K-complexes.
+\item \textbf{N2 (Sleep):} Comprises 45–55\% of total sleep time and is the 
+dominant class in BOAS at 60.3\% of all epochs (see Section~\ref{sec:data}). 
+N2 is defined by sleep spindles (Sigma band, see Table~\ref{tab:eeg_bands}) 
+and K-complexes; the abundance of training data and distinctive spectral markers 
+make N2 the easiest stage to classify
 
-\item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves
-      (0.5--4~Hz, $\geq$20\% of epoch). Most prevalent in the first third
-      of the night.
+\item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves (0.5–4 Hz, ≥20\% of epoch) 
+and most prevalent in the first third of the night. The strong delta signature 
+gives N3 a clear spectral fingerprint, but its absence in lighter-sleep periods 
+means a per-subject classifier sees N3 only intermittently.
 
 \item \textbf{REM:} low-amplitude, mixed-frequency EEG that is spectrally 
 similar to wakefulness. Polysomnography distinguishes REM from Wake using 
