@@ -16,7 +16,7 @@ feature space used in the experiments.
 \subsection{Sleep Stages and Their Characteristics}
 
 The American Academy of Sleep Medicine (AASM) defines five sleep stages,
-scored in 30-second epochs from polysomnographic recordings~\cite{berry2017aasm}.
+scored in 30-second epochs from polysomnographic recordings~\cite{berry2020aasm}.
 These stage labels constitute the classification targets ($y$-variables) in this
 thesis:
 
@@ -45,7 +45,7 @@ means a per-subject classifier sees N3 only intermittently.
 \item \textbf{REM:} low-amplitude, mixed-frequency EEG that is spectrally 
 similar to wakefulness. Polysomnography distinguishes REM from Wake using 
 two non-EEG channels, electrooculography (rapid eye movements) and 
-electromyography (skeletal muscle atonia)~\cite{berry2017aasm}, but the 
+electromyography (skeletal muscle atonia)~\cite{berry2020aasm}, but the 
 EEG-only feature pipeline used in this thesis does not include EOG or EMG. 
 The classifier therefore identifies REM from EEG alone, relying on subtler 
 spectral and inter-channel features rather than the canonical eye-movement / 
@@ -198,7 +198,7 @@ trees trained under different conditions.
 
 \subsection{Bagging: Random Forest}
 
-Random Forest~\cite{breiman2001randomforest} fits an ensemble of decision trees in 
+Random Forest~\cite{breiman2001random} fits an ensemble of decision trees in 
 which each tree sees a bootstrap-resampled training set and, at every split, 
 considers only a randomly drawn subset of the candidate features. Aggregating 
 over many such weakly correlated trees by majority vote stabilises the prediction 
