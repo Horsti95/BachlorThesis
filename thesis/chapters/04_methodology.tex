@@ -217,7 +217,9 @@ Python's GIL for CPU-bound NumPy/SciPy operations. Each subject's full
 downstream experiments apply correlation filtering and top-K selection at
 runtime without re-extracting. Cold extraction of all 128 subjects takes
 approximately 53~minutes; warm loading from the persistent feature cache
-completes in under one minute ($227\times$ speedup).
+completes in under one minute ($227\times$ speedup). This persistent
+feature cache constitutes Layer~1 of the two-tier caching architecture
+described in Section~\ref{sec:caching_architecture}.
 
 
 
@@ -409,7 +411,7 @@ identical selection parameters (same threshold, same top-K) but different
 resulting feature subsets matched on disk, causing a model trained on 37
 features to be loaded for a configuration that had selected 33. The fix was
 to include a 16-character SHA-256 hash of the sorted selected feature names
-(\texttt{features\_hash}) in the fingerprint. A change in the actual feature
+(\path{features\_hash}) in the fingerprint. A change in the actual feature
 set now produces a different key even when threshold and top-K are unchanged.
 
 \textbf{Version control safety.} The \texttt{code\_version} parameter
@@ -744,8 +746,7 @@ cold and warm runs compared automatically):
 
 \begin{itemize}
 \item \textbf{Prediction Identity:} Cached models produced bitwise-identical
- predictions to freshly trained models, verified programmatically via
- \verb|numpy.array_equal(cold_preds, warm_preds)| for each of the 24
+ predictions to freshly trained models, verified programmatically via \path{numpy.array_equal(cold_preds, warm_preds)} for each of the 24
  configuration--subject pairs.
 \item \textbf{Metric Reproducibility:} Accuracy, F1, and Cohen's $\kappa$ scores
  matched to floating-point precision ($<10^{-10}$ difference), computed
@@ -1142,7 +1143,7 @@ experimentation.
 
 \subsection{Why Tree Ensembles and KNN Are Not Cache-Viable}
 
-A model is classified as \textbf{NOT\_VIABLE} when its warm-load time approaches
+A model is classified as NOT\_VIABLE when its warm-load time approaches
 or exceeds its cold-train time on the target hardware, negating the caching benefit,
 or when the serialized model size makes repeated storage impractical.
 Formally: caching is viable when $T_{\text{load}} \ll T_{\text{train}}$
