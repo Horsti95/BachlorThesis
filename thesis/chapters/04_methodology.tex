@@ -217,7 +217,9 @@ Python's GIL for CPU-bound NumPy/SciPy operations. Each subject's full
 downstream experiments apply correlation filtering and top-K selection at
 runtime without re-extracting. Cold extraction of all 128 subjects takes
 approximately 53~minutes; warm loading from the persistent feature cache
-completes in under one minute ($227\times$ speedup).
+completes in under one minute ($227\times$ speedup). This persistent
+feature cache constitutes Layer~1 of the two-tier caching architecture
+described in Section~\ref{sec:caching_architecture}.
 
 
 
