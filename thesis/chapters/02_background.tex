@@ -37,7 +37,7 @@ N2 is defined by sleep spindles (Sigma band, see Table~\ref{tab:eeg_bands})
 and K-complexes; the abundance of training data and distinctive spectral markers 
 make N2 the easiest stage to classify
 
-\item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves (0.5–4 Hz, ≥20\% of epoch) 
+\item \textbf{N3 (Deep Sleep):} Dominated by high-amplitude delta waves (0.5--4 Hz, $\geq 20\%$ of epoch)
 and most prevalent in the first third of the night. The strong delta signature 
 gives N3 a clear spectral fingerprint, but its absence in lighter-sleep periods 
 means a per-subject classifier sees N3 only intermittently.
@@ -272,85 +272,31 @@ actually changed.
 \label{sec:mlresearch}
 \label{sec:comp_efficiency}
 
-ML research is iterative by construction. A typical project cycles through 
-preprocessing tweaks, feature-set redefinitions, hyperparameter sweeps, and 
-architecture variants, with each cycle re-running the same long computations 
-against slightly different inputs. The cumulative cost,   in compute hours, 
-energy, and developer time,   is dominated not by any single training run 
-but by the dozens of repetitions a project accumulates while converging on 
-a workable design~\cite{schmidt2024sustainableml}. Standardised lifecycle 
-models such as CRISP-DM~\cite{wirth2000crispdm} formalise this iteration as 
-an explicit cycle that returns repeatedly to the modelling phase. Each return 
-triggers full retraining unless intermediate artefacts are persisted across cycles, 
-which is exactly the gap the fingerprint-based framework in this thesis fills, 
-by memoising trained models under a cryptographic key so that re-running the modelling phase becomes a cache lookup rather than a recomputation.
+ML research is iterative by construction. A typical project cycles through preprocessing tweaks, feature-set redefinitions, hyperparameter sweeps, and architecture variants, with each cycle re-running the same long computations against slightly different inputs. The cumulative cost, in compute hours, energy, and developer time, is dominated not by any single training run but by the dozens of repetitions a project accumulates while converging on a workable design \cite{sculley2015hidden}. Standardised lifecycle models such as CRISP-DM~\cite{crispdm2000} formalise this iteration as an explicit cycle that returns repeatedly to the modelling phase. For deployed ML systems, CRISP-ML(Q)~\cite{studer2021crispmlq} extends this lifecycle perspective with explicit quality assurance, monitoring, and maintenance tasks to address risks such as model degradation, bias, and lack of reproducibility. Each return to the modelling phase triggers full retraining unless intermediate artefacts are persisted across cycles, which is exactly the gap the fingerprint-based framework in this thesis fills, by memoising trained models under a cryptographic key so that re-running the modelling phase becomes a cache lookup rather than a recomputation.
 
-Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp}
-support experiment tracking by recording parameters, metrics, implementation
-versions, and artefacts for each run, enabling comparison and reproducibility.
-These tools were designed for single train/test splits and tabular grid
-searches. In Leave-One-Subject-Out cross-validation with 128 subjects, a
-single parameter change invalidates 128 individually trained models rather
-than one---making the absence of fold-aware caching not merely inconvenient
-but a potential source of silent scientific errors.
+Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp} support experiment tracking by recording parameters, metrics, implementation versions, and artefacts for each run, enabling comparison and reproducibility. These tools were designed for single train/test splits and tabular grid searches. In Leave-One-Subject-Out cross-validation with 128 subjects, a single parameter change invalidates 128 individually trained models rather than one—making the absence of fold-aware caching not merely inconvenient but a potential source of silent scientific errors.
 
-Reproducibility remains a pervasive challenge in ML
-research~\cite{semmelrock2025reproducibility}. Kreuzberger et al.\ define
-reproducibility as the ability to obtain identical results under identical
-conditions (Principle~P3) and emphasise metadata tracking for model lineage
-(Principle~P7)~\cite{kreuzberger2023mlops}. Achieving P3 requires controlling
-three interdependent components: input data, tracked parameters, and the
-execution environment. Challenges arise from:
-\begin{itemize}
-    \item \textbf{Lack of Records and Hyperparameter Inconsistency:}
-          Unrecorded decisions or parameter changes hinder replication.
-    \item \textbf{Data and Environment Volatility:} Dataset alterations,
-          framework updates, and inconsistent compute environments cause
-          divergent outcomes. Rzig et al.\ find that 61.8\% of CI/CD
-          pipeline modifications in ML projects address build policies and
-          dependency management rather than model logic~\cite{rzig2024empirical}.
-    \item \textbf{Inherent Randomness:} Stochastic initialisation and
-          hardware-level non-determinism (e.g.\ NVIDIA cuDNN atomic
-          operations~\cite{nvidia2024cudnn}) affect deep learning models.
-          The classical ensemble models used in this thesis (sklearn,
-          XGBoost, fixed \texttt{random\_state=42}) are deterministic by
-          construction and unaffected by these concerns.
-\end{itemize}
-
-The increasing complexity and scale of Machine Learning models have
-substantially raised computational demands. Training models, tuning
-hyperparameters, and running repeated experiments consume vast compute,
-memory, and time resources. Several factors drive this resource consumption:
+Reproducibility remains a pervasive challenge in ML research~\cite{semmelrock2025reproducibility}. Kreuzberger et al.\ define reproducibility as the ability to obtain identical results under identical conditions (Principle P3) and emphasise metadata tracking for model lineage (Principle P7)~\cite{kreuzberger2023mlops}. Achieving P3 requires controlling three interdependent components: input data, tracked parameters, and the execution environment. Challenges arise from:
 
 \begin{itemize}
-\item \textbf{Large Datasets:} Massive datasets require intensive I/O and
-      memory usage.
-
-\item \textbf{Complex Models:} Both deep neural networks and ensemble
-      methods (e.g., gradient boosting with thousands of trees, large
-      random forests) require substantial computational resources for
-      training and inference.
-
-\item \textbf{Iterative Experimentation:} Frequent experiments often repeat
-      computations unnecessarily when modifying a subset of parameters while
-      keeping others constant.
-
-\item \textbf{Hyperparameter Optimization:} Searching large hyperparameter
-      spaces is inherently compute-intensive.
-
-\item \textbf{Rigorous Validation:} Cross-validation strategies (e.g.,
-      k-fold, leave-one-out) multiply training costs by the number of folds.
+    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} Unrecorded decisions or parameter changes hinder replication.
+    \item \textbf{Data and Environment Volatility:} Dataset alterations, framework updates, and inconsistent compute environments cause divergent outcomes. Rzig et al.\ find that 61.8\% of CI/CD pipeline modifications in ML projects address build policies and dependency management rather than model logic~\cite{rzig2024empirical}.
+    \item \textbf{Inherent Randomness:} Stochastic initialisation and hardware-level non-determinism (e.g., NVIDIA cuDNN atomic operations~\cite{nvidia2024cudnn}) affect deep learning models. The classical ensemble models used in this thesis (sklearn, XGBoost, fixed \texttt{random\_state=42}) are deterministic by construction and unaffected by these concerns.
 \end{itemize}
 
-While caching can help, traditional research in cache management---such as the ML-aided hardware strategies surveyed by Krishna (2025)---focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artefacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
+The increasing complexity and scale of Machine Learning models have substantially raised computational demands. Training models, tuning hyperparameters, and running repeated experiments consume vast compute, memory, and time resources. Several factors drive this resource consumption:
 
-Caching shifts the bottleneck from computation time to storage space,   a
-trade-off whose viability depends on the serialised model size, the expected
-number of re-runs, and available storage capacity. For compact models re-run
-frequently, caching is clearly beneficial; for very large models run only
-once, the storage overhead may outweigh the savings. This thesis addresses
-this trade-off explicitly through a model viability analysis in
-Chapter~\ref{chap:methodology}.
+\begin{itemize}
+    \item \textbf{Large Datasets:} Massive datasets require intensive I/O and memory usage.
+    \item \textbf{Complex Models:} Both deep neural networks and ensemble methods (e.g., gradient boosting with thousands of trees, large random forests) require substantial computational resources for training and inference.
+    \item \textbf{Iterative Experimentation:} Frequent experiments often repeat computations unnecessarily when modifying a subset of parameters while keeping others constant.
+    \item \textbf{Hyperparameter Optimization:} Searching large hyperparameter spaces is inherently compute-intensive.
+    \item \textbf{Rigorous Validation:} Cross-validation strategies (e.g., k-fold, leave-one-out) multiply training costs by the number of folds.
+\end{itemize}
+
+While caching can help, traditional research in cache management—such as the ML-aided hardware strategies surveyed by Krishna (2025)—focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artefacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
+
+Caching shifts the bottleneck from computation time to storage space, a trade-off whose viability depends on the serialised model size, the expected number of re-runs, and available storage capacity. For compact models re-run frequently, caching is clearly beneficial; for very large models run only once, the storage overhead may outweigh the savings. This thesis addresses this trade-off explicitly through a model viability analysis in Chapter~\ref{chap:methodology}.
 
 % ============================================================================
 \section{Technology: Configuration Fingerprinting and Caching}
