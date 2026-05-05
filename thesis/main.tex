@@ -72,23 +72,28 @@ The contributions of this thesis are: (1) a fingerprint-based LOSO model caching
 
     \vspace{1cm}
     \section*{AI Usage Disclosure (per FHR-5-0044)}
-    \begin{center}
-    \colorbox{yellow!20}{%
-    \begin{minipage}{0.95\textwidth}
-    \small
-    In accordance with the IMC examination regulations, the following AI-assisted tools were used during the preparation of this thesis. In all cases, the underlying research, analysis, and scientific argumentation were performed independently by the author. AI tools were used exclusively in a supporting capacity as permitted under FHR-5-0044. Original texts and prompts are available upon request.
+    In accordance with the IMC examination regulations, the following
+    AI-assisted tools were used during preparation of this thesis. The
+    research design, methodology, experimental decisions, results
+    interpretation, and scientific argumentation are entirely the
+    author's. AI tools were used as language and engineering aids:
+    translating, polishing, and at times drafting prose from
+    author-supplied notes; generating boilerplate code; and assisting
+    with refactoring and document formatting. All AI-produced text was
+    reviewed, corrected where necessary, and accepted by the author as
+    their own scientific position. Original notes, prompts, and
+    intermediate drafts are available upon request.
 
     \vspace{0.3cm}
-    \begin{tabular}{|p{0.18\textwidth}|p{0.25\textwidth}|p{0.25\textwidth}|p{0.22\textwidth}|}
+    \begin{tabular}{|p{0.18\textwidth}|p{0.27\textwidth}|p{0.25\textwidth}|p{0.20\textwidth}|}
         \hline
-        \textbf{KI-Tool} & \textbf{Wie?} & \textbf{Warum?} & \textbf{An welcher Stelle?} \\ \hline
+        \textbf{Tool} & \textbf{How?} & \textbf{Why?} & \textbf{Where?} \\ \hline
         DeepL & Translation and linguistic polishing of self-written German drafts into English & Grammar and fluency improvement of author-written text & All chapters \\ \hline
         GitHub Copilot & Code completion suggestions during implementation & Accelerating routine coding tasks (boilerplate, syntax) & Python caching framework (Ch.~4) \\ \hline
-        Claude (Anthropic) & Code refactoring assistance and debugging support & Identifying bugs in caching logic; restructuring existing code & Python pipeline code (Ch.~4) \\ \hline
+        Claude (Anthropic) & Code refactoring and debugging; structural reviews of chapter outlines; converting author-written notes and bullet points into academic prose under explicit author guidance and review & Identifying bugs in caching logic, restructuring existing code, and accelerating prose drafting on author-supplied content & Python pipeline code (Ch.~4); thesis prose (Ch.~1--5) \\ \hline
+        Claude Code (Anthropic CLI agent) & Iterative editing of \LaTeX{} source: structural reorganisation, plagiarism rewrites under author direction, figure-regeneration scripts, citation/cross-reference cleanup & Reducing mechanical effort of large-scale restructuring while keeping content decisions with the author & Thesis source (Ch.~2--5, appendices) \\ \hline
         Gemini (Google) & \LaTeX{} template debugging and formatting assistance & Resolving compilation errors in document formatting & Document template \\ \hline
     \end{tabular}
-    \end{minipage}}
-    \end{center}
 \end{acknowledgements}
 
 \addtoToC{Table of Contents}%

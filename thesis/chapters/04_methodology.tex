@@ -115,15 +115,16 @@ The preprocessing pipeline transforms raw EDF recordings into clean, epoched sig
 
 \subsection{Signal Filtering}
 
-The following signal conditioning is applied sequentially to each EEG channel:
-
-\begin{enumerate}
-\item \textbf{Bandpass Filter:} A 5th-order Butterworth filter with cutoff frequencies of 0.5--40 Hz removes DC drift and high-frequency noise while preserving sleep-relevant frequency bands.
-\item \textbf{Notch Filter:} A notch filter at 50 Hz (Q=30) removes power line interference.
-\item \textbf{Downsampling:} 256 Hz $\rightarrow$ 128 Hz using decimation with built-in anti-aliasing low-pass filter (prevents aliasing artifacts).
-\end{enumerate}
-
-All preprocessing parameters are included in the cache fingerprint, ensuring automatic invalidation when parameters change.
+Each EEG channel passes through three sequential conditioning stages.
+First, a 5th-order Butterworth bandpass with cut-offs at $0.5$~Hz and
+$40$~Hz attenuates DC drift on the low end and out-of-band high-frequency
+content on the upper end while leaving the delta--gamma sleep bands
+intact. Second, a notch filter at $50$~Hz with quality factor $Q{=}30$
+suppresses European mains interference. Third, the signal is decimated
+from $256$~Hz to $128$~Hz; the built-in anti-aliasing low-pass filter
+ahead of decimation prevents fold-back artefacts. All preprocessing
+parameters are included in the cache fingerprint, ensuring automatic
+invalidation when parameters change.
 
 \subsection{Epoch Creation and Quality Control}
 
@@ -410,16 +411,19 @@ produces a unique 32-character SHA-256 prefix.
 \subsection{Cache Storage Structure}
 
 The two-layer directory layout reflects the key/no-key distinction:
-Layer~1 filenames carry no fingerprint (features are configuration-independent);
-Layer~2 filenames embed the 32-character fingerprint so any parameter or
-subject change forces a cache miss and prevents accidental reuse.
-
-Layer~1 files follow the fingerprint-free pattern
-\texttt{features/sub-N\_full.npz} (always valid, never invalidated).
-Layer~2 files embed the fingerprint in their filename:
-\texttt{models/\{fp32\}\_sub-N.joblib}, so any parameter or subject
-change forces a cache miss. A companion \texttt{models/registry.json}
-maps each fingerprint to its full configuration metadata.
+Layer~1 filenames carry no fingerprint (features are
+configuration-independent), while Layer~2 filenames embed the
+32-character fingerprint so any parameter or subject change forces a
+cache miss. Concrete naming patterns:
+\begin{itemize}
+\item Layer~1: \texttt{features/sub-N\_full.npz} --- fingerprint-free,
+      always valid, never invalidated.
+\item Layer~2: \texttt{models/\{fp32\}\_sub-N.joblib} --- any change in
+      parameters or subject yields a different filename and forces a
+      miss.
+\item Metadata: \texttt{models/registry.json} maps each fingerprint to
+      its full configuration metadata.
+\end{itemize}
 
 \subsection{Cache Hit/Miss Logic}
 
@@ -1214,18 +1218,21 @@ preserved in Appendix~\ref{sec:appendix_global_vs_fold} for reference.
  $54\times$) should be read as a single-hardware data point rather
  than a universal speedup figure.
 
-\item \textbf{Naive storage backend:} The Layer~2 cache is a flat directory
- of files named \texttt{\{fingerprint\}\_\{subject\}.joblib}, looked up
- with a single \texttt{Path.exists()} call (\texttt{loso\_cache.py:218,
- 261}). The fingerprint \textit{is} the index, there is no database,
- no content-addressable store, no eviction policy, and no concurrent-write
- arbitration; a sidecar JSON registry tracks metadata but is not on the
- lookup path. This is sufficient for a single-machine, single-user thesis
- project, but limits scalability: a team setting or a long-running
- pipeline would benefit from replacing the flat directory with an object
- store (S3, MinIO), a content-addressable filesystem, or a metadata
- database with TTL/LRU eviction. The fingerprinting layer is independent
- of the storage backend and would carry over unchanged.
+\item \textbf{Naive storage backend:} The Layer~2 cache is a flat
+      directory of joblib files keyed by fingerprint and subject
+      (lookup is a single \texttt{Path.exists()} call;
+      see \texttt{loso\_cache.py}, lines 218 and 261). The fingerprint
+      itself is the index, there is no database, no
+      content-addressable store, no eviction policy, and no
+      concurrent-write arbitration. A sidecar JSON registry tracks
+      metadata but is not on the lookup path. This is sufficient for
+      a single-machine, single-user thesis project but limits
+      scalability; a team setting or a long-running pipeline would
+      benefit from replacing the flat directory with an object store
+      (e.g.\ S3 or MinIO), a content-addressable filesystem, or a
+      metadata database with TTL/LRU eviction. The fingerprinting
+      layer is independent of the storage backend and would carry
+      over unchanged.
 
 \item \textbf{Layer~1 fingerprint validation is lenient:} The feature cache
  (Layer~1) stores a preprocessing config fingerprint with each cached
