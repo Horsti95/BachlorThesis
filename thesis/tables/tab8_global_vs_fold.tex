@@ -1,22 +1,25 @@
-% Global vs. Fold-Specific Feature Selection: condensed summary
+% Global vs. Fold-Specific Feature Selection Tradeoff
 % Data source: benchmark_global_vs_perfold.py
 %   N={3,5,10,20} subjects x XGBoost + RF x 3 corr thresholds, top-k=50
 %
 \begin{table}[htbp]
 \centering
-\caption[Global vs.\ fold-specific ANOVA: condensed summary]{Global vs.\
-fold-specific ANOVA feature selection: empirical comparison
-($N \in \{3,5,10,20\}$, XGBoost and Random Forest, top-$k=50$, three correlation
-thresholds each). Global scope is preferred: accuracy is statistically
-indistinguishable while warm-run speedup is several-fold higher.}
+\caption{Global vs.\ fold-specific ANOVA feature selection: empirical comparison
+         across subject counts (XGBoost and Random Forest, top-$k=50$, 3 correlation
+         thresholds each).}
 \label{tab:global_vs_fold}
 \begin{tabular}{lcc}
 \toprule
-\textbf{Aspect} & \textbf{Global (chosen)} & \textbf{Fold-specific} \\
+\textbf{Aspect} & \textbf{Global} & \textbf{Fold-Specific} \\
 \midrule
-Accuracy difference            & $\pm 0.4\%$ mean, $\leq 1.1\%$ max & baseline \\
-XGBoost warm speedup           & $14$--$23\times$                   & $4$--$9\times$ \\
-Random Forest warm speedup     & $3$--$5\times$                     & $2.5$--$2.8\times$ \\
+Selection fitted on        & All subjects (once)         & Training fold only \\
+Label leakage              & $1/128 \approx 0.8\%$       & None \\
+Accuracy difference        & $\pm 0.4\%$ mean, $\leq 1.1\%$ max & Baseline \\
+XGBoost warm speedup       & $14$--$23\times$            & $4$--$9\times$ \\
+Random Forest warm speedup & $3$--$5\times$              & $2.5$--$2.8\times$ \\
+Speedup degrades with $N$  & No (fingerprint stable)     & Yes (re-select per fold) \\
+Cache key complexity       & One key per config          & One key per fold \\
+Thesis choice              & \checkmark                  & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
