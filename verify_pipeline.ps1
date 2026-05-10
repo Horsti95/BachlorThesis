@@ -53,7 +53,7 @@ $env:PYTHONIOENCODING = "utf-8"
 
 function Log {
     param([string]$Text)
-    $Text | Tee-Object -FilePath $logFile -Append | Out-Host
+    $Text | Tee-Object -FilePath $logFile -Append -Encoding UTF8 | Out-Host
 }
 
 function Run-Step {
@@ -70,7 +70,7 @@ function Run-Step {
 
     $global:LASTEXITCODE = 0
     try {
-        & $Cmd 2>&1 | Tee-Object -FilePath $logFile -Append | Out-Host
+        & $Cmd 2>&1 | Tee-Object -FilePath $logFile -Append -Encoding UTF8 | Out-Host
     } catch {
         Log "EXCEPTION: $_"
         if ($LASTEXITCODE -eq 0) { $global:LASTEXITCODE = 1 }
