@@ -22,7 +22,7 @@ thesis:
 
 \begin{itemize}
 \item \textbf{Wake (W):} Low-amplitude, high-frequency EEG; alpha waves
-      (8--13~Hz) predominate during relaxed wakefulness.
+ (8--13~Hz) predominate during relaxed wakefulness.
 
 \item \textbf{N1 (Light Sleep):} mixed-frequency, low-amplitude EEG that is 
 the most difficult stage to classify automatically. The difficulty has two 
@@ -104,12 +104,12 @@ Beta and Gamma boundaries differ slightly from conventional ranges
 \toprule
 \textbf{Band} & \textbf{Range (Hz)} & \textbf{Sleep Stage Association} \\
 \midrule
-Delta  & 0.5--4.0   & Predominant in N3 (deep sleep); indicates sleep pressure \\
-Theta    & 4.0--8.0   & Associated with N1 and REM; drowsiness marker \\
-Alpha    & 8.0--13.0  & Relaxed wakefulness; key marker for Stage W \\
-Sigma    & 12.0--16.0 & Sleep spindles; definitive marker for N2 sleep \\
-Beta     & 16.0--30.0 & Active wakefulness; power decreases during NREM \\
-Gamma    & 30.0--40.0 & High-frequency processing; typically minimal in sleep \\
+Delta & 0.5--4.0 & Predominant in N3 (deep sleep); indicates sleep pressure \\
+Theta & 4.0--8.0 & Associated with N1 and REM; drowsiness marker \\
+Alpha & 8.0--13.0 & Relaxed wakefulness; key marker for Stage W \\
+Sigma & 12.0--16.0 & Sleep spindles; definitive marker for N2 sleep \\
+Beta & 16.0--30.0 & Active wakefulness; power decreases during NREM \\
+Gamma & 30.0--40.0 & High-frequency processing; typically minimal in sleep \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -142,8 +142,8 @@ approaches.
 \subsection{Feature-Based Approaches}
 
 Feature-based sleep staging extracts domain-informed descriptors from EEG
-signals---time-domain statistics, frequency-domain band powers, and signal
-complexity measures---and feeds them to classical ML
+signals,time-domain statistics, frequency-domain band powers, and signal
+complexity measures, and feeds them to classical ML
 classifiers. Satapathy et al.\ (2024) demonstrate that multi-modality feature
 sets with ensemble classifiers achieve competitive performance, particularly
 in cross-subject settings where training data per subject is
@@ -166,8 +166,8 @@ staging~\cite{perslev2021usleep}. Siddiqui et al.\ (2025) confirm that deep
 models require substantially more computational resources than traditional
 ensembles while ensemble classifiers remain highly competitive on
 standard benchmark datasets~\cite{siddiqui2025}. Deep learning workflows
-address the reuse problem through \textit{checkpointing}---saving intermediate
-training state to resume interrupted optimisation---rather than fold-level
+address the reuse problem through \textit{checkpointing}, saving intermediate
+training state to resume interrupted optimisation, rather than fold-level
 memoisation. Checkpointing targets a different inefficiency and does not
 prevent redundant retraining when only configuration parameters change.
 This thesis addresses the complementary gap: fold-level memoisation for
@@ -218,7 +218,7 @@ gradient boosting with
 regularisation terms, sparsity-aware splitting, and cache-efficient tree
 construction. Unlike Random Forest, boosting models use shallow trees
 (depth 3--6) with aggressive regularisation, producing compact serialized
-representations of 1--2~MB per fold---making them highly cache-viable.
+representations of 1--2~MB per fold, making them highly cache-viable.
 
 \subsection{Why These Models for EEG Feature Classification}
 
@@ -258,7 +258,7 @@ necessary for any EEG-based machine learning study~\cite{kunjan2021loso}.
 The computational cost is proportional to the cohort size: with $N = 128$
 subjects, a single experimental configuration requires 128 separate model
 training runs. Each run produces a distinct trained model valid only for
-evaluating its specific held-out subject,   a model trained with subject
+evaluating its specific held-out subject, a model trained with subject
 $S_i$ excluded cannot be reused to evaluate subject $S_j$, because the
 training population differs. This fold-specificity is what makes LOSO the
 primary driver of the caching framework: without persistent, fold-aware
@@ -279,19 +279,19 @@ Tools such as MLflow~\cite{zaharia2018mlflow} and MLXP~\cite{arbel2024mlxp} supp
 Reproducibility remains a pervasive challenge in ML research~\cite{semmelrock2025reproducibility}. Kreuzberger et al.\ define reproducibility as the ability to obtain identical results under identical conditions (Principle P3) and emphasise metadata tracking for model lineage (Principle P7)~\cite{kreuzberger2023mlops}. Achieving P3 requires controlling three interdependent components: input data, tracked parameters, and the execution environment. Challenges arise from:
 
 \begin{itemize}
-    \item \textbf{Lack of Records and Hyperparameter Inconsistency:} Unrecorded decisions or parameter changes hinder replication.
-    \item \textbf{Data and Environment Volatility:} Dataset alterations, framework updates, and inconsistent compute environments cause divergent outcomes. Rzig et al.\ find that 61.8\% of CI/CD pipeline modifications in ML projects address build policies and dependency management rather than model logic~\cite{rzig2024empirical}.
-    \item \textbf{Inherent Randomness:} Stochastic initialisation and hardware-level non-determinism (e.g., NVIDIA cuDNN atomic operations~\cite{nvidia2024cudnn}) affect deep learning models. The classical ensemble models used in this thesis (sklearn, XGBoost, fixed \texttt{random\_state=42}) are deterministic by construction and unaffected by these concerns.
+ \item \textbf{Lack of Records and Hyperparameter Inconsistency:} Unrecorded decisions or parameter changes hinder replication.
+ \item \textbf{Data and Environment Volatility:} Dataset alterations, framework updates, and inconsistent compute environments cause divergent outcomes. Rzig et al.\ find that 61.8\% of CI/CD pipeline modifications in ML projects address build policies and dependency management rather than model logic~\cite{rzig2024empirical}.
+ \item \textbf{Inherent Randomness:} Stochastic initialisation and hardware-level non-determinism (e.g., NVIDIA cuDNN atomic operations~\cite{nvidia2024cudnn}) affect deep learning models. The classical ensemble models used in this thesis (sklearn, XGBoost, fixed \texttt{random\_state=42}) are deterministic by construction and unaffected by these concerns.
 \end{itemize}
 
 The increasing complexity and scale of Machine Learning models have substantially raised computational demands. Training models, tuning hyperparameters, and running repeated experiments consume vast compute, memory, and time resources. Several factors drive this resource consumption:
 
 \begin{itemize}
-    \item \textbf{Large Datasets:} Massive datasets require intensive I/O and memory usage.
-    \item \textbf{Complex Models:} Both deep neural networks and ensemble methods (e.g., gradient boosting with thousands of trees, large random forests) require substantial computational resources for training and inference.
-    \item \textbf{Iterative Experimentation:} Frequent experiments often repeat computations unnecessarily when modifying a subset of parameters while keeping others constant.
-    \item \textbf{Hyperparameter Optimization:} Searching large hyperparameter spaces is inherently compute-intensive.
-    \item \textbf{Rigorous Validation:} Cross-validation strategies (e.g., k-fold, leave-one-out) multiply training costs by the number of folds.
+ \item \textbf{Large Datasets:} Massive datasets require intensive I/O and memory usage.
+ \item \textbf{Complex Models:} Both deep neural networks and ensemble methods (e.g., gradient boosting with thousands of trees, large random forests) require substantial computational resources for training and inference.
+ \item \textbf{Iterative Experimentation:} Frequent experiments often repeat computations unnecessarily when modifying a subset of parameters while keeping others constant.
+ \item \textbf{Hyperparameter Optimization:} Searching large hyperparameter spaces is inherently compute-intensive.
+ \item \textbf{Rigorous Validation:} Cross-validation strategies (e.g., k-fold, leave-one-out) multiply training costs by the number of folds.
 \end{itemize}
 
 While caching can help, traditional research in cache management—such as the ML-aided hardware strategies surveyed by Krishna (2025)—focuses primarily on optimizing low-level latency and hardware replacement policies~\cite{krishna2025cache}. These systems are designed to predict microsecond-level access patterns rather than addressing the macro-level requirement of matching high-level experiment configurations to saved artefacts. For EEG research, such low-level caching does not prevent the redundant recomputation of 128-fold cross-validation when hyperparameters change.
@@ -309,7 +309,7 @@ fingerprint-based LOSO caching approach developed in this thesis.
 
 As established in Section~\ref{sec:loso_background}, LOSO cross-validation
 is necessary for EEG-based ML to avoid inflated generalisation estimates.
-Its computational cost,   128 training runs per configuration,   makes it
+Its computational cost, 128 training runs per configuration, makes it
 the primary driver of the caching framework: 2{,}304 required training
 operations provide a high-volume workload where deterministic fingerprinting
 delivers maximum efficiency gains.
@@ -324,12 +324,12 @@ cache invalidation when parameters change.
 
 Modern MLOps tools employ variants of this approach:
 \begin{itemize}
-    \item \textbf{DVC} logs pipeline signatures combining dependency contents, 
-          parameters, and commands~\cite{dvc_pipelines}.
-    \item \textbf{MLflow} tracks experiment metadata to enable versioning and 
-          visual comparison~\cite{zaharia2018mlflow}.
-    \item \textbf{MLXP} enforces reproducibility by linking Hydra-based 
-          configurations with specific Git commit hashes~\cite{arbel2024mlxp}.
+ \item \textbf{DVC} logs pipeline signatures combining dependency contents, 
+ parameters, and commands~\cite{dvc_pipelines}.
+ \item \textbf{MLflow} tracks experiment metadata to enable versioning and 
+ visual comparison~\cite{zaharia2018mlflow}.
+ \item \textbf{MLXP} enforces reproducibility by linking Hydra-based 
+ configurations with specific Git commit hashes~\cite{arbel2024mlxp}.
 \end{itemize}
 
 \subsection{Hash-Based Caching in MLOps}
@@ -338,7 +338,7 @@ A terminological note is warranted before proceeding. In traditional computer
 science, a \textit{cache} is temporary and subject to eviction (e.g., CPU
 L1/L2 caches, browser caches). In the context of MLOps and this thesis,
 \textit{caching} refers to the persistent memoisation of computational
-artefacts to disk---a permanent store keyed by a cryptographic fingerprint
+artefacts to disk, a permanent store keyed by a cryptographic fingerprint
 of the configuration that produced them. These artefacts are not evicted;
 they persist until explicitly deleted. The distinction within this thesis is:
 the Fingerprint-based Model Cache (Tier~2) behaves as a true cache in that
@@ -359,4 +359,4 @@ This approach provides reproducibility: identical configurations produce
 identical cache keys, ensuring cached results correspond to recorded
 parameters~\cite{schubotz2022caching}.
 
-In the context of Google's MLOps maturity model~\cite{googlemlops2023}, automated pipeline execution---including artefact reuse---is a key component for progressing from Level~0 (manual processes) to Level~1 (automated training pipelines). It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability}: only through unique configuration fingerprints can the exact data and parameter versions that produced a specific artefact be identified with certainty. Fingerprinting addresses the controllable sources of irreproducibility---seeds, hyperparameters, data splits, implementation versions---while for the CPU-based sklearn and XGBoost models used in this thesis (fixed \texttt{random\_state=42}), deterministic outputs are guaranteed by construction.
+In the context of Google's MLOps maturity model~\cite{googlemlops2023}, automated pipeline execution, including artefact reuse, is a key component for progressing from Level~0 (manual processes) to Level~1 (automated training pipelines). It serves not only as an efficiency mechanism but as the technical implementation of \textit{traceability}: only through unique configuration fingerprints can the exact data and parameter versions that produced a specific artefact be identified with certainty. Fingerprinting addresses the controllable sources of irreproducibility, seeds, hyperparameters, data splits, implementation versions, while for the CPU-based sklearn and XGBoost models used in this thesis (fixed \texttt{random\_state=42}), deterministic outputs are guaranteed by construction.
