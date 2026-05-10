@@ -1,3 +1,0 @@
-config,corr,top_k,n_features,n_folds,cache_hits,cache_misses,cold_total_s,cold_per_fold_s,warm_total_s,warm_per_fold_s,speedup,time_saved_s,cache_size_mb,cache_size_gb,mb_per_s_saved,cold_accuracy,warm_accuracy,accuracy_match,cold_kappa,warm_kappa,cold_f1,warm_f1
-"corr=0.75, k=30 (30f)",0.75,30,30,128,128,0,4149.4,32.42,345.69,2.6324,12.0,3803.7,19674.1,19.21,5.1723,0.795,0.795,True,0.6192,0.6192,0.5763,0.5763
-"corr=0.75, k=50 (48f)",0.75,50,48,128,128,0,4401.2,34.38,355.01,2.7013,12.4,4046.2,20386.8,19.91,5.0386,0.7975,0.7975,True,0.6227,0.6227,0.5781,0.5781

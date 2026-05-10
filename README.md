@@ -171,6 +171,43 @@ See `archive/README.md` for an inventory.
 
 ---
 
+## Future work
+
+Items below are open extensions to this thesis. The first group is taken directly from Chapter 5 of the submitted PDF; the rest were proposed during development but deferred for scope or time.
+
+### From the thesis (Chapter 5)
+
+- **Lazy per-fold feature selection cache.** The thesis used global ANOVA feature selection, which leaks ~0.8% of test data per fold. A per-fold ANOVA fixes the leakage but, naively, kills the warm-run speedup (22.9× → 4.4×). A second-layer cache keyed on `(dataset_version, code_version, corr, top_k, held_out_subject)` would let warm runs skip ANOVA entirely (~1 ms registry lookup) and recover the speedup without the leakage. Designed but not implemented.
+- **Cross-domain validation.** The fingerprinting approach is domain-agnostic. Applying it to other subject-cross-validated tasks (BCIs, speaker-independent ASR, patient-level medical imaging) would test how well the viability metrics (η, ρ) generalise.
+- **MLOps integration.** Package the framework as plugins for DVC, ZenML, or MLflow so that fold-aware caching is available to researchers already on those platforms. The η-based viability verdicts would inform the default caching policy.
+- **Viability knowledge base (master / PhD trajectory).** The thesis produced a single-domain viability map. A natural extension is a cross-domain viability database, and on top of it an "intelligent caching orchestrator" that reads an experimental plan and configures the caching strategy automatically.
+
+### Models, validation, and data scaling (deferred from thesis scope)
+
+- **FNN model.** A placeholder exists (`models.py`, `fnn_size_probe.py` in `archive/scripts/`) but the FNN was not run at full scale due to environment constraints. Re-running the full grid with FNN added would extend the thesis from 18 to 27 configurations.
+- **More cache-viable model families.** The 15-model viability study includes Logistic Regression, SVM-RBF/Linear, LightGBM, CatBoost, AdaBoost, etc. Several were evaluated under `archive/experiments/model_tryouts/` ("not part of the thesis") but a clean integration into the main `training.py` grid is open.
+- **Alternative cross-validation strategies.** Currently only LOSO. Subject-grouped K-fold (faster development iteration), stratified K-fold (alternative baseline), and nested CV (hyperparameter tuning without leakage) are all natural extensions and benefit identically from the feature cache.
+- **Extended scaling grids.** The thesis only has subject scaling for SVM-Linear/RBF and feature scaling for XGBoost. A 2-D grid (subjects × features) for 3–4 key models would produce a viability heatmap, turning the binary VIABLE / NOT VIABLE verdict into a viability curve. See `archive/docs/papierkorb_*` and `archive/scripts/benchmark_*` for the partial groundwork.
+- **RAM-resident model cache.** Prototype in `archive/tests/test_ram_cache_comparison.py` showed a 1.8–3.7× *marginal* gain over the SSD cache at 50 subjects, dropping to negligible at 128 (GC pressure). Worth revisiting with a smarter eviction policy if datasets grow much larger.
+
+### Tooling and UX
+
+- **User interface.** Today the framework is CLI-only (`run_experiment.py`, `run_training.py`, `run_full_pipeline.py`) plus the YAML configs. A nicer UX would help non-CLI users:
+  - A Streamlit / Gradio web dashboard for picking a config, launching a run, and watching cache hit/miss + per-fold timing live.
+  - A desktop GUI (Tauri / PyQt) wrapping the same flows, with a results browser that loads `results/training_*/training_results/*.json` and renders metrics.
+  - A "configurator" step that asks for hardware specs and dataset size, then suggests cache strategy + estimated cold/warm time using the η/ρ viability metrics from the thesis.
+- **Configurable data path.** `interactive_menu.py` and other scripts hardcode `C:\Users\DerHo\Desktop\Data`. Move to an env var (`BOAS_DATA_PATH`) or a single `paths.yaml` so the repo runs on any machine without source edits.
+- **Real pytest suite.** The four scripts under `archive/tests/` are standalone runners, not pytest fixtures. Promoting the most important ones into a real `tests/` dir with `pytest`-style assertions would catch regressions automatically (currently nothing does).
+- **Public reproducibility check.** A small CI workflow that runs `--quick-test` on a tiny synthetic dataset (3 fake subjects) on every push would catch breakage without needing the BOAS data on the runner.
+
+### Pipeline polish
+
+- **Re-enable amplitude validation for BOAS** with thresholds calibrated to the dataset (the current validator was disabled because the original limits rejected 100% of BOAS epochs).
+- **Streaming feature extraction.** Currently each subject is loaded, preprocessed, and feature-extracted before the next one. For very large datasets, a streaming pass that releases memory between subjects would help.
+- **Cache eviction.** Layer 2 grows unbounded (~18.5 GB for the full RF run). An LRU policy, or a per-fingerprint TTL, would let the cache live indefinitely without manual pruning.
+
+---
+
 ## Citation
 
 ```bibtex

@@ -40,7 +40,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # Paths (relative to repo root)
 # ---------------------------------------------------------------------------
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parents[2]
 RESULTS = REPO / "results"
 VIABILITY = RESULTS / "viability_benchmarks"
 FIG_DIR = REPO / "thesis" / "figures"

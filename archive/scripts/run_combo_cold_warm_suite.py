@@ -339,7 +339,7 @@ def run_extra_scripts(
 
 def main() -> None:
     args = parse_args()
-    repo_root = Path(__file__).resolve().parent
+    repo_root = Path(__file__).resolve().parents[2]
 
     # --extras-only does not need --data-path or a size flag
     if not args.extras_only:

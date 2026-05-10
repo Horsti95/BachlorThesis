@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parents[2]
 FIG_DIR = REPO / "thesis" / "figures"
 
 # BOAS dataset — 128 subjects, ~120K epochs

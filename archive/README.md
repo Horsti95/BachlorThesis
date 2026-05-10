@@ -58,8 +58,8 @@ Notable files:
 - `thesis_CHANGE_PLAN_REVIEW.md`, `thesis_THESIS_STATUS.md`, `thesis_ToDoforClaude` — thesis-development metadata.
 - Files prefixed `papierkorb_` were duplicates resolved from the old `papierkorb/` ("trash") directory.
 
-### `old_versions/`
-Older copies of files that still exist (in newer form) at the repo root. Kept only as historical reference; ignore unless you specifically want to look at the older revision.
+### Stale supplementary docs
+Files prefixed `markdowns_` were moved out of the repo-root `markdowns/` directory because they described the project at an earlier (pre-thesis-submission) state and would mislead a reader (e.g., "Stage 4 NOT YET IMPLEMENTED", outdated chapter list, planning notes). The currently-accurate equivalents are the rewritten root `README.md` and `thesis/README.md`.
 
 ## What is **not** here
 

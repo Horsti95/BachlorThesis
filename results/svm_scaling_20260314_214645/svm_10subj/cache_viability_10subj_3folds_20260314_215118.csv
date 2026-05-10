@@ -1,3 +1,0 @@
-model_name,category,n_folds_run,n_subjects,cold_total_time_s,cold_per_fold_time_s,warm_total_time_s,warm_per_fold_time_s,cache_size_mb,cache_size_per_fold_mb,speedup_ratio,time_saved_s,mb_per_second_saved,cold_accuracy,warm_accuracy,accuracy_match,cache_verdict,error
-svm_linear,svm,3,10,236.21,78.738,0.14,0.045,0.02,0.006,1736.41,236.08,0.0001,0.8023,0.8023,True,VIABLE,
-svm_rbf,svm,3,10,20.05,6.683,2.19,0.729,15.32,5.106,9.17,17.86,0.8575,0.6244,0.6244,True,BORDERLINE,

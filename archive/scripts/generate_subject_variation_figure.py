@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-REPO    = Path(__file__).resolve().parent
+REPO    = Path(__file__).resolve().parents[2]
 FIG_DIR = REPO / "thesis" / "figures"
 
 # Default data location — override with --data argument

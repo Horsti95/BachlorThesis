@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-FIG_DIR = Path(__file__).resolve().parent / "thesis" / "figures"
+FIG_DIR = Path(__file__).resolve().parents[2] / "thesis" / "figures"
 
 # ── Hardcoded benchmark results ──────────────────────────────────────────────
 # Source: benchmark_global_vs_perfold.py, top_k=50, corr=None/0.75/0.90

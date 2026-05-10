@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
 DEFAULT_CACHE = REPO / "results" / "features_cache_global"

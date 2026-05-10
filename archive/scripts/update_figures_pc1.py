@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-REPO       = Path(__file__).resolve().parent
+REPO       = Path(__file__).resolve().parents[2]
 FIG_DIR    = REPO / "thesis" / "figures"
 RESULTS    = REPO / "results"
 BENCH      = REPO / "benchmark_results"

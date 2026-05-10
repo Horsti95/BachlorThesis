@@ -14,7 +14,7 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 from pathlib import Path
 
-FIG_DIR = Path(__file__).resolve().parent / "thesis" / "figures"
+FIG_DIR = Path(__file__).resolve().parents[2] / "thesis" / "figures"
 
 # Okabe-Ito palette roles
 C_DATA    = "#0072B2"   # blue   — data / processing

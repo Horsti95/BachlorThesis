@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-REPO    = Path(__file__).resolve().parent
+REPO    = Path(__file__).resolve().parents[2]
 FIG_DIR = REPO / "thesis" / "figures"
 
 DEFAULT_CACHE = REPO / "results" / "features_cache_global"
