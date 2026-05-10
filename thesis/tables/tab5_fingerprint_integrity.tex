@@ -2,6 +2,8 @@
 \centering
 \caption{Fingerprint integrity: changing any parameter produces a unique SHA-256 hash.}
 \label{tab:fingerprint_integrity}
+
+\resizebox{\textwidth}{!}{
 \begin{tabular}{llllll}
 \toprule
 Model & Corr & Top-K & Subject & Fingerprint (first 32 hex) & Changed \\
@@ -12,4 +14,6 @@ XGBoost & 0.90 & 50 & sub-001 & 49e60f13a9a1e3172c8e3c4949fdf15d & corr + top-k 
 Random Forest & None & 149 & sub-001 & beeda602d75a8463f3d24fcb332dd01e & model \\
 \bottomrule
 \end{tabular}
+}
+
 \end{table}
