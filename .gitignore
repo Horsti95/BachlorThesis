@@ -71,3 +71,6 @@ logs/
 *.log
 cache/
 .cache/
+
+# verify_pipeline.ps1 output
+verify_*.txt

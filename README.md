@@ -171,6 +171,19 @@ See `archive/README.md` for an inventory.
 
 ---
 
+## Smoke test
+
+`verify_pipeline.ps1` (Windows PowerShell) compiles every root `*.py`, runs `--help` on the three entry points, runs the data-free thesis tests, and — if the BOAS dataset is present — runs the 3-subject pipeline plus the data-dependent tests. It continues past failures and writes a single timestamped log:
+
+```powershell
+.\verify_pipeline.ps1
+.\verify_pipeline.ps1 -DataPath "D:\BOAS"
+```
+
+Output goes to `verify_<yyyyMMdd_HHmmss>.txt` in the repo root (gitignored).
+
+---
+
 ## Future work
 
 Items below are open extensions to this thesis. The first group is taken directly from Chapter 5 of the submitted PDF; the rest were proposed during development but deferred for scope or time.
