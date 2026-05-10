@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 class TestModuleImports(unittest.TestCase):
@@ -59,7 +59,7 @@ class TestRunExperimentSyntax(unittest.TestCase):
         """Ensure run_experiment.py can be parsed without syntax errors."""
         import ast
 
-        run_experiment_path = Path(__file__).parent / 'run_experiment.py'
+        run_experiment_path = Path(__file__).resolve().parents[2] / 'run_experiment.py'
         with open(run_experiment_path, 'r') as f:
             code = f.read()
 

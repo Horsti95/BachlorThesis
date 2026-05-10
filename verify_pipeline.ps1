@@ -43,6 +43,14 @@ $results   = @()
 # Make repo root importable so archive/tests/*.py find core modules.
 $env:PYTHONPATH = $repo
 
+# Force UTF-8 everywhere: switch the console code page to UTF-8 (65001) and
+# tell Python to use UTF-8 for stdin/stdout/stderr. Without this, the Unicode
+# chars printed by the pipeline (-> arrows, check marks, etc.) crash on the
+# default cp1252 PowerShell console.
+try { chcp 65001 | Out-Null } catch { }
+$env:PYTHONUTF8       = "1"
+$env:PYTHONIOENCODING = "utf-8"
+
 function Log {
     param([string]$Text)
     $Text | Tee-Object -FilePath $logFile -Append | Out-Host

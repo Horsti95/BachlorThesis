@@ -20,6 +20,13 @@ from pathlib import Path
 import sys
 import logging
 
+# Force UTF-8 stdout/stderr on Windows so the Unicode chars printed by this
+# pipeline do not crash on the default cp1252 console.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+
 from config import ConfigManager, ExperimentConfig
 from pipeline import DataPipeline, load_processed_dataset
 from utils import setup_logging, get_timestamp

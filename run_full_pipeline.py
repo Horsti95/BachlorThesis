@@ -28,6 +28,13 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+# Force UTF-8 stdout/stderr on Windows so the Unicode chars printed downstream
+# do not crash on the default cp1252 console.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
