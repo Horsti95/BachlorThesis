@@ -50,10 +50,44 @@ $env:PYTHONPATH = $repo
 try { chcp 65001 | Out-Null } catch { }
 $env:PYTHONUTF8       = "1"
 $env:PYTHONIOENCODING = "utf-8"
+# Ensure PowerShell itself decodes external-command output as UTF-8.
+# (Windows PowerShell 5.x defaults [Console]::OutputEncoding to cp1252 even
+# after chcp 65001, which corrupts Python's UTF-8 bytes before they reach the
+# pipeline.)
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::InputEncoding  = [System.Text.Encoding]::UTF8
+} catch { }
+
+# Pre-touch the log file with no BOM so PowerShell 5.x doesn't add Default
+# encoding bytes to it later.
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($logFile, '', $utf8NoBom)
+
+function Tee-Utf8 {
+    # Stream-style helper that mimics `Tee-Object -Append -Encoding UTF8`
+    # but works on Windows PowerShell 5.1 (where Tee-Object has no -Encoding).
+    # Writes each pipeline item to the host AND appends it to $Path as UTF-8.
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [string]$Path,
+        [Parameter(ValueFromPipeline=$true)]
+        $InputObject
+    )
+    begin {
+        $enc = New-Object System.Text.UTF8Encoding $false
+        $nl  = [System.Environment]::NewLine
+    }
+    process {
+        $line = if ($null -eq $InputObject) { '' } else { "$InputObject" }
+        [Console]::Out.WriteLine($line)
+        [System.IO.File]::AppendAllText($Path, $line + $nl, $enc)
+    }
+}
 
 function Log {
     param([string]$Text)
-    $Text | Tee-Object -FilePath $logFile -Append -Encoding UTF8 | Out-Host
+    $Text | Tee-Utf8 $logFile
 }
 
 function Run-Step {
@@ -70,7 +104,7 @@ function Run-Step {
 
     $global:LASTEXITCODE = 0
     try {
-        & $Cmd 2>&1 | Tee-Object -FilePath $logFile -Append -Encoding UTF8 | Out-Host
+        & $Cmd 2>&1 | Tee-Utf8 $logFile
     } catch {
         Log "EXCEPTION: $_"
         if ($LASTEXITCODE -eq 0) { $global:LASTEXITCODE = 1 }
