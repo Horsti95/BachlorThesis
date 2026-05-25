@@ -32,6 +32,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
 
+# Force UTF-8 stdout/stderr on Windows so the Unicode chars printed downstream
+# do not crash on the default cp1252 console.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+
 from config import ConfigManager, ExperimentConfig
 from feature_cache import load_features_from_cache, get_cache_info
 from feature_selection import FeatureSelectionConfig, create_feature_selection_grid

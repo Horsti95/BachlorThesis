@@ -62,12 +62,15 @@ venv.bak/
 Thumbs.db
 
 # Project specific
-results/
+# results/ is not blanket-ignored: the thesis-referenced result files are tracked.
+# Local experiment runs and caches generated at runtime stay ignored:
+results/features_cache_global/
+results/loso_model_cache/
+results/experiment_*/
 logs/
 *.log
 cache/
 .cache/
 
-__pycache__/
-*.pyc
-*.pyo
+# verify_pipeline.ps1 output
+verify_*.txt
