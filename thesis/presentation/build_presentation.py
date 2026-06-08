@@ -29,6 +29,8 @@ def rasterize():
         "pipeline": FIG / "fig_pipeline_overview.pdf",
         "speedup": FIG / "fig1_speedup_bar.pdf",
         "efficiency": FIG / "fig3_efficiency.pdf",
+        "viability_rank": FIG / "fig4b_viability_scatter.pdf",
+        "confusion": FIG / "fig_confusion_matrix.pdf",
     }
     out = {}
     for name, pdf in jobs.items():
@@ -99,6 +101,69 @@ def add_caption(slide, text, l, t, w, color=GRAY, size=12, italic=True):
 
 def notes(slide, text):
     slide.notes_slide.notes_text_frame.text = text
+
+FOOTER_TXT = ("Lennart Gorzel Fingerprint-Based Caching for "
+              "Leave-One-Subject-Out Cross-Validation")
+DATE_TXT = "6/9/2026"
+
+def new_slide(prs, title_text, num):
+    """Add a fresh 'Ein Inhalt' slide, set title/footer/date/number, drop the
+    empty body placeholder so we can lay out tables/images freely."""
+    layout = next(l for l in prs.slide_layouts if l.name == "Ein Inhalt")
+    sl = prs.slides.add_slide(layout)
+    for ph in list(sl.placeholders):
+        idx = ph.placeholder_format.idx
+        if idx == 0:
+            ph.text_frame.text = title_text
+        elif idx == 11:
+            ph.text_frame.text = FOOTER_TXT
+        elif idx == 10:
+            ph.text_frame.text = DATE_TXT
+        elif idx == 12:
+            ph.text_frame.text = str(num)
+        elif idx == 1:                       # remove empty body placeholder
+            ph._element.getparent().remove(ph._element)
+    return sl
+
+def styled_table(slide, rows, l, t, w, h, col_w, font=12,
+                 highlight_idx=None):
+    nr, nc = len(rows), len(rows[0])
+    gf = slide.shapes.add_table(nr, nc, Inches(l), Inches(t),
+                                Inches(w), Inches(h))
+    tbl = gf.table
+    tbl.first_row = True
+    for ci, cw in enumerate(col_w):
+        tbl.columns[ci].width = Inches(cw)
+    for ri, row in enumerate(rows):
+        for ci, txt in enumerate(row):
+            cell = tbl.cell(ri, ci)
+            cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+            cell.margin_top = Pt(1); cell.margin_bottom = Pt(1)
+            cell.margin_left = Pt(5); cell.margin_right = Pt(5)
+            tf = cell.text_frame; tf.word_wrap = True
+            p = tf.paragraphs[0]; r = p.add_run(); r.text = str(txt)
+            r.font.name = "Arial"; r.font.size = Pt(font)
+            if ri == 0:
+                cell.fill.solid(); cell.fill.fore_color.rgb = ORANGE
+                r.font.bold = True; r.font.color.rgb = WHITE
+            else:
+                cell.fill.solid(); cell.fill.fore_color.rgb = WHITE
+                r.font.color.rgb = DARK
+    if highlight_idx is not None:
+        for ci in range(nc):
+            cell = tbl.cell(highlight_idx, ci)
+            cell.fill.solid(); cell.fill.fore_color.rgb = LIGHT
+            for p in cell.text_frame.paragraphs:
+                for r in p.runs:
+                    r.font.bold = True
+    return tbl
+
+def label(slide, text, l, t, w, color=ORANGE, size=14):
+    box = slide.shapes.add_textbox(Inches(l), Inches(t), Inches(w), Inches(0.3))
+    p = box.text_frame.paragraphs[0]
+    r = p.add_run(); r.text = text
+    r.font.size = Pt(size); r.font.bold = True; r.font.color.rgb = color
+    return box
 
 # ---------------------------------------------------------------- build ------
 def build():
@@ -345,16 +410,102 @@ def build():
           "slides as needed (full results table, eta ranking, confusion matrix, "
           "global-vs-fold leakage).")
 
-    # ---- Slide 11: Backup ----
+    # ---- Slide 11: Backup index ----
+    set_title(s[10], "Backup — Material")
     fill(content_ph(s[10]), [
-        ("Backup material", 0, True, ORANGE),
-        ("Full 9-config results table (XGB + RF)", 1, False, None),
-        ("η ranking — all 15 models", 1, False, None),
-        ("Confusion matrix + per-class F1 (N1)", 1, False, None),
-        ("Global vs. per-fold selection (≤1.1%)", 1, False, None),
+        ("The following slides support likely questions", 0, True, ORANGE),
+        ("B1 — Full 9-config cache results (XGB + RF)", 1, False, None),
+        ("B2 — η ranking, all 15 models", 1, False, None),
+        ("B3 — Confusion matrix (N1 weakness)", 1, False, None),
+        ("B4 — Global vs. per-fold selection (leakage)", 1, False, None),
     ])
-    notes(s[10], "Optional. Pull these up only if asked. The global-vs-fold slide "
-          "directly addresses the train-set leakage point.")
+    notes(s[10], "Optional index. Pull the relevant slide up only if asked.")
+
+    # ---- B1: Full cache results (two tables) ----
+    b1 = new_slide(prs, "Backup — Full Cache Results (128-fold LOSO)", 12)
+    xgb = [
+        ["Config", "Cold (s)", "Warm (s)", "Speedup", "Cache"],
+        ["corr=0.75, k=30", "1053.4", "26.4", "39.9×", "186 MB"],
+        ["corr=0.75, k=50", "1447.4", "27.2", "53.3×", "189 MB"],
+        ["corr=0.75, k=None", "1440.3", "26.6", "54.2×", "189 MB"],
+        ["corr=0.90, k=30", "964.1", "25.7", "37.5×", "176 MB"],
+        ["corr=0.90, k=50", "1453.8", "26.4", "55.1×", "187 MB"],
+        ["corr=0.90, k=None", "2223.6", "28.2", "78.8×", "189 MB"],
+        ["corr=None, k=30", "1003.6", "21.1", "47.7×", "177 MB"],
+        ["corr=None, k=50", "1385.9", "21.2", "65.3×", "178 MB"],
+        ["corr=None, k=None", "3816.1", "18.9", "202×", "188 MB"],
+    ]
+    rf = [
+        ["Config", "Cold (s)", "Warm (s)", "Speedup", "Cache"],
+        ["corr=0.75, k=30", "4341.3", "391.8", "11.1×", "19.2 GB"],
+        ["corr=0.75, k=50", "4638.0", "402.8", "11.5×", "19.9 GB"],
+        ["corr=0.75, k=None", "4648.3", "401.3", "11.6×", "19.9 GB"],
+        ["corr=0.90, k=30", "4342.7", "392.2", "11.1×", "19.1 GB"],
+        ["corr=0.90, k=50", "5794.2", "375.3", "15.4×", "17.0 GB"],
+        ["corr=0.90, k=None", "6315.9", "359.0", "17.6×", "17.4 GB"],
+        ["corr=None, k=30", "4567.2", "415.6", "11.0×", "20.4 GB"],
+        ["corr=None, k=50", "5602.4", "356.7", "15.7×", "17.5 GB"],
+        ["corr=None, k=None", "7962.4", "339.4", "23.5×", "16.3 GB"],
+    ]
+    cw = [3.7, 1.95, 1.95, 1.95, 1.95]
+    label(b1, "XGBoost — median 54×, ~185 MB  (best: 202×, 3816 s → 18.9 s)",
+          0.9, 1.5, 11.5)
+    styled_table(b1, xgb, 0.9, 1.82, 11.5, 2.25, cw, font=10, highlight_idx=9)
+    label(b1, "Random Forest — median 11.6×, ~18.5 GB  (borderline viable)",
+          0.9, 4.25, 11.5)
+    styled_table(b1, rf, 0.9, 4.57, 11.5, 2.25, cw, font=10, highlight_idx=9)
+    notes(b1, "Per-configuration cache results, 128-fold LOSO. XGBoost: median "
+          "54×, ~185 MB, best config corr=None/k=None at 202×. Random Forest: "
+          "median 11.6×, ~18.5 GB — meaningful speedup but GB-scale storage. "
+          "All 2,304 warm operations were cache hits.")
+
+    # ---- B2: eta ranking, 15 models ----
+    b2 = new_slide(prs, "Backup — Cache Viability Ranking (η, 15 models)", 13)
+    png, ar = figs["viability_rank"]
+    add_image_fit(b2, png, ar, (1.4, 1.7, 10.5, 4.5))
+    add_caption(b2, "η = seconds of compute saved per MB stored. Blue viable "
+                "(η > 2), orange not viable (η < 0.5).", 1.4, 6.3, 10.5)
+    notes(b2, "η ranking of all 15 model types. Eleven viable, four not (Random "
+          "Forest, Extra Trees, kNN k=5/k=10). Caveat if asked: the tiny-cache "
+          "models (gradient boosting, AdaBoost, SVM-linear) show very large η "
+          "because their cache size rounds toward zero — read this alongside the "
+          "two-axis scatter on the main Results slide, which also shows absolute "
+          "time saved.")
+
+    # ---- B3: confusion matrix ----
+    b3 = new_slide(prs, "Backup — Confusion Matrix (best XGBoost)", 14)
+    png, ar = figs["confusion"]
+    add_image_fit(b3, png, ar, (1.4, 1.7, 10.5, 4.5))
+    add_caption(b3, "Aggregated 5×5 confusion across all 128 LOSO folds; "
+                "right panel row-normalised (recall).", 1.4, 6.3, 10.5)
+    notes(b3, "Aggregated confusion matrix, best XGBoost configuration, all 128 "
+          "folds. N1 has the lowest recall — it is a transitional stage, only "
+          "3.7% of all epochs, and is most often confused with Wake and N2. This "
+          "is the standard hard class in AASM sleep staging, not a caching artefact.")
+
+    # ---- B4: global vs per-fold selection ----
+    b4 = new_slide(prs, "Backup — Global vs. Per-Fold Feature Selection", 15)
+    gvf = [
+        ["Aspect", "Global (chosen)", "Per-Fold"],
+        ["Selection fitted on", "All subjects (once)", "Training fold only"],
+        ["Label leakage", "1/128 ≈ 0.8%", "None"],
+        ["Accuracy difference", "±0.4% mean, ≤1.1% max", "Baseline"],
+        ["XGBoost warm speedup", "14–23×", "4–9×"],
+        ["RF warm speedup", "3–5×", "2.5–2.8×"],
+        ["Degrades with N?", "No (fingerprint stable)", "Yes (re-select/fold)"],
+        ["Cache key", "One per config", "One per fold"],
+    ]
+    styled_table(b4, gvf, 0.9, 1.9, 11.5, 4.0, [4.0, 3.75, 3.75], font=15,
+                 highlight_idx=3)
+    add_caption(b4, "Global selection retains the cache speedup; measured "
+                "accuracy impact ≤1.1% with no consistent direction.",
+                0.9, 6.15, 11.5)
+    notes(b4, "Global vs per-fold feature selection. Per-fold is statistically "
+          "stricter — it removes the 0.8% label leakage — but it re-runs ANOVA on "
+          "every warm load, collapsing XGBoost speedup from 14–23× to 4–9×. Global "
+          "was chosen with the supervisor's approval; the empirical accuracy impact "
+          "is ≤1.1% with no consistent direction. This slide directly addresses the "
+          "train-set leakage point in the assessment.")
 
     out = HERE / "Thesis_Presentation_Gorzel.pptx"
     prs.save(str(out))
