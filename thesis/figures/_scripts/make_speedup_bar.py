@@ -71,7 +71,7 @@ def make_figure():
 
     ax.set_xticks(x)
     ax.set_xticklabels(models, fontsize=11)
-    ax.set_ylabel("Speedup vs. cold start (×)")
+    ax.set_ylabel("Speedup factor (×)")
     ax.set_ylim(0, max(medians) * 1.22)
     ax.set_title("Cache Speedup per Model (median across 9 configs, 128 LOSO folds)")
     ax.grid(axis="y", alpha=0.3, zorder=0)
