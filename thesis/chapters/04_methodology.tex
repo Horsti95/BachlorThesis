@@ -950,10 +950,11 @@ multi-model results in Section~\ref{sec:results_viability}.
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig1_speedup_bar.pdf}
 \caption[Speedup bar chart: XGBoost and RF across 9 configurations]{Cache speedup
-comparison across 9 configurations for XGBoost and Random Forest
-(128-fold LOSO, log scale). Bar height is total wall-clock time
-(cold vs.\ warm); the annotation reports the median per-configuration
-speedup.}
+comparison for XGBoost and Random Forest (128-fold LOSO, 9 configurations
+each). Bar height is the median per-configuration warm-run speedup, i.e.\
+the median of (cold~/~warm) execution time across the 9 configurations, so
+the bar height matches the printed factor. The inside-bar label gives the
+cold and warm execution times of the representative (median) configuration.}
 \label{fig:speedup_bar}
 \end{figure}
 
