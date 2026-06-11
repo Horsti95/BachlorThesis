@@ -186,24 +186,26 @@ def build():
     # ---- Slide 3: Motivation ----
     fill(content_ph(s[2]), [
         ("Context", 0, True, ORANGE),
-        ("EEG sleep staging — 128 subjects", 1, False, None),
-        ("LOSO: one model per held-out subject", 1, False, None),
+        ("EEG sleep staging — 128 subjects, BOAS dataset", 1, False, None),
+        ("LOSO: gold standard for subject-independent medical ML", 1, False, None),
         ("The Challenge", 0, True, ORANGE),
-        ("Per model: 128 subjects → 128 retrains", 1, False, None),
-        ("18 model configs ≈ 21 hours", 1, False, None),
-        ("Change one parameter → recompute all", 1, False, None),
-        ("Framing", 0, True, ORANGE),
-        ("Sleep EEG = vehicle, not the goal", 1, False, None),
-    ])
+        ("128 subjects × 18 configs ≈ 21 hours per sweep", 1, False, None),
+        ("Change one parameter → recompute all folds", 1, False, None),
+        ("Research Questions", 0, True, ORANGE),
+        ("RQ1: What speedup and hit rates does caching achieve?", 1, False, None),
+        ("RQ2: Are cached results bitwise-identical?", 1, False, None),
+        ("RQ3: Does benefit scale with subject count N?", 1, False, None),
+        ("RQ4: When is caching storage-efficient (η)?", 1, False, None),
+    ], head=18, sub=16)
     notes(s[2],
-        "This began as a sleep-staging project. The standard protocol is "
-        "Leave-One-Subject-Out: train on 127 people, test on the one held out, "
-        "repeat for all 128 — so per model, 128 retrains. Run 18 model "
-        "configurations and you're at ~21 hours per sweep, mostly recomputing "
-        "byte-for-byte identical models. The problem was never accuracy; it was "
-        "that changing one parameter threw all of it away. And to be clear: sleep "
-        "data is just the vehicle. The contribution is the caching framework — "
-        "LOSO is the hard, general case I use to prove it. (~1:40)")
+        "This began as a sleep-staging project. LOSO is not just one option — "
+        "in clinical and medical ML it is the preferred protocol because it "
+        "enforces true subject independence. With 128 subjects and 18 model "
+        "configurations you're at ~21 hours per sweep, mostly recomputing "
+        "byte-for-byte identical models. Changing one parameter throws all of "
+        "it away. Sleep EEG is just the vehicle; the contribution is the caching "
+        "framework. These four research questions guide the rest of the talk — "
+        "I'll answer each one explicitly in the conclusion. (~2:00)")
 
     # ---- Slide 4: State of the Art (table + citation) ----
     set_title(s[3], "State of the Art")
@@ -272,7 +274,9 @@ def build():
         ("Behaviour", 0, True, ORANGE),
         ("Same config → same key → reuse", 1, False, None),
         ("Change anything → new key → recompute", 1, False, None),
-    ])
+        ("Why not generic caching?", 0, True, ORANGE),
+        ("No fold identity → wrong-subject hit is silent", 1, False, None),
+    ], head=18, sub=16)
     fbox = s[4].shapes.add_textbox(Inches(0.9), Inches(5.95), Inches(11.5), Inches(0.9))
     fbox.fill.solid(); fbox.fill.fore_color.rgb = RGBColor(0xF2, 0xF3, 0xF4)
     fbox.line.color.rgb = ORANGE; fbox.line.width = Pt(1)
@@ -289,11 +293,14 @@ def build():
         "full configuration — seed, code version, hyperparameters, feature set "
         "— serialize it to canonical JSON, and hash it with SHA-256. Same inputs "
         "always give the same key; change one thing and the key changes, forcing a "
-        "recompute. The decisive part, and the reason generic tools can't do this, is "
+        "recompute. The decisive part, and the reason generic tools cannot do this, is "
         "adding the held-out subject ID into the hash. That makes fold isolation "
         "structural, not a convention: a model trained with subject A out cannot be "
-        "retrieved when subject B is the test subject. (Slide 2 was the problem; this "
-        "is the one idea that fixes it.) (~1:30)")
+        "retrieved when subject B is the test subject. "
+        "Any caching library can store a file by key — what makes this "
+        "fingerprint-based is that the key is derived from ALL inputs including the "
+        "held-out subject ID. Without that, a cache hit could silently return a model "
+        "trained on the wrong 127 people with no error raised. (~1:30)")
 
     # ---- Slide 6: Implementation (left bullets + pipeline figure) ----
     set_title(s[5], "Implementation")
@@ -362,6 +369,7 @@ def build():
         ("Viability", 0, True, ORANGE),
         ("15 models: 11 viable, 4 not", 1, False, None),
         ("η (eta) = seconds saved / MB", 1, False, None),
+        ("Threshold from empirical gap — not arbitrary", 1, False, None),
         ("Above the line → worth caching", 1, False, None),
         ("Cost & Scaling", 0, True, ORANGE),
         ("XGBoost 1.5 MB (viable)", 1, False, None),
@@ -378,21 +386,27 @@ def build():
         "megabyte stored. I tested 15 models. Everything above this diagonal recovers "
         "more compute than it spends on storage I/O: 11 pass, 4 fail. The failures "
         "cluster bottom-right — Random Forest, Extra Trees, kNN — big files, "
-        "little saved. And the scaling result is the general takeaway: SVM went from "
-        "9x at ten subjects to 201x at 128. Caching gets MORE valuable as the study "
-        "grows, not less. (~1:20)")
+        "little saved. The threshold wasn't picked arbitrarily: after measuring all "
+        "15 models, the viable cluster landed between 4 and 2,500 s/MB; the "
+        "not-viable cluster between 0.19 and 0.4 s/MB — a near-decade gap on a log "
+        "scale. The threshold just needs to sit inside that gap; the exact value "
+        "doesn't change any verdict. And the scaling result is the general takeaway: "
+        "SVM went from 9x at ten subjects to 201x at 128. Caching gets MORE "
+        "valuable as the study grows, not less. (~1:20)")
 
     # ---- Slide 9: Conclusion ----
     fill(content_ph(s[8]), [
         ("Contributions", 0, True, ORANGE),
         ("Fold-aware fingerprint → no contamination", 1, False, None),
         ("Order-of-magnitude speedup, reproducible", 1, False, None),
-        ("Bonus: every fold's model preserved", 1, False, None),
-        ("Takeaways", 0, True, ORANGE),
-        ("Caching scales with study size", 1, False, None),
-        ("Method transfers — the numbers don't", 1, False, None),
-        ("RQ1–RQ4: answered", 1, False, None),
-    ])
+        ("Every fold's model preserved → inspect post-hoc", 1, False, None),
+        ("Outlier flagged → pull model, inspect feature weights", 1, False, None),
+        ("Research Questions — Answered", 0, True, ORANGE),
+        ("RQ1 ✓  median 54×, 100% hit rate, 2,304/2,304", 1, False, None),
+        ("RQ2 ✓  100% bitwise-identical, zero collisions", 1, False, None),
+        ("RQ3 ✓  speedup grows: SVM 9× → 201×", 1, False, None),
+        ("RQ4 ✓  11/15 viable; η separates clusters by ~3 orders", 1, False, None),
+    ], head=17, sub=15)
     notes(s[8],
         "To close: the fingerprint makes fold-safe caching structural, the speedups "
         "are order-of-magnitude, and reproducibility is guaranteed by construction "
