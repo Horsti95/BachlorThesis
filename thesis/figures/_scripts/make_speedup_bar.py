@@ -62,9 +62,9 @@ def make_figure():
         ax.annotate(f"{h:.1f}×", xy=(b.get_x() + b.get_width() / 2, h),
                     xytext=(0, 6), textcoords="offset points", ha="center",
                     va="bottom", fontweight="bold", fontsize=16, color=colors[i])
-        # Cold -> warm execution times inside the bar (names both states).
+        # Cold and warm execution times inside the bar (names both states).
         c, w = reps[i]
-        ax.annotate(f"Cold {c:.0f} s\n Warm {w:.0f} s\nper configuration",
+        ax.annotate(f"Cold {c:.0f} s\nWarm {w:.0f} s\nper configuration",
                     xy=(b.get_x() + b.get_width() / 2, h / 2),
                     ha="center", va="center", fontsize=9.5, color="white",
                     fontweight="bold")
