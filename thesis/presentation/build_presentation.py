@@ -171,6 +171,25 @@ def build():
     prs = Presentation(str(HERE / "template.pptx"))
     s = prs.slides
 
+    # ---- Slide 1: Cover — two example bullets as a spoken hook ----
+    # The title placeholder has two empty centered spacer paragraphs between the
+    # title block and the author line; reuse them for the hook (no overflow).
+    cover_ph = next(ph for ph in s[0].placeholders
+                    if ph.placeholder_format.idx == 14)
+    hook = ["▸  Post-hoc per-fold model inspection",
+            "▸  ML specialist + clinician: outlier review at zero extra cost"]
+    for par, txt in zip(cover_ph.text_frame.paragraphs[1:3], hook):
+        r = par.add_run(); r.text = txt
+        r.font.size = Pt(16); r.font.bold = True; r.font.color.rgb = ORANGE
+    notes(s[0],
+        "Open with the hook (~0:30). Two concrete payoffs of this work, in plain "
+        "terms. First: because every fold's model is cached and preserved, you can "
+        "inspect any single subject's model after the fact — open the box, not just "
+        "read the score. Second: that enables a workflow where a clinician flags an "
+        "unusual subject and an ML specialist pulls that exact model to check its "
+        "feature weights — at zero extra compute, because it is already cached. Keep "
+        "it brief here; I deliver the proof at the end. Then move to the agenda.")
+
     # ---- Slide 2: Outline (already good; tighten wording) ----
     fill(content_ph(s[1]), [
         ("Motivation & Research Questions", 0, False, None),
@@ -183,29 +202,57 @@ def build():
     notes(s[1], "30 seconds. Six sections, ten minutes. The contribution is the "
           "caching framework; sleep staging is just the test vehicle.")
 
-    # ---- Slide 3: Motivation ----
-    fill(content_ph(s[2]), [
-        ("Context", 0, True, ORANGE),
-        ("EEG sleep staging — 128 subjects, BOAS dataset", 1, False, None),
-        ("LOSO: gold standard for subject-independent medical ML", 1, False, None),
-        ("The Challenge", 0, True, ORANGE),
-        ("128 subjects × 18 configs ≈ 21 hours per sweep", 1, False, None),
+    # ---- Slide 3: Motivation (headline band + two columns) ----
+    # (a) Full-width headline band: the killer number, with the count in orange.
+    band = s[2].shapes.add_textbox(Inches(0.75), Inches(1.6), Inches(11.85),
+                                   Inches(0.85))
+    btf = band.text_frame; btf.word_wrap = True
+    btf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    bp = btf.paragraphs[0]; bp.alignment = PP_ALIGN.CENTER
+    r = bp.add_run(); r.text = "18 models × 128 subjects = "
+    r.font.size = Pt(24); r.font.bold = True; r.font.color.rgb = DARK
+    r = bp.add_run(); r.text = "2,304 trainings → ~21 h / sweep"
+    r.font.size = Pt(24); r.font.bold = True; r.font.color.rgb = ORANGE
+    # thin orange divider under the band
+    ln = s[2].shapes.add_shape(1, Inches(0.9), Inches(2.55), Inches(11.55),
+                               Pt(2))
+    ln.fill.solid(); ln.fill.fore_color.rgb = ORANGE; ln.line.fill.background()
+
+    # (b) Left column: why it's hard (reuse the template content placeholder)
+    cp = content_ph(s[2])
+    cp.left = Inches(0.75); cp.top = Inches(2.8)
+    cp.width = Inches(5.6); cp.height = Inches(3.4)
+    fill(cp, [
+        ("Why it's hard", 0, True, ORANGE),
+        ("Sleep EEG · BOAS dataset · 128 subjects", 1, False, None),
+        ("LOSO = gold standard in medical ML", 1, False, None),
+        ("Subject-independent → 1 model per held-out subject", 1, False, None),
         ("Change one parameter → recompute all folds", 1, False, None),
-        ("Research Questions", 0, True, ORANGE),
-        ("RQ1: What speedup and hit rates does caching achieve?", 1, False, None),
-        ("RQ2: Are cached results bitwise-identical?", 1, False, None),
-        ("RQ3: Does benefit scale with subject count N?", 1, False, None),
-        ("RQ4: When is caching storage-efficient (η)?", 1, False, None),
     ], head=18, sub=16)
+
+    # (c) Right column: research questions (new textbox, reuse fill())
+    rcol = s[2].shapes.add_textbox(Inches(6.95), Inches(2.8), Inches(5.7),
+                                   Inches(3.4))
+    fill(rcol, [
+        ("Research Questions", 0, True, ORANGE),
+        ("RQ1 — Speedup & hit rate?", 1, False, None),
+        ("RQ2 — Bitwise-identical?", 1, False, None),
+        ("RQ3 — Scaling with N?", 1, False, None),
+        ("RQ4 — Storage-efficient (η)?", 1, False, None),
+    ], head=18, sub=16)
+
     notes(s[2],
-        "This began as a sleep-staging project. LOSO is not just one option — "
-        "in clinical and medical ML it is the preferred protocol because it "
-        "enforces true subject independence. With 128 subjects and 18 model "
-        "configurations you're at ~21 hours per sweep, mostly recomputing "
-        "byte-for-byte identical models. Changing one parameter throws all of "
-        "it away. Sleep EEG is just the vehicle; the contribution is the caching "
-        "framework. These four research questions guide the rest of the talk — "
-        "I'll answer each one explicitly in the conclusion. (~2:00)")
+        "Lead with the number on the band: 18 model configurations across 128 "
+        "subjects is 2,304 trainings, about 21 hours per sweep — and almost all of "
+        "it is recomputing byte-for-byte identical models. Why so many folds? "
+        "Because LOSO is not just one option — in clinical and medical ML it is the "
+        "preferred protocol, since it enforces true subject independence: one model "
+        "per held-out subject. The pain is that changing a single parameter throws "
+        "the whole sweep away. That motivates four research questions — read each "
+        "in full: RQ1, what speedup and hit rates does caching achieve; RQ2, are the "
+        "cached results bitwise-identical to retraining; RQ3, does the benefit scale "
+        "as the subject count N grows; RQ4, when is caching storage-efficient, "
+        "measured by eta. I answer all four explicitly in the conclusion. (~2:00)")
 
     # ---- Slide 4: State of the Art (table + citation) ----
     set_title(s[3], "State of the Art")
